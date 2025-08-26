@@ -14,7 +14,7 @@ mongo_client = MongoClient("mongodb://localhost:27017/")
 db = mongo_client["pokemon_showdown"]
 users = db["users"]
 auth = db["authorised"]
-
+owner = 6735548827
 # ==== /start command ====
 @bot.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
@@ -23,7 +23,7 @@ async def start_handler(event):
 
     # Check if user is authorised
     authorised = auth.find_one({"user_id": user_id})
-    if not authorised:
+    if not authorised and user_id != owner:
         await event.respond("❌ You are not authorised to use this bot.")
         return
 
@@ -51,7 +51,9 @@ async def authorise_handler(event):
     reply_msg = await event.get_reply_message()
     target_id = reply_msg.sender_id
     target = await bot.get_entity(target_id)
-
+    if user_id != owner:
+        await event.reply("You are not Owner!") 
+        return
     # Check if already authorised
     existing = auth.find_one({"user_id": target_id})
     if existing:
