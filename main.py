@@ -1,4 +1,7 @@
-from telethon import TelegramClient, events,  Button
+import random
+import string
+from datetime import datetime
+from telethon import TelegramClient, events, Button
 from pymongo import MongoClient
 
 # ==== Your credentials ====
@@ -15,19 +18,64 @@ db = mongo_client["pokemon_showdown"]
 users = db["users"]
 auth = db["authorised"]
 owner = 6735548827
+
+
+# ==== Helper: Generate Pokémon ID ====
+def generate_pokemon_id():
+    date_part = datetime.utcnow().strftime("%y%m%d")
+    random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+    return f"PKM-{date_part}-{random_part}"
+
+
+# ==== Helper: Parse Pokémon Showdown Set ====
+def parse_showdown_set(text):
+    lines = text.strip().splitlines()
+    pokemon = {}
+
+    # First line → Name + Item
+    if "@" in lines[0]:
+        name_part, item = lines[0].split("@")
+        pokemon["name"] = name_part.strip()
+        pokemon["item"] = item.strip()
+    else:
+        pokemon["name"] = lines[0].strip()
+
+    # Other attributes
+    for line in lines[1:]:
+        line = line.strip()
+        if line.startswith("Ability:"):
+            pokemon["ability"] = line.replace("Ability:", "").strip()
+        elif line.startswith("Shiny:"):
+            pokemon["shiny"] = line.replace("Shiny:", "").strip()
+        elif line.startswith("Tera Type:"):
+            pokemon["tera_type"] = line.replace("Tera Type:", "").strip()
+        elif line.startswith("EVs:"):
+            pokemon["evs"] = line.replace("EVs:", "").strip()
+        elif line.startswith("IVs:"):
+            pokemon["ivs"] = line.replace("IVs:", "").strip()
+        elif line.endswith("Nature"):
+            pokemon["nature"] = line.replace("Nature", "").strip()
+        elif line.startswith("- "):  # Moves
+            if "moves" not in pokemon:
+                pokemon["moves"] = []
+            pokemon["moves"].append(line.replace("- ", "").strip())
+
+    # Add Pokémon ID
+    pokemon["pokemon_id"] = generate_pokemon_id()
+    return pokemon
+
+
 # ==== /start command ====
 @bot.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
     user_id = event.sender_id
     first_name = event.sender.first_name
 
-    # Check if user is authorised
     authorised = auth.find_one({"user_id": user_id})
     if not authorised and user_id != owner:
         await event.respond("❌ You are not authorised to use this bot.")
         return
 
-    # Check if already in users DB
     existing = users.find_one({"user_id": user_id})
     if not existing:
         users.insert_one({
@@ -52,10 +100,11 @@ async def authorise_handler(event):
     reply_msg = await event.get_reply_message()
     target_id = reply_msg.sender_id
     target = await bot.get_entity(target_id)
+
     if user_id != owner:
-        await event.reply("You are not Owner!") 
+        await event.reply("❌ You are not the Owner!")
         return
-    # Check if already authorised
+
     existing = auth.find_one({"user_id": target_id})
     if existing:
         await event.respond(f"✅ {target.first_name} is already authorised.")
@@ -75,8 +124,8 @@ async def authlist_handler(event):
     msg = "👑 Authorised Users:\n"
     for user in authorised_users:
         msg += f"- {user['name']} ({user['user_id']})\n"
-
     await event.respond(msg)
+
 
 # ==== /add Pokémon command ====
 SHOWDOWN_LINK = "https://play.pokemonshowdown.com/teambuilder"
@@ -85,9 +134,31 @@ SHOWDOWN_LINK = "https://play.pokemonshowdown.com/teambuilder"
 async def add_pokemon(event):
     await event.respond(
         "Please paste the meta data of your Pokémon!",
-        buttons=[
-            [Button.url("⚡ Open Teambuilder", SHOWDOWN_LINK)]
-        ]
+        buttons=[[Button.url("⚡ Open Teambuilder", SHOWDOWN_LINK)]]
     )
+
+
+# ==== Handle pasted Pokémon sets ====
+@bot.on(events.NewMessage)
+async def handle_pokemon_set(event):
+    text = event.raw_text
+    if any(keyword in text for keyword in ["Ability:", "EVs:", "Nature", "- "]):
+        pokemon = parse_showdown_set(text)
+
+        msg = f"✅ Pokémon Parsed!\n\n"
+        msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
+        msg += f"📛 Name: {pokemon.get('name', 'Unknown')}\n"
+        msg += f"🎒 Item: {pokemon.get('item', 'None')}\n"
+        msg += f"✨ Shiny: {pokemon.get('shiny', 'No')}\n"
+        msg += f"🌩️ Ability: {pokemon.get('ability', 'None')}\n"
+        msg += f"🌈 Tera Type: {pokemon.get('tera_type', 'None')}\n"
+        msg += f"📊 EVs: {pokemon.get('evs', 'None')}\n"
+        msg += f"🔢 IVs: {pokemon.get('ivs', 'None')}\n"
+        msg += f"🌿 Nature: {pokemon.get('nature', 'None')}\n"
+        msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}"
+
+        await event.respond(msg)
+
+
 print("Bot running...")
 bot.run_until_disconnected()
