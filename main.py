@@ -32,15 +32,33 @@ def parse_showdown_set(text):
     lines = text.strip().splitlines()
     pokemon = {}
 
-    # First line → Name + Item
-    if "@" in lines[0]:
-        name_part, item = lines[0].split("@")
+    # --- First line: Name, Gender, Item ---
+    first_line = lines[0]
+
+    # Extract gender if present
+    gender = None
+    if "(M)" in first_line:
+        gender = "M"
+        first_line = first_line.replace("(M)", "").strip()
+    elif "(F)" in first_line:
+        gender = "F"
+        first_line = first_line.replace("(F)", "").strip()
+    else:
+        # If not specified, assign random gender
+        gender = random.choice(["M", "F"])
+
+    # Split name + item
+    if "@" in first_line:
+        name_part, item = first_line.split("@")
         pokemon["name"] = name_part.strip()
         pokemon["item"] = item.strip()
     else:
-        pokemon["name"] = lines[0].strip()
+        pokemon["name"] = first_line.strip()
+        pokemon["item"] = "None"
 
-    # Other attributes
+    pokemon["gender"] = gender
+
+    # --- Other attributes ---
     for line in lines[1:]:
         line = line.strip()
         if line.startswith("Ability:"):
@@ -147,7 +165,7 @@ async def handle_pokemon_set(event):
 
         msg = f"✅ Pokémon Parsed!\n\n"
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
-        msg += f"📛 Name: {pokemon.get('name', 'Unknown')}\n"
+        msg += f"📛 Name: {pokemon.get('name', 'Unknown')} ({pokemon['gender']})\n"
         msg += f"🎒 Item: {pokemon.get('item', 'None')}\n"
         msg += f"✨ Shiny: {pokemon.get('shiny', 'No')}\n"
         msg += f"🌩️ Ability: {pokemon.get('ability', 'None')}\n"
