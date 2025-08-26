@@ -163,12 +163,17 @@ async def handle_pokemon_set(event):
     if any(keyword in text for keyword in ["Ability:", "EVs:", "Nature", "- "]):
         pokemon = parse_showdown_set(text)
 
-        # Save to DB under user's profile
         user_id = event.sender_id
+
+# Construct key like Pikachu_25
+        pokemon_key = f"{pokemon.get('name', 'Unknown')}_{pokemon['pokemon_id']}"
+
+# Update or insert the pokemon info under that key
         users.update_one(
-            {"user_id": user_id},
-            {"$push": {"pokemon": f"{pokemon.get('name', 'Unknown')}_{pokemon['pokemon_id']}":{pokemon}}} 
-        )
+    {"user_id": user_id},
+    {"$set": {f"pokemon.{pokemon_key}": pokemon}},
+    upsert=True
+)
 
         # Response message
         msg = f"✅ Pokémon Saved!\n\n"
