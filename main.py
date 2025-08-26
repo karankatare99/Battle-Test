@@ -78,6 +78,16 @@ async def authlist_handler(event):
 
     await event.respond(msg)
 
+# ==== /add Pokémon command ====
+SHOWDOWN_LINK = "https://play.pokemonshowdown.com/teambuilder"
 
+@client.on(events.NewMessage(pattern="/add"))
+async def add_pokemon(event):
+    await event.respond(
+        "Please paste the meta data of your Pokémon!",
+        buttons=[
+            [Button.url("⚡ Open Teambuilder", SHOWDOWN_LINK)]
+        ]
+    )
 print("Bot running...")
 bot.run_until_disconnected()
