@@ -44,6 +44,7 @@ async def start_handler(event):
 # ==== /authorise (reply to user) ====
 @bot.on(events.NewMessage(pattern="/authorise"))
 async def authorise_handler(event):
+    user_id = event.sender_id
     if not event.is_reply:
         await event.respond("⚠️ Please reply to a user's message with /authorise.")
         return
