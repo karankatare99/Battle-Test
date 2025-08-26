@@ -38,14 +38,14 @@ def parse_showdown_set(text):
     # Extract gender if present
     gender = None
     if "(M)" in first_line:
-        gender = "M"
+        gender = "Male"
         first_line = first_line.replace("(M)", "").strip()
     elif "(F)" in first_line:
-        gender = "F"
+        gender = "Female"
         first_line = first_line.replace("(F)", "").strip()
     else:
         # If not specified, assign random gender
-        gender = random.choice(["M", "F"])
+        gender = random.choice(["Male", "Female"])
 
     # Split name + item
     if "@" in first_line:
@@ -99,7 +99,7 @@ async def start_handler(event):
         users.insert_one({
             "user_id": user_id,
             "name": first_name,
-            "pokemon": {},
+            "pokemon": [],
             "team": []
         })
         await event.respond(f"👋 Welcome {first_name}! Your profile has been created.")
@@ -163,7 +163,15 @@ async def handle_pokemon_set(event):
     if any(keyword in text for keyword in ["Ability:", "EVs:", "Nature", "- "]):
         pokemon = parse_showdown_set(text)
 
-        msg = f"✅ Pokémon Parsed!\n\n"
+        # Save to DB under user's profile
+        user_id = event.sender_id
+        users.update_one(
+            {"user_id": user_id},
+            {"$push": {"pokemon": f"{pokemon.get('name', 'Unknown')}_{pokemon['pokemon_id']}":{pokemon}}} 
+        )
+
+        # Response message
+        msg = f"✅ Pokémon Saved!\n\n"
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
         msg += f"📛 Name: {pokemon.get('name', 'Unknown')} ({pokemon['gender']})\n"
         msg += f"🎒 Item: {pokemon.get('item', 'None')}\n"
