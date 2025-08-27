@@ -247,6 +247,19 @@ async def handle_pokemon_set(event):
 )
 
         await event.respond(msg)
+# ==== /server_reset (Owner only) ====
+@bot.on(events.NewMessage(pattern="/server_reset"))
+async def server_reset_handler(event):
+    user_id = event.sender_id
 
+    if user_id != owner:  # check if not owner
+        await event.respond("❌ You are not authorised to use this command.")
+        return
+
+    # delete all users and reset DB
+    users.delete_many({})  # wipe user collection
+    auth.delete_many({})   # wipe authorised collection if you want
+
+    await event.respond("⚠️ All user data and authorised data have been wiped from the server!")
 print("Bot running...")
 bot.run_until_disconnected()
