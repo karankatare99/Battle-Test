@@ -78,7 +78,7 @@ def parse_showdown_set(text):
         gender = "Female"
         first_line = first_line.replace("(F)", "").strip()
     else:
-        gender = random.choice(["Male", "Female"])  # random if not mentioned
+        gender = random.choice(["Male","Female"])
 
     # Split name + item
     if "@" in first_line:
@@ -90,40 +90,41 @@ def parse_showdown_set(text):
         pokemon["item"] = "None"
 
     pokemon["gender"] = gender
-
-    ev_str, iv_str = None, None
+    pokemon["level"] = 100  # default
 
     # --- Other attributes ---
     for line in lines[1:]:
         line = line.strip()
         if line.startswith("Ability:"):
-            pokemon["ability"] = line.replace("Ability:", "").strip()
+            pokemon["ability"] = line.replace("Ability:","").strip()
         elif line.startswith("Shiny:"):
-            pokemon["shiny"] = line.replace("Shiny:", "").strip()
+            pokemon["shiny"] = line.replace("Shiny:","").strip()
         elif line.startswith("Tera Type:"):
-            pokemon["tera_type"] = line.replace("Tera Type:", "").strip()
+            pokemon["tera_type"] = line.replace("Tera Type:","").strip()
         elif line.startswith("EVs:"):
-            ev_str = line.replace("EVs:", "").strip()
+            evs_line = line.replace("EVs:","").strip()
+            evs_dict = {s.split()[1].lower(): min(int(s.split()[0]),252) for s in evs_line.split(",")}
+            for stat in ["hp","atk","def","spa","spd","spe"]:
+                pokemon[f"ev{stat}"] = evs_dict.get(stat,0)
         elif line.startswith("IVs:"):
-            iv_str = line.replace("IVs:", "").strip()
+            ivs_line = line.replace("IVs:","").strip()
+            ivs_dict = {s.split()[1].lower(): int(s.split()[0]) for s in ivs_line.split(",")}
+            for stat in ["hp","atk","def","spa","spd","spe"]:
+                pokemon[f"iv{stat}"] = ivs_dict.get(stat,31)
         elif line.endswith("Nature"):
-            pokemon["nature"] = line.replace("Nature", "").strip()
-        elif line.startswith("- "):  # Moves
+            pokemon["nature"] = line.replace("Nature","").strip()
+        elif line.startswith("Level:"):
+            try:
+                pokemon["level"] = int(line.replace("Level:","").strip())
+            except:
+                pokemon["level"] = 100
+        elif line.startswith("- "):
             if "moves" not in pokemon:
                 pokemon["moves"] = []
-            pokemon["moves"].append(line.replace("- ", "").strip())
+            pokemon["moves"].append(line.replace("- ","").strip())
 
-    # Parse EV/IV
-    evs, ivs = parse_stats(ev_str, iv_str)
-    for stat in evs:
-        pokemon[f"ev{stat}"] = evs[stat]
-    for stat in ivs:
-        pokemon[f"iv{stat}"] = ivs[stat]
-
-    # Add Pokémon ID
     pokemon["pokemon_id"] = generate_pokemon_id()
     return pokemon
-
 # ==== /start command ====
 @bot.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
