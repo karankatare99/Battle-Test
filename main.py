@@ -102,10 +102,12 @@ def parse_showdown_set(text):
         elif line.startswith("Tera Type:"):
             pokemon["tera_type"] = line.replace("Tera Type:","").strip()
         elif line.startswith("EVs:"):
-            evs_line = line.replace("EVs:","").strip()
-            evs_dict = {s.split()[1].lower(): min(int(s.split()[0]),252) for s in evs_line.split(",")}
-            for stat in ["hp","atk","def","spa","spd","spe"]:
-                pokemon[f"ev{stat}"] = evs_dict.get(stat,0)
+            evs_line = line.replace("EVs:", "").strip()
+            evs_dict = {s.split()[1].lower(): min(int(s.split()[0]), 252) for s in evs_line.split("/")}
+            for stat in ["hp", "atk", "def", "spa", "spd", "spe"]:
+                pokemon[f"ev{stat}"] = evs_dict.get(stat, 0)
+
+
         elif line.startswith("IVs:"):
             ivs_line = line.replace("IVs:","").strip()
             ivs_dict = {s.split()[1].lower(): int(s.split()[0]) for s in ivs_line.split(",")}
