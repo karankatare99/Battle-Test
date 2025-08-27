@@ -199,6 +199,10 @@ SHOWDOWN_LINK = "https://play.pokemonshowdown.com/teambuilder"
 @bot.on(events.NewMessage(pattern="/add"))
 async def add_pokemon(event):
     user_id = event.sender_id
+    existing = users.find_one({"user_id": user_id})
+    if not existing:
+        await event.reply("User profile not found!") 
+        return
     awaiting_pokemon.add(user_id)  # mark user as waiting for Pokémon
     await event.respond(
         "Please paste the meta data of your Pokémon (only next message will be taken)!",
