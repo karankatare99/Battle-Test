@@ -19,6 +19,8 @@ users = db["users"]
 auth = db["authorised"]
 owner = 6735548827
 
+# State tracking so /add expects next msg
+awaiting_pokemon = set()
 
 # ==== Helper: Generate Pokémon ID ====
 def generate_pokemon_id():
@@ -26,6 +28,38 @@ def generate_pokemon_id():
     random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
     return f"PKM-{date_part}-{random_part}"
 
+# ==== Helper: Parse EV/IV ====
+def parse_stats(ev_str, iv_str):
+    # Defaults
+    evs = {s: 0 for s in ["hp","atk","def","spa","spd","spe"]}
+    ivs = {s: 31 for s in ["hp","atk","def","spa","spd","spe"]}
+
+    if ev_str:
+        parts = ev_str.split("/")
+        for p in parts:
+            p = p.strip()
+            if " " in p:
+                val, stat = p.split()
+                stat = stat.lower()
+                if stat == "spa": stat = "spa"
+                if stat == "spd": stat = "spd"
+                if stat == "spe": stat = "spe"
+                val = min(int(val), 252)  # cap at 252
+                evs[stat] = val
+
+    if iv_str:
+        parts = iv_str.split("/")
+        for p in parts:
+            p = p.strip()
+            if " " in p:
+                val, stat = p.split()
+                stat = stat.lower()
+                if stat == "spa": stat = "spa"
+                if stat == "spd": stat = "spd"
+                if stat == "spe": stat = "spe"
+                ivs[stat] = int(val)
+
+    return evs, ivs
 
 # ==== Helper: Parse Pokémon Showdown Set ====
 def parse_showdown_set(text):
@@ -44,8 +78,7 @@ def parse_showdown_set(text):
         gender = "Female"
         first_line = first_line.replace("(F)", "").strip()
     else:
-        # If not specified, assign random gender
-        gender = random.choice(["Male", "Female"])
+        gender = random.choice(["Male", "Female"])  # random if not mentioned
 
     # Split name + item
     if "@" in first_line:
@@ -58,6 +91,8 @@ def parse_showdown_set(text):
 
     pokemon["gender"] = gender
 
+    ev_str, iv_str = None, None
+
     # --- Other attributes ---
     for line in lines[1:]:
         line = line.strip()
@@ -68,9 +103,9 @@ def parse_showdown_set(text):
         elif line.startswith("Tera Type:"):
             pokemon["tera_type"] = line.replace("Tera Type:", "").strip()
         elif line.startswith("EVs:"):
-            pokemon["evs"] = line.replace("EVs:", "").strip()
+            ev_str = line.replace("EVs:", "").strip()
         elif line.startswith("IVs:"):
-            pokemon["ivs"] = line.replace("IVs:", "").strip()
+            iv_str = line.replace("IVs:", "").strip()
         elif line.endswith("Nature"):
             pokemon["nature"] = line.replace("Nature", "").strip()
         elif line.startswith("- "):  # Moves
@@ -78,10 +113,16 @@ def parse_showdown_set(text):
                 pokemon["moves"] = []
             pokemon["moves"].append(line.replace("- ", "").strip())
 
+    # Parse EV/IV
+    evs, ivs = parse_stats(ev_str, iv_str)
+    for stat in evs:
+        pokemon[f"ev{stat}"] = evs[stat]
+    for stat in ivs:
+        pokemon[f"iv{stat}"] = ivs[stat]
+
     # Add Pokémon ID
     pokemon["pokemon_id"] = generate_pokemon_id()
     return pokemon
-
 
 # ==== /start command ====
 @bot.on(events.NewMessage(pattern="/start"))
@@ -99,13 +140,19 @@ async def start_handler(event):
         users.insert_one({
             "user_id": user_id,
             "name": first_name,
-            "pokemon": [],
+            "pokemon": {},
             "team": []
         })
         await event.respond(f"👋 Welcome {first_name}! Your profile has been created.")
     else:
         await event.respond(f"✅ Welcome back {first_name}, you already have a profile.")
 
+# ==== /reset command ====
+@bot.on(events.NewMessage(pattern="/reset"))
+async def reset_handler(event):
+    user_id = event.sender_id
+    users.update_one({"user_id": user_id}, {"$set": {"pokemon": {}, "team": []}})
+    await event.respond("🗑️ All your Pokémon data has been reset.")
 
 # ==== /authorise (reply to user) ====
 @bot.on(events.NewMessage(pattern="/authorise"))
@@ -130,7 +177,6 @@ async def authorise_handler(event):
         auth.insert_one({"user_id": target_id, "name": target.first_name})
         await event.respond(f"🔐 {target.first_name} has been authorised!")
 
-
 # ==== /authlist command ====
 @bot.on(events.NewMessage(pattern="/authlist"))
 async def authlist_handler(event):
@@ -144,52 +190,51 @@ async def authlist_handler(event):
         msg += f"- {user['name']} ({user['user_id']})\n"
     await event.respond(msg)
 
-
 # ==== /add Pokémon command ====
 SHOWDOWN_LINK = "https://play.pokemonshowdown.com/teambuilder"
 
 @bot.on(events.NewMessage(pattern="/add"))
 async def add_pokemon(event):
+    user_id = event.sender_id
+    awaiting_pokemon.add(user_id)  # mark user as waiting for Pokémon
     await event.respond(
-        "Please paste the meta data of your Pokémon!",
+        "Please paste the meta data of your Pokémon (only next message will be taken)!",
         buttons=[[Button.url("⚡ Open Teambuilder", SHOWDOWN_LINK)]]
     )
-
 
 # ==== Handle pasted Pokémon sets ====
 @bot.on(events.NewMessage)
 async def handle_pokemon_set(event):
+    user_id = event.sender_id
     text = event.raw_text
-    if any(keyword in text for keyword in ["Ability:", "EVs:", "Nature", "- "]):
+
+    if user_id in awaiting_pokemon and any(k in text for k in ["Ability:", "EVs:", "Nature", "- "]):
         pokemon = parse_showdown_set(text)
+        pokemon_key = f"{pokemon.get('name','Unknown')}_{pokemon['pokemon_id']}"
 
-        user_id = event.sender_id
-
-# Construct key like Pikachu_25
-        pokemon_key = f"{pokemon.get('name', 'Unknown')}_{pokemon['pokemon_id']}"
-
-# Update or insert the pokemon info under that key
+        # Save to DB
         users.update_one(
-    {"user_id": user_id},
-    {"$set": {f"pokemon.{pokemon_key}": pokemon}},
-    upsert=True
-)
+            {"user_id": user_id},
+            {"$set": {f"pokemon.{pokemon_key}": pokemon}},
+            upsert=True
+        )
 
-        # Response message
+        awaiting_pokemon.remove(user_id)  # clear waiting state
+
+        # Response
         msg = f"✅ Pokémon Saved!\n\n"
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
-        msg += f"📛 Name: {pokemon.get('name', 'Unknown')} ({pokemon['gender']})\n"
-        msg += f"🎒 Item: {pokemon.get('item', 'None')}\n"
-        msg += f"✨ Shiny: {pokemon.get('shiny', 'No')}\n"
-        msg += f"🌩️ Ability: {pokemon.get('ability', 'None')}\n"
-        msg += f"🌈 Tera Type: {pokemon.get('tera_type', 'None')}\n"
-        msg += f"📊 EVs: {pokemon.get('evs', 'None')}\n"
-        msg += f"🔢 IVs: {pokemon.get('ivs', 'None')}\n"
-        msg += f"🌿 Nature: {pokemon.get('nature', 'None')}\n"
-        msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}"
+        msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
+        msg += f"🎒 Item: {pokemon['item']}\n"
+        msg += f"✨ Shiny: {pokemon.get('shiny','No')}\n"
+        msg += f"🌩️ Ability: {pokemon.get('ability','None')}\n"
+        msg += f"🌈 Tera Type: {pokemon.get('tera_type','None')}\n"
+        msg += f"🌿 Nature: {pokemon.get('nature','None')}\n"
+        msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}\n\n"
+        msg += f"📊 EVs: {', '.join([f'{k.upper()}={pokemon[f'ev{k}']}' for k in ['hp','atk','def','spa','spd','spe']])}\n"
+        msg += f"🔢 IVs: {', '.join([f'{k.upper()}={pokemon[f'iv{k}']}' for k in ['hp','atk','def','spa','spd','spe']])}"
 
         await event.respond(msg)
-
 
 print("Bot running...")
 bot.run_until_disconnected()
