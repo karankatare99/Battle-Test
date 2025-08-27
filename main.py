@@ -227,6 +227,7 @@ async def handle_pokemon_set(event):
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
         msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
         msg += f"🎒 Item: {pokemon['item']}\n"
+        msg += f"🎚️ Level: {pokemon.get('level',100)}\n"
         msg += f"✨ Shiny: {pokemon.get('shiny','No')}\n"
         msg += f"🌩️ Ability: {pokemon.get('ability','None')}\n"
         msg += f"🌈 Tera Type: {pokemon.get('tera_type','None')}\n"
