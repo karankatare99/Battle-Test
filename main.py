@@ -261,5 +261,66 @@ async def server_reset_handler(event):
     auth.delete_many({})   # wipe authorised collection if you want
 
     await event.respond("⚠️ All user data and authorised data have been wiped from the server!")
+
+from collections import Counter
+
+# ==== /pokemon command ====
+@bot.on(events.NewMessage(pattern="/pokemon"))
+async def pokemon_list_handler(event):
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+
+    if not user or not user.get("pokemon"):
+        await event.respond("❌ You don’t have any Pokémon yet.")
+        return
+
+    # Count Pokémon names (ignore IDs for counting)
+    names = [poke_data["name"] for poke_data in user["pokemon"].values()]
+    counts = Counter(names)
+
+    # Store pagination in a dict for session
+    page = 0
+    await send_pokemon_page(event, counts, page)
+
+
+async def send_pokemon_page(event, counts, page):
+    per_page = 25
+    poke_list = [f"{name} ({count})" if count > 1 else name for name, count in counts.items()]
+    total_pages = (len(poke_list) - 1) // per_page + 1
+
+    start = page * per_page
+    end = start + per_page
+    page_items = poke_list[start:end]
+
+    text = f"📜 **Your Pokémon** (Page {page+1}/{total_pages})\n\n"
+    text += "\n".join(page_items) if page_items else "No Pokémon on this page."
+
+    # Navigation buttons
+    buttons = []
+    if page > 0:
+        buttons.append(Button.inline("⬅️ Prev", data=f"pokemon:{page-1}"))
+    if page < total_pages - 1:
+        buttons.append(Button.inline("➡️ Next", data=f"pokemon:{page+1}"))
+
+    await event.respond(text, buttons=[buttons] if buttons else None)
+
+
+# ==== Handle button callbacks ====
+@bot.on(events.CallbackQuery(pattern=b"pokemon:(\d+)"))
+async def callback_pokemon_page(event):
+    page = int(event.pattern_match.group(1))
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+
+    if not user or not user.get("pokemon"):
+        await event.answer("❌ No Pokémon found.", alert=True)
+        return
+
+    names = [poke_data["name"] for poke_data in user["pokemon"].values()]
+    counts = Counter(names)
+
+    await event.edit("Loading...", buttons=None)  # placeholder
+    await send_pokemon_page(event, counts, page)
+    
 print("Bot running...")
 bot.run_until_disconnected()
