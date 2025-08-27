@@ -231,8 +231,8 @@ async def handle_pokemon_set(event):
         msg += f"🌈 Tera Type: {pokemon.get('tera_type','None')}\n"
         msg += f"🌿 Nature: {pokemon.get('nature','None')}\n"
         msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}\n\n"
-        msg += f"📊 EVs: {', '.join([f'{k.upper()}={pokemon[f'ev+{k}']}' for k in ['hp','atk','def','spa','spd','spe']])}\n"
-        msg += f"🔢 IVs: {', '.join([f'{k.upper()}={pokemon[f'iv+{k}']}' for k in ['hp','atk','def','spa','spd','spe']])}"
+        msg += f"📊 EVs: {', '.join([f'{k.upper()}={pokemon[f'ev+{k}']}' for k in ['hp','atk','def','spa','spd','spe'])}\n"
+        msg += f"🔢 IVs: {', '.join([f'{k.upper()}={pokemon[f'iv+{k}']}' for k in ['hp','atk','def','spa','spd','spe'])}"
 
         await event.respond(msg)
 
