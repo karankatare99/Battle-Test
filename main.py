@@ -628,6 +628,9 @@ async def confirm_switch(event):
 
 
 
+# Cache for active searches {user_id: [matches]}
+active_summaries = {}
+
 POKEMON_PER_PAGE = 15
 
 # ==== /summary command ====
@@ -655,13 +658,13 @@ async def summary_handler(event):
         await event.reply("❌ No Pokémon found.")
         return
 
-    # exactly 1 result → show directly
+    # store in cache for pagination
+    active_summaries[user_id] = matches
+
     if len(matches) == 1:
         await send_summary(event, matches[0][1])
-        return
-
-    # multiple matches → show paginated buttons
-    await send_summary_list(event, matches, 0)
+    else:
+        await send_summary_list(event, matches, 0)
 
 
 # ==== Send Summary List with Pagination ====
@@ -692,7 +695,7 @@ async def send_summary_list(event, matches, page=0):
     if page > 0:
         nav.append(Button.inline("⬅️ Prev", f"summary:page:{page-1}".encode()))
     if page < total_pages - 1:
-        nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}".encode()))
+        nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}"))
     if nav:
         buttons.append(nav)
 
@@ -702,56 +705,18 @@ async def send_summary_list(event, matches, page=0):
         await event.reply(text, buttons=buttons)
 
 
-# ==== Show summary for selected Pokémon ====
-@bot.on(events.CallbackQuery(pattern=b"summary:show:(.+)"))
-async def summary_show(event):
-    poke_id = event.pattern_match.group(1).decode()
-    user_id = event.sender_id
-
-    user = users.find_one({"user_id": user_id})
-    if not user:
-        await event.answer("❌ Profile not found.", alert=True)
-        return
-
-    for poke in user.get("pokemon", {}).values():
-        if poke["pokemon_id"] == poke_id:
-            await send_summary(event, poke)
-            return
-
-    await event.answer("❌ Pokémon not found.", alert=True)
-
-
 # ==== Pagination handler ====
 @bot.on(events.CallbackQuery(pattern=b"summary:page:(\d+)"))
 async def summary_page(event):
     page = int(event.pattern_match.group(1))
     user_id = event.sender_id
-    # retrieve original query results (you may want to cache matches by user temporarily)
-    # for now just re-run query with last search stored in db/session
-    await event.answer("⚠️ Pagination not fully wired yet.", alert=True)
 
+    matches = active_summaries.get(user_id)
+    if not matches:
+        await event.answer("❌ No active summary search.", alert=True)
+        return
 
-# ==== Render one Pokémon summary ====
-async def send_summary(event, poke):
-    text = (
-        f"📜 **Pokémon Summary**\n\n"
-        f"🆔 `{poke['pokemon_id']}`\n"
-        f"✨ Name: {poke['name']}\n"
-        f"♀️ Gender: {poke['gender']}\n"
-        f"⭐ Level: {poke['level']}\n"
-        f"💠 Ability: {poke['ability']}\n"
-        f"🔮 Tera Type: {poke['tera_type']}\n"
-        f"🎒 Item: {poke['item']}\n\n"
-        f"📊 **EVs:**\n"
-        f"HP: {poke['evhp']} | Atk: {poke['evatk']} | Def: {poke['evdef']}\n"
-        f"SpA: {poke['evspa']} | SpD: {poke['evspd']} | Spe: {poke['evspe']}\n\n"
-        f"⚔️ **Moves:** {', '.join(poke['moves'])}"
-    )
-
-    if isinstance(event, events.CallbackQuery.Event):
-        await event.edit(text)
-    else:
-        await event.reply(text)
+    await send_summary_list(event, matches, page)
     
 print("Bot running...")
 bot.run_until_disconnected()
