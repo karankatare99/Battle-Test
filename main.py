@@ -17,6 +17,7 @@ mongo_client = MongoClient("mongodb://localhost:27017/")
 db = mongo_client["pokemon_showdown"]
 users = db["users"]
 auth = db["authorised"]
+pokemon = db["pokemon"]
 owner = 6735548827
 
 # State tracking so /add expects next msg
@@ -147,7 +148,7 @@ async def start_handler(event):
         users.insert_one({
             "user_id": user_id,
             "name": first_name,
-            "pokemon": {},
+            "pokemon": [],
             "team": []
         })
         await event.respond(f"👋 Welcome {first_name}! Your profile has been created.")
@@ -225,6 +226,11 @@ async def handle_pokemon_set(event):
 
         # Save to DB
         users.update_one(
+    {"user_id": user_id},
+    {"$push": {"pokemon": pokemon_key}},
+    upsert=True
+        )
+        pokemon.update_one(
             {"user_id": user_id},
             {"$set": {f"pokemon.{pokemon_key}": pokemon}},
             upsert=True
