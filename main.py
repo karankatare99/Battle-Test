@@ -456,5 +456,90 @@ async def back_to_team(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
+
+# ==== Show Remove Pokémon page (paginated) ====
+async def send_remove_page(event, user, page=0):
+    team = user.get("team", [])
+    pokemon = user.get("pokemon", {})
+
+    if not team:
+        await event.answer("⚠️ Your team is empty!", alert=True)
+        return
+
+    total_pages = (len(team) - 1) // POKEMON_PER_PAGE + 1
+    start = page * POKEMON_PER_PAGE
+    end = start + POKEMON_PER_PAGE
+    page_items = team[start:end]
+
+    # Text list
+    text = f"➖ **Select a Pokémon to Remove** (Page {page+1}/{total_pages})\n\n"
+    for i, key in enumerate(page_items, start=1):
+        poke = pokemon.get(key, {})
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+
+    # Numbered buttons
+    buttons = []
+    row = []
+    for i, key in enumerate(page_items, start=start):
+        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1), f"team:remove:{key}".encode()))
+        if len(row) == 5:  # 5 per row
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    # Navigation
+    nav = []
+    if page > 0:
+        nav.append(Button.inline("⬅️ Prev", f"team:removepage:{page-1}".encode()))
+    if page < total_pages - 1:
+        nav.append(Button.inline("➡️ Next", f"team:removepage:{page+1}".encode()))
+    if nav:
+        buttons.append(nav)
+
+    # Back button
+    buttons.append([Button.inline("⬅️ Back", b"team:back")])
+
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text, buttons=buttons)
+    else:
+        await event.respond(text, buttons=buttons)
+
+
+# ==== Open Remove Pokémon menu ====
+@bot.on(events.CallbackQuery(pattern=b"team:remove$"))
+async def team_remove_menu(event):
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    await send_remove_page(event, user, 0)
+
+
+# ==== Paginate Remove ====
+@bot.on(events.CallbackQuery(pattern=b"team:removepage:(\d+)"))
+async def team_remove_page(event):
+    page = int(event.pattern_match.group(1))
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    await send_remove_page(event, user, page)
+
+
+# ==== Confirm Remove ====
+@bot.on(events.CallbackQuery(pattern=b"team:remove:(.+)"))
+async def confirm_remove(event):
+    poke_key = event.pattern_match.group(1).decode()
+    user_id = event.sender_id
+
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+
+    if poke_key in team:
+        users.update_one({"user_id": user_id}, {"$pull": {"team": poke_key}})
+        await event.answer("🗑 Pokémon removed from team!")
+    else:
+        await event.answer("⚠️ That Pokémon is not in your team.", alert=True)
+
+    user = users.find_one({"user_id": user_id})
+    await send_team_page(event, user)
+    
 print("Bot running...")
 bot.run_until_disconnected()
