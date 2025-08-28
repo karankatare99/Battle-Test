@@ -628,6 +628,9 @@ async def confirm_switch(event):
 
 
 
+POKEMON_PER_PAGE = 15
+
+# ==== /summary command ====
 @bot.on(events.NewMessage(pattern=r"^/summary (.+)"))
 async def summary_handler(event):
     query = event.pattern_match.group(1).strip()
@@ -643,8 +646,8 @@ async def summary_handler(event):
 
     # search by name or ID (case-insensitive)
     for key, poke in pokemon_dict.items():
-        if (poke["name"].lower() == query.lower() 
-            or poke["pokemon_id"].lower() == query.lower() 
+        if (poke["name"].lower() == query.lower()
+            or poke["pokemon_id"].lower() == query.lower()
             or query.lower() in poke["name"].lower()):
             matches.append((key, poke))
 
@@ -652,16 +655,84 @@ async def summary_handler(event):
         await event.reply("❌ No Pokémon found.")
         return
 
-    if len(matches) > 1:
-        text = "⚠️ Multiple results found:\n\n"
-        for key, poke in matches:
-            text += f"🆔 `{poke['pokemon_id']}` | {poke['name']}\n"
-        text += "\nUse `/summary <id>` to pick one."
-        await event.reply(text)
+    # exactly 1 result → show directly
+    if len(matches) == 1:
+        await send_summary(event, matches[0][1])
         return
 
-    # exactly 1 result
-    key, poke = matches[0]
+    # multiple matches → show paginated buttons
+    await send_summary_list(event, matches, 0)
+
+
+# ==== Send Summary List with Pagination ====
+async def send_summary_list(event, matches, page=0):
+    total_pages = (len(matches) - 1) // POKEMON_PER_PAGE + 1
+    start = page * POKEMON_PER_PAGE
+    end = start + POKEMON_PER_PAGE
+    page_items = matches[start:end]
+
+    text = f"⚠️ Multiple Pokémon found (Page {page+1}/{total_pages}):\n\n"
+    for i, (_, poke) in enumerate(page_items, start=1):
+        text += f"{i}. {poke['name']} ({poke['pokemon_id']})\n"
+
+    # numbered buttons
+    buttons = []
+    row = []
+    for i, (key, poke) in enumerate(page_items, start=start):
+        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1),
+                                 f"summary:show:{poke['pokemon_id']}".encode()))
+        if len(row) == 5:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    # nav buttons
+    nav = []
+    if page > 0:
+        nav.append(Button.inline("⬅️ Prev", f"summary:page:{page-1}".encode()))
+    if page < total_pages - 1:
+        nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}".encode()))
+    if nav:
+        buttons.append(nav)
+
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text, buttons=buttons)
+    else:
+        await event.reply(text, buttons=buttons)
+
+
+# ==== Show summary for selected Pokémon ====
+@bot.on(events.CallbackQuery(pattern=b"summary:show:(.+)"))
+async def summary_show(event):
+    poke_id = event.pattern_match.group(1).decode()
+    user_id = event.sender_id
+
+    user = users.find_one({"user_id": user_id})
+    if not user:
+        await event.answer("❌ Profile not found.", alert=True)
+        return
+
+    for poke in user.get("pokemon", {}).values():
+        if poke["pokemon_id"] == poke_id:
+            await send_summary(event, poke)
+            return
+
+    await event.answer("❌ Pokémon not found.", alert=True)
+
+
+# ==== Pagination handler ====
+@bot.on(events.CallbackQuery(pattern=b"summary:page:(\d+)"))
+async def summary_page(event):
+    page = int(event.pattern_match.group(1))
+    user_id = event.sender_id
+    # retrieve original query results (you may want to cache matches by user temporarily)
+    # for now just re-run query with last search stored in db/session
+    await event.answer("⚠️ Pagination not fully wired yet.", alert=True)
+
+
+# ==== Render one Pokémon summary ====
+async def send_summary(event, poke):
     text = (
         f"📜 **Pokémon Summary**\n\n"
         f"🆔 `{poke['pokemon_id']}`\n"
@@ -677,7 +748,10 @@ async def summary_handler(event):
         f"⚔️ **Moves:** {', '.join(poke['moves'])}"
     )
 
-    await event.reply(text)
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text)
+    else:
+        await event.reply(text)
     
 print("Bot running...")
 bot.run_until_disconnected()
