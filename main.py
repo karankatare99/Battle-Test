@@ -321,6 +321,36 @@ async def callback_pokemon_page(event):
 
     await event.edit("Loading...", buttons=None)  # placeholder
     await send_pokemon_page(event, counts, page)
+
+@bot.on(events.NewMessage(pattern="/team"))
+async def team_handler(event):
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+
+    if not user:
+        await event.respond("❌ No profile found. Use /start first.")
+        return
+
+    team = user.get("team", [])
+    pokemon = user.get("pokemon", {})
+
+    if not team:
+        await event.respond("⚠️ Your team is empty! Use /add to register Pokémon first.")
+        return
+
+    # Display team
+    text = "⚔️ **Your Team**:\n\n"
+    for i, poke_key in enumerate(team, 1):
+        poke = pokemon.get(poke_key, {})
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+
+    # Buttons: Add / Remove / Switch
+    buttons = [
+        [Button.inline("➕ Add", b"team:add"), Button.inline("➖ Remove", b"team:remove")],
+        [Button.inline("🔄 Switch", b"team:switch")]
+    ]
+
+    await event.respond(text, buttons=buttons)
     
 print("Bot running...")
 bot.run_until_disconnected()
