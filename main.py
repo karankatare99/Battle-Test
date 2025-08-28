@@ -113,6 +113,10 @@ def parse_showdown_set(text):
             ivs_dict = {s.split()[1].lower(): int(s.split()[0]) for s in ivs_line.split(",")}
             for stat in ["hp","atk","def","spa","spd","spe"]:
                 pokemon[f"iv{stat}"] = ivs_dict.get(stat,31)
+
+        elif not line.startswith("IVs:"):
+            for stat in ["hp","atk","def","spa","spd","spe"]:
+                pokemon[f"iv{stat}"] = 31
         elif line.endswith("Nature"):
             pokemon["nature"] = line.replace("Nature","").strip()
         elif line.startswith("Level:"):
