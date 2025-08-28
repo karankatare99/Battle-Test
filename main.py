@@ -17,7 +17,7 @@ mongo_client = MongoClient("mongodb://localhost:27017/")
 db = mongo_client["pokemon_showdown"]
 users = db["users"]
 auth = db["authorised"]
-pokemon = db["pokemon"]
+pokedata = db["pokemon_data"]
 owner = 6735548827
 
 # State tracking so /add expects next msg
@@ -230,7 +230,7 @@ async def handle_pokemon_set(event):
     {"$push": {"pokemon": pokemon_key}},
     upsert=True
         )
-        pokemon.update_one(
+        pokedata.update_one(
             {"$set": {f"pokemon.{pokemon_key}": pokemon}},
             upsert=True
         )
