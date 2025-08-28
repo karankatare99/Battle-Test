@@ -322,6 +322,7 @@ async def callback_pokemon_page(event):
     await event.edit("Loading...", buttons=None)  # placeholder
     await send_pokemon_page(event, counts, page)
 
+# ==== /team Command ====
 @bot.on(events.NewMessage(pattern="/team"))
 async def team_handler(event):
     user_id = event.sender_id
@@ -335,25 +336,36 @@ async def team_handler(event):
     pokemon = user.get("pokemon", {})
 
     if not team:
-        # Empty team → still give Add button
         text = "⚠️ Your team is empty!\n\nUse ➕ Add to select Pokémon from your profile."
         buttons = [[Button.inline("➕ Add", b"team:add")]]
         await event.respond(text, buttons=buttons)
         return
 
-    # Otherwise, show full team
+    await send_team_page(event, user)
+
+
+# ==== Helper to render team ====
+async def send_team_page(event, user):
+    team = user.get("team", [])
+    pokemon = user.get("pokemon", {})
+
     text = "⚔️ **Your Team**:\n\n"
     for i, poke_key in enumerate(team, 1):
         poke = pokemon.get(poke_key, {})
         text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
 
-    # Buttons: Add / Remove / Switch
     buttons = [
         [Button.inline("➕ Add", b"team:add"), Button.inline("➖ Remove", b"team:remove")],
         [Button.inline("🔄 Switch", b"team:switch")]
     ]
 
-    await event.respond(text, buttons=buttons)
+    # 🔑 Important: use edit if callback, respond if /team command
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text, buttons=buttons)
+    else:
+        await event.respond(text, buttons=buttons)
+
+
 # ==== Add Pokémon to Team ====
 @bot.on(events.CallbackQuery(pattern=b"team:add"))
 async def team_add(event):
@@ -366,17 +378,18 @@ async def team_add(event):
         await event.answer("⚠️ You already have 6 Pokémon in your team!", alert=True)
         return
 
-    # Available Pokémon = all in profile but not in team
     available = [k for k in pokemon.keys() if k not in team]
     if not available:
         await event.answer("❌ No more Pokémon left in your profile to add.", alert=True)
         return
 
-    # Show inline buttons with Pokémon choices
     buttons = []
     for k in available:
         poke = pokemon[k]
         buttons.append([Button.inline(f"{poke['name']} ({poke['pokemon_id']})", f"team:add:{k}".encode())])
+
+    # add back button
+    buttons.append([Button.inline("⬅️ Back", b"team:back")])
 
     await event.edit("➕ Select a Pokémon to add to your team:", buttons=buttons)
 
@@ -389,7 +402,6 @@ async def confirm_add(event):
     user = users.find_one({"user_id": user_id})
     team = user.get("team", [])
 
-    # Double-check 6 max rule
     if len(team) >= 6:
         await event.answer("⚠️ Team is already full (6 Pokémon max)!", alert=True)
         return
@@ -400,7 +412,16 @@ async def confirm_add(event):
     else:
         await event.answer("⚠️ That Pokémon is already in your team.", alert=True)
 
-    await team_handler(event)  # reload team screen
+    user = users.find_one({"user_id": user_id})
+    await send_team_page(event, user)
+
+
+# ==== Back button to return to team view ====
+@bot.on(events.CallbackQuery(pattern=b"team:back"))
+async def back_to_team(event):
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    await send_team_page(event, user)
     
 print("Bot running...")
 bot.run_until_disconnected()
