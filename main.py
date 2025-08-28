@@ -668,23 +668,25 @@ POKEMON_PER_PAGE = 15
 # ==== /summary command ====
 @bot.on(events.NewMessage(pattern=r"^/summary (.+)"))
 async def summary_handler(event):
-    query = event.pattern_match.group(1).strip()
+    query = event.pattern_match.group(1).strip().lower()
     user_id = event.sender_id
 
     user = users.find_one({"user_id": user_id})
-    if not user or "pokemon" not in user:
+    if not user or "pokemon" not in user or not user["pokemon"]:
         await event.reply("❌ You don’t have any Pokémon.")
         return
 
-    pokemon_dict = user["pokemon"]
     matches = []
 
-    # search by name or ID (case-insensitive)
-    for key, poke in pokemon_dict.items():
-        if (poke["name"].lower() == query.lower()
-            or poke["pokemon_id"].lower() == query.lower()
-            or query.lower() in poke["name"].lower()):
-            matches.append((key, poke))
+    # search by name or ID
+    for poke_id in user["pokemon"]:
+        poke = pokedata.find_one({"_id": poke_id}) or {}
+        if not poke:
+            continue
+        name_lower = poke.get("name","").lower()
+        poke_id_lower = poke.get("pokemon_id","").lower()
+        if query == name_lower or query == poke_id_lower or query in name_lower:
+            matches.append((poke_id, poke))
 
     if not matches:
         await event.reply("❌ No Pokémon found.")
@@ -708,14 +710,16 @@ async def send_summary_list(event, matches, page=0):
 
     text = f"⚠️ Multiple Pokémon found (Page {page+1}/{total_pages}):\n\n"
     for i, (_, poke) in enumerate(page_items, start=1):
-        text += f"{i}. {poke['name']} ({poke['pokemon_id']})\n"
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
 
     # numbered buttons
     buttons = []
     row = []
-    for i, (key, poke) in enumerate(page_items, start=start):
-        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1),
-                                 f"summary:show:{poke['pokemon_id']}".encode()))
+    for i, (poke_id, poke) in enumerate(page_items, start=start):
+        row.append(Button.inline(
+            str((i % POKEMON_PER_PAGE) + 1),
+            f"summary:show:{poke_id}".encode()
+        ))
         if len(row) == 5:
             buttons.append(row)
             row = []
@@ -727,7 +731,7 @@ async def send_summary_list(event, matches, page=0):
     if page > 0:
         nav.append(Button.inline("⬅️ Prev", f"summary:page:{page-1}".encode()))
     if page < total_pages - 1:
-        nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}"))
+        nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}".encode()))
     if nav:
         buttons.append(nav)
 
@@ -755,34 +759,32 @@ async def summary_show(event):
     poke_id = event.pattern_match.group(1).decode()
     user_id = event.sender_id
 
-    matches = active_summaries.get(user_id)
-    if not matches:
-        await event.answer("❌ No active summary search.", alert=True)
+    # Fetch Pokémon from database
+    poke = pokedata.find_one({"_id": poke_id})
+    if not poke:
+        await event.answer("❌ Pokémon not found.", alert=True)
         return
 
-    for _, poke in matches:
-        if poke["pokemon_id"] == poke_id:
-            await send_summary(event, poke)
-            return
-
-    await event.answer("❌ Pokémon not found.", alert=True)
-
+    await send_summary(event, poke)
 
 # ==== Render one Pokémon summary ====
 async def send_summary(event, poke):
     text = (
         f"📜 **Pokémon Summary**\n\n"
-        f"🆔 `{poke['pokemon_id']}`\n"
-        f"✨ Name: {poke['name']}\n"
-        f"♀️ Gender: {poke['gender']}\n"
-        f"⭐ Level: {poke['level']}\n"
-        f"💠 Ability: {poke['ability']}\n"
-        f"🔮 Tera Type: {poke['tera_type']}\n"
-        f"🎒 Item: {poke['item']}\n\n"
+        f"🆔 `{poke.get('pokemon_id','?')}`\n"
+        f"✨ Name: {poke.get('name','Unknown')}\n"
+        f"♀️ Gender: {poke.get('gender','?')}\n"
+        f"⭐ Level: {poke.get('level','?')}\n"
+        f"💠 Ability: {poke.get('ability','None')}\n"
+        f"🔮 Tera Type: {poke.get('tera_type','None')}\n"
+        f"🎒 Item: {poke.get('item','None')}\n\n"
         f"📊 **EVs:**\n"
-        f"HP: {poke['evhp']} | Atk: {poke['evatk']} | Def: {poke['evdef']}\n"
-        f"SpA: {poke['evspa']} | SpD: {poke['evspd']} | Spe: {poke['evspe']}\n\n"
-        f"⚔️ **Moves:** {', '.join(poke['moves'])}"
+        f"HP: {poke.get('evhp',0)} | Atk: {poke.get('evatk',0)} | Def: {poke.get('evdef',0)}\n"
+        f"SpA: {poke.get('evspa',0)} | SpD: {poke.get('evspd',0)} | Spe: {poke.get('evspe',0)}\n\n"
+        f"🧬 **IVs:**\n"
+        f"HP: {poke.get('ivhp',31)} | Atk: {poke.get('ivatk',31)} | Def: {poke.get('ivdef',31)}\n"
+        f"SpA: {poke.get('ivspa',31)} | SpD: {poke.get('ivspd',31)} | Spe: {poke.get('ivspe',31)}\n\n"
+        f"⚔️ **Moves:** {', '.join(poke.get('moves', [])) if poke.get('moves') else 'None'}"
     )
 
     if isinstance(event, events.CallbackQuery.Event):
