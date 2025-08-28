@@ -354,6 +354,53 @@ async def team_handler(event):
     ]
 
     await event.respond(text, buttons=buttons)
+# ==== Add Pokémon to Team ====
+@bot.on(events.CallbackQuery(pattern=b"team:add"))
+async def team_add(event):
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+    pokemon = user.get("pokemon", {})
+
+    if len(team) >= 6:
+        await event.answer("⚠️ You already have 6 Pokémon in your team!", alert=True)
+        return
+
+    # Available Pokémon = all in profile but not in team
+    available = [k for k in pokemon.keys() if k not in team]
+    if not available:
+        await event.answer("❌ No more Pokémon left in your profile to add.", alert=True)
+        return
+
+    # Show inline buttons with Pokémon choices
+    buttons = []
+    for k in available:
+        poke = pokemon[k]
+        buttons.append([Button.inline(f"{poke['name']} ({poke['pokemon_id']})", f"team:add:{k}".encode())])
+
+    await event.edit("➕ Select a Pokémon to add to your team:", buttons=buttons)
+
+
+@bot.on(events.CallbackQuery(pattern=b"team:add:(.+)"))
+async def confirm_add(event):
+    poke_key = event.pattern_match.group(1).decode()
+    user_id = event.sender_id
+
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+
+    # Double-check 6 max rule
+    if len(team) >= 6:
+        await event.answer("⚠️ Team is already full (6 Pokémon max)!", alert=True)
+        return
+
+    if poke_key not in team:
+        users.update_one({"user_id": user_id}, {"$push": {"team": poke_key}})
+        await event.answer("✅ Pokémon added to team!")
+    else:
+        await event.answer("⚠️ That Pokémon is already in your team.", alert=True)
+
+    await team_handler(event)  # reload team screen
     
 print("Bot running...")
 bot.run_until_disconnected()
