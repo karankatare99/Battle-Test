@@ -776,6 +776,17 @@ def render_team_preview(user_doc, pick_count):
         nm = pmap.get(pid, {}).get("name", "Unknown")
         lines.append(f"{i}. {nm} ({pid})")
     return "\n".join(lines)
+def render_opponent_team(user_doc):
+    team_ids = user_doc.get("team", [])
+    if not team_ids:
+        return "❌ Opponent has no team."
+    pokes = list(pokedata.find({"_id": {"$in": team_ids}}))
+    pmap = {p["_id"]: p for p in pokes}
+    lines = ["👀 Opponent Team (6 shown)", "You can’t see which 3/4 they’ll bring."]
+    for i, pid in enumerate(team_ids, 1):
+        nm = pmap.get(pid, {}).get("name", "Unknown")
+        lines.append(f"{i}. {nm} ({pid})")
+    return "\n".join(lines)
 
 def leave_queue(user_id):
     matchmaking.delete_many({"user_id": user_id})
@@ -886,61 +897,6 @@ async def cancel_queue(event):
     leave_queue(user_id)
     await event.edit("❌ Queue cancelled.", buttons=None)
 
-async def pair_and_start_preview(fmt, p1_id, p2_id, queue_msg):
-    leave_queue(p1_id)
-    leave_queue(p2_id)
-
-    pick = 3 if fmt == "single" else 4
-    battle = {
-        "format": fmt,
-        "status": "preview",
-        "p1_id": p1_id,
-        "p2_id": p2_id,
-        "pick_count": pick,
-        "created_at": now_utc(),
-        "preview_started_at": now_utc(),
-        "p1_selected": [],
-        "p2_selected": [],
-        "p1_locked": False,
-        "p2_locked": False,
-        "timer_secs": 90
-    }
-    res = battles.insert_one(battle)
-    battle_id = str(res.inserted_id)
-
-    try:
-        await queue_msg.edit("✅ Opponent found! Opening Team Preview…")
-    except:
-        pass
-
-    p1 = users.find_one({"user_id": p1_id}) or {}
-    p2 = users.find_one({"user_id": p2_id}) or {}
-
-    text1 = render_team_preview(p1, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
-    text2 = render_team_preview(p2, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
-
-    btns1 = preview_buttons(p1, pick, battle_id, side="p1")
-    btns2 = preview_buttons(p2, pick, battle_id, side="p2")
-
-    await bot.send_message(p1_id, text1, buttons=btns1)
-    await bot.send_message(p2_id, text2, buttons=btns2)
-
-    asyncio.create_task(preview_timer_task(battle_id))
-
-def preview_buttons(user_doc, pick, battle_id, side):
-    team_ids = user_doc.get("team", [])
-    buttons = []
-    row = []
-    for idx, pid in enumerate(team_ids):
-        lab = str(idx+1)
-        row.append(Button.inline(lab, f"battle:teampick:{battle_id}:{side}:{idx}".encode()))
-        if len(row) == 5:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
-    buttons.append([Button.inline(f"✅ Lock ({pick} required)", f"battle:lock:{battle_id}:{side}".encode())])
-    return buttons
 
 @bot.on(events.CallbackQuery(pattern=b"battle:teampick:([0-9a-fA-F]+):([a-z0-9]+):(\d+)"))
 async def team_pick_toggle(event):
