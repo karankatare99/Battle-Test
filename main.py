@@ -322,6 +322,11 @@ async def callback_pokemon_page(event):
     await event.edit("Loading...", buttons=None)  # placeholder
     await send_pokemon_page(event, counts, page)
 
+
+
+POKEMON_PER_PAGE = 15
+
+
 # ==== /team Command ====
 @bot.on(events.NewMessage(pattern="/team"))
 async def team_handler(event):
@@ -333,18 +338,16 @@ async def team_handler(event):
         return
 
     team = user.get("team", [])
-    pokemon = user.get("pokemon", {})
-
     if not team:
         text = "⚠️ Your team is empty!\n\nUse ➕ Add to select Pokémon from your profile."
-        buttons = [[Button.inline("➕ Add", b"team:add")]]
+        buttons = [[Button.inline("➕ Add", b"team:addpage:0")]]
         await event.respond(text, buttons=buttons)
         return
 
     await send_team_page(event, user)
 
 
-# ==== Helper to render team ====
+# ==== Render team ====
 async def send_team_page(event, user):
     team = user.get("team", [])
     pokemon = user.get("pokemon", {})
@@ -355,45 +358,76 @@ async def send_team_page(event, user):
         text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
 
     buttons = [
-        [Button.inline("➕ Add", b"team:add"), Button.inline("➖ Remove", b"team:remove")],
+        [Button.inline("➕ Add", b"team:addpage:0"), Button.inline("➖ Remove", b"team:remove")],
         [Button.inline("🔄 Switch", b"team:switch")]
     ]
 
-    # 🔑 Important: use edit if callback, respond if /team command
     if isinstance(event, events.CallbackQuery.Event):
         await event.edit(text, buttons=buttons)
     else:
         await event.respond(text, buttons=buttons)
 
 
-# ==== Add Pokémon to Team ====
-@bot.on(events.CallbackQuery(pattern=b"team:add"))
-async def team_add(event):
-    user_id = event.sender_id
-    user = users.find_one({"user_id": user_id})
+# ==== Show Add Pokémon page (paginated) ====
+async def send_add_page(event, user, page=0):
     team = user.get("team", [])
     pokemon = user.get("pokemon", {})
-
-    if len(team) >= 6:
-        await event.answer("⚠️ You already have 6 Pokémon in your team!", alert=True)
-        return
-
     available = [k for k in pokemon.keys() if k not in team]
+
     if not available:
         await event.answer("❌ No more Pokémon left in your profile to add.", alert=True)
         return
 
-    buttons = []
-    for k in available:
-        poke = pokemon[k]
-        buttons.append([Button.inline(f"{poke['name']} ({poke['pokemon_id']})", f"team:add:{k}".encode())])
+    total_pages = (len(available) - 1) // POKEMON_PER_PAGE + 1
+    start = page * POKEMON_PER_PAGE
+    end = start + POKEMON_PER_PAGE
+    page_items = available[start:end]
 
-    # add back button
+    # Text list
+    text = f"➕ **Select a Pokémon to Add** (Page {page+1}/{total_pages})\n\n"
+    for i, key in enumerate(page_items, start=1):
+        poke = pokemon[key]
+        text += f"{i}. {poke['name']} ({poke['pokemon_id']})\n"
+
+    # Numbered buttons
+    buttons = []
+    row = []
+    for i, key in enumerate(page_items, start=start):
+        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1), f"team:add:{key}".encode()))
+        if len(row) == 5:  # 5 buttons per row
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    # Navigation
+    nav = []
+    if page > 0:
+        nav.append(Button.inline("⬅️ Prev", f"team:addpage:{page-1}".encode()))
+    if page < total_pages - 1:
+        nav.append(Button.inline("➡️ Next", f"team:addpage:{page+1}".encode()))
+    if nav:
+        buttons.append(nav)
+
+    # Back button
     buttons.append([Button.inline("⬅️ Back", b"team:back")])
 
-    await event.edit("➕ Select a Pokémon to add to your team:", buttons=buttons)
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text, buttons=buttons)
+    else:
+        await event.respond(text, buttons=buttons)
 
 
+# ==== Open Add Pokémon menu ====
+@bot.on(events.CallbackQuery(pattern=b"team:addpage:(\d+)"))
+async def team_add_page(event):
+    page = int(event.pattern_match.group(1))
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    await send_add_page(event, user, page)
+
+
+# ==== Confirm Add ====
 @bot.on(events.CallbackQuery(pattern=b"team:add:(.+)"))
 async def confirm_add(event):
     poke_key = event.pattern_match.group(1).decode()
@@ -416,12 +450,11 @@ async def confirm_add(event):
     await send_team_page(event, user)
 
 
-# ==== Back button to return to team view ====
+# ==== Back button to team ====
 @bot.on(events.CallbackQuery(pattern=b"team:back"))
 async def back_to_team(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
-    
 print("Bot running...")
 bot.run_until_disconnected()
