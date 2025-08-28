@@ -540,6 +540,91 @@ async def confirm_remove(event):
 
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
+
+# ==== Switch Pokémon (Step 1: Select first Pokémon) ====
+@bot.on(events.CallbackQuery(pattern=b"team:switch$"))
+async def team_switch_start(event):
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+    pokemon = user.get("pokemon", {})
+
+    if len(team) < 2:
+        await event.answer("⚠️ You need at least 2 Pokémon in your team to switch.", alert=True)
+        return
+
+    text = "🔄 **Select the first Pokémon to switch**:\n\n"
+    for i, key in enumerate(team, start=1):
+        poke = pokemon.get(key, {})
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+
+    buttons = []
+    row = []
+    for i, key in enumerate(team, start=1):
+        row.append(Button.inline(str(i), f"team:switch1:{i-1}".encode()))
+        if len(row) == 5:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    buttons.append([Button.inline("⬅️ Back", b"team:back")])
+
+    await event.edit(text, buttons=buttons)
+
+
+# ==== Switch Pokémon (Step 2: Select second Pokémon) ====
+@bot.on(events.CallbackQuery(pattern=b"team:switch1:(\d+)"))
+async def team_switch_pick_second(event):
+    first_index = int(event.pattern_match.group(1))
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+    pokemon = user.get("pokemon", {})
+
+    text = f"🔄 **Select the second Pokémon to swap with** (first chosen: {pokemon.get(team[first_index], {}).get('name','Unknown')})\n\n"
+    for i, key in enumerate(team, start=1):
+        poke = pokemon.get(key, {})
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+
+    buttons = []
+    row = []
+    for i in range(len(team)):
+        if i == first_index:
+            continue
+        row.append(Button.inline(str(i+1), f"team:switch2:{first_index}:{i}".encode()))
+        if len(row) == 5:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    buttons.append([Button.inline("⬅️ Back", b"team:back")])
+
+    await event.edit(text, buttons=buttons)
+
+
+# ==== Confirm Switch ====
+@bot.on(events.CallbackQuery(pattern=b"team:switch2:(\d+):(\d+)"))
+async def confirm_switch(event):
+    first_index = int(event.pattern_match.group(1))
+    second_index = int(event.pattern_match.group(2))
+    user_id = event.sender_id
+
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+
+    if first_index >= len(team) or second_index >= len(team):
+        await event.answer("⚠️ Invalid Pokémon selection.", alert=True)
+        return
+
+    # Swap positions
+    team[first_index], team[second_index] = team[second_index], team[first_index]
+    users.update_one({"user_id": user_id}, {"$set": {"team": team}})
+
+    await event.answer("✅ Pokémon switched!")
+    user = users.find_one({"user_id": user_id})
+    await send_team_page(event, user)
     
 print("Bot running...")
 bot.run_until_disconnected()
