@@ -283,8 +283,11 @@ async def pokemon_list_handler(event):
         await event.respond("❌ You don’t have any Pokémon yet.")
         return
 
-    # Count Pokémon names (ignore IDs for counting)
-    names = [poke_data["name"] for poke_data in user["pokemon"].values()]
+    # Fetch full pokedata for each stored ID
+    pokemon_ids = user["pokemon"]  # list of keys like ["Pikachu_25", "Bulbasaur_1"]
+    pokemons = pokedata.find({"_id": {"$in": pokemon_ids}})
+
+    names = [poke["name"] for poke in pokemons]
     counts = Counter(names)
 
     # Store pagination in a dict for session
@@ -325,12 +328,13 @@ async def callback_pokemon_page(event):
         await event.answer("❌ No Pokémon found.", alert=True)
         return
 
-    names = [poke_data["name"] for poke_data in user["pokemon"].values()]
+    pokemon_ids = user["pokemon"]
+    pokemons = pokedata.find({"_id": {"$in": pokemon_ids}})
+    names = [poke["name"] for poke in pokemons]
     counts = Counter(names)
 
     await event.edit("Loading...", buttons=None)  # placeholder
     await send_pokemon_page(event, counts, page)
-
 
 
 POKEMON_PER_PAGE = 15
