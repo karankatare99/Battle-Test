@@ -626,42 +626,33 @@ async def confirm_switch(event):
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
-@bot.on(events.NewMessage(pattern=r"^/summary (.+)"))
-async def summary_handler(event):
-    user_id = event.sender_id
-    search_name = event.pattern_match.group(1).strip().lower()
+@bot.on(events.NewMessage(pattern=r'^/summary (.+)'))
+async def summary(event):
+    pokemon_name = event.pattern_match.group(1).strip()
+    results = list(pokemon_collection.find(
+        {"name": {"$regex": f"^{pokemon_name}$", "$options": "i"}}
+    ))
 
-    user = users.find_one({"user_id": user_id})
-    if not user or "pokemon" not in user:
-        await event.reply("❌ You don’t have any Pokémon in your profile.")
+    if not results:
+        await event.reply("❌ No Pokémon found.")
         return
 
-    pokemon_dict = user["pokemon"]
-
-    # find all matching Pokémon
-    matches = []
-    for key, poke in pokemon_dict.items():
-        if search_name in poke.get("name", "").lower():
-            matches.append((key, poke))
-
-    if not matches:
-        await event.reply(f"❌ No Pokémon found matching **{search_name}**.")
-        return
-
-    # build reply
-    text = f"📜 **Summary for '{search_name.title()}'**\n\n"
-    for idx, (key, poke) in enumerate(matches, start=1):
-        text += f"🔹 **{idx}. {poke['name']}**  (`{poke['pokemon_id']}`)\n"
-        text += f"   • Gender: {poke.get('gender','Unknown')}\n"
-        text += f"   • Level: {poke.get('level','?')}\n"
-        text += f"   • Item: {poke.get('item','None')}\n"
-        text += f"   • Ability: {poke.get('ability','?')}\n"
-        text += f"   • Tera Type: {poke.get('tera_type','?')}\n"
-        text += f"   • EVs: HP {poke.get('evhp',0)} / Atk {poke.get('evatk',0)} / Def {poke.get('evdef',0)} / "
-        text += f"SpA {poke.get('evspa',0)} / SpD {poke.get('evspd',0)} / Spe {poke.get('evspe',0)}\n"
-        text += f"   • Moves: {', '.join(poke.get('moves', []))}\n\n"
-
-    await event.reply(text)
+    if len(results) == 1:
+        poke = results[0]
+        text = f"**{poke['name']} (ID: {poke['_id']})**\n"
+        text += f"HP: {poke.get('hp', 'N/A')}\n"
+        text += f"Attack: {poke.get('atk', 'N/A')}\n"
+        text += f"Defense: {poke.get('def', 'N/A')}\n"
+        text += f"Sp. Atk: {poke.get('sp_atk', 'N/A')}\n"
+        text += f"Sp. Def: {poke.get('sp_def', 'N/A')}\n"
+        text += f"Speed: {poke.get('spd', 'N/A')}"
+        await event.reply(text)
+    else:
+        # Just list IDs and names if multiple matches
+        text = "**Multiple results found:**\n"
+        for poke in results:
+            text += f"- {poke['_id']}: {poke['name']}\n"
+        await event.reply(text)
     
 print("Bot running...")
 bot.run_until_disconnected()
