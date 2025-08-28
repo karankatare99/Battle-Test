@@ -897,6 +897,56 @@ async def cancel_queue(event):
     leave_queue(user_id)
     await event.edit("❌ Queue cancelled.", buttons=None)
 
+async def pair_and_start_preview(fmt, p1_id, p2_id, queue_msg):
+    leave_queue(p1_id)
+    leave_queue(p2_id)
+
+    pick = 3 if fmt == "single" else 4
+    battle = {
+        "format": fmt,
+        "status": "preview",
+        "p1_id": p1_id,
+        "p2_id": p2_id,
+        "pick_count": pick,
+        "created_at": now_utc(),
+        "preview_started_at": now_utc(),
+        "p1_selected": [],
+        "p2_selected": [],
+        "p1_locked": False,
+        "p2_locked": False,
+        "timer_secs": 90
+    }
+    res = battles.insert_one(battle)
+    battle_id = str(res.inserted_id)
+
+    try:
+        await queue_msg.edit("✅ Opponent found! Opening Team Preview…")
+    except:
+        pass
+
+    p1 = users.find_one({"user_id": p1_id}) or {}
+    p2 = users.find_one({"user_id": p2_id}) or {}
+
+    # Own preview messages
+    p1_text_self = render_team_preview(p1, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
+    p2_text_self = render_team_preview(p2, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
+
+    # Opponent roster messages (read-only)
+    p1_text_opp = render_opponent_team(p2)
+    p2_text_opp = render_opponent_team(p1)
+
+    btns1 = preview_buttons(p1, pick, battle_id, side="p1")
+    btns2 = preview_buttons(p2, pick, battle_id, side="p2")
+
+    # Send to both players: first the opponent’s visible 6, then own selection UI
+    await bot.send_message(p1_id, p1_text_opp)
+    await bot.send_message(p1_id, p1_text_self, buttons=btns1)
+
+    await bot.send_message(p2_id, p2_text_opp)
+    await bot.send_message(p2_id, p2_text_self, buttons=btns2)
+
+    # Start countdown task
+    asyncio.create_task(preview_timer_task(battle_id))
 
 @bot.on(events.CallbackQuery(pattern=b"battle:teampick:([0-9a-fA-F]+):([a-z0-9]+):(\d+)"))
 async def team_pick_toggle(event):
