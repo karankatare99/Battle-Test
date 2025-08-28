@@ -231,9 +231,9 @@ async def handle_pokemon_set(event):
     upsert=True
         )
         pokedata.update_one(
-            {"$set": {f"pokemon.{pokemon_key}": pokemon}},
-            upsert=True
-        )
+            {"_id": pokemon_key},   # use pokemon_key as unique id
+            {"$set": pokemon},      # store the dict
+            upsert=True)
 
         awaiting_pokemon.remove(user_id)  # clear waiting state
 
