@@ -717,6 +717,46 @@ async def summary_page(event):
         return
 
     await send_summary_list(event, matches, page)
-    
+# ==== Show summary for selected Pokémon ====
+@bot.on(events.CallbackQuery(pattern=b"summary:show:(.+)"))
+async def summary_show(event):
+    poke_id = event.pattern_match.group(1).decode()
+    user_id = event.sender_id
+
+    matches = active_summaries.get(user_id)
+    if not matches:
+        await event.answer("❌ No active summary search.", alert=True)
+        return
+
+    for _, poke in matches:
+        if poke["pokemon_id"] == poke_id:
+            await send_summary(event, poke)
+            return
+
+    await event.answer("❌ Pokémon not found.", alert=True)
+
+
+# ==== Render one Pokémon summary ====
+async def send_summary(event, poke):
+    text = (
+        f"📜 **Pokémon Summary**\n\n"
+        f"🆔 `{poke['pokemon_id']}`\n"
+        f"✨ Name: {poke['name']}\n"
+        f"♀️ Gender: {poke['gender']}\n"
+        f"⭐ Level: {poke['level']}\n"
+        f"💠 Ability: {poke['ability']}\n"
+        f"🔮 Tera Type: {poke['tera_type']}\n"
+        f"🎒 Item: {poke['item']}\n\n"
+        f"📊 **EVs:**\n"
+        f"HP: {poke['evhp']} | Atk: {poke['evatk']} | Def: {poke['evdef']}\n"
+        f"SpA: {poke['evspa']} | SpD: {poke['evspd']} | Spe: {poke['evspe']}\n\n"
+        f"⚔️ **Moves:** {', '.join(poke['moves'])}"
+    )
+
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text)
+    else:
+        await event.reply(text)
+        
 print("Bot running...")
 bot.run_until_disconnected()
