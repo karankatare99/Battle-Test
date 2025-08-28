@@ -629,7 +629,7 @@ async def confirm_switch(event):
 @bot.on(events.NewMessage(pattern=r'^/summary (.+)'))
 async def summary(event):
     pokemon_name = event.pattern_match.group(1).strip()
-    results = list(pokemon_collection.find(
+    results = list(users.find(
         {"name": {"$regex": f"^{pokemon_name}$", "$options": "i"}}
     ))
 
