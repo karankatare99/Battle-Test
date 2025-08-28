@@ -1,11 +1,12 @@
 import random
 import string
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from telethon import TelegramClient, events, Button
 from pymongo import MongoClient
 from bson import ObjectId
+from collections import Counter
 
 # ==== Your credentials (rotate before public deploy) ====
 API_ID = 27715449
@@ -53,7 +54,7 @@ def parse_stats(ev_str, iv_str):
                 if stat == "spa": stat = "spa"
                 if stat == "spd": stat = "spd"
                 if stat == "spe": stat = "spe"
-                val = min(int(val), 252) # cap at 252
+                val = min(int(val), 252)  # cap at 252
                 evs[stat] = val
 
     if iv_str:
@@ -100,7 +101,7 @@ def parse_showdown_set(text):
         pokemon["item"] = "None"
 
     pokemon["gender"] = gender
-    pokemon["level"] = 100 # default
+    pokemon["level"] = 100
     pokemon["nature"] = "None"
     pokemon["shiny"] = "No"
     pokemon["moves"] = []
@@ -109,30 +110,29 @@ def parse_showdown_set(text):
     for line in lines[1:]:
         line = line.strip()
         if line.startswith("Ability:"):
-            pokemon["ability"] = line.replace("Ability:","").strip()
+            pokemon["ability"] = line.replace("Ability:", "").strip()
         elif line.startswith("Shiny:"):
-            pokemon["shiny"] = line.replace("Shiny:","").strip()
+            pokemon["shiny"] = line.replace("Shiny:", "").strip()
         elif line.startswith("Tera Type:"):
-            pokemon["tera_type"] = line.replace("Tera Type:","").strip()
+            pokemon["tera_type"] = line.replace("Tera Type:", "").strip()
         elif line.startswith("Level:"):
             try:
-                pokemon["level"] = int(line.replace("Level:","").strip())
+                pokemon["level"] = int(line.replace("Level:", "").strip())
             except:
                 pokemon["level"] = 100
         elif line.startswith("Nature"):
-            pokemon["nature"] = line.replace("Nature","").strip()
+            pokemon["nature"] = line.replace("Nature", "").strip()
         elif line.startswith("EVs:"):
-            ev_line = line.replace("EVs:","").strip()
+            ev_line = line.replace("EVs:", "").strip()
             evs_parsed, _ = parse_stats(ev_line, None)
             evs.update(evs_parsed)
         elif line.startswith("IVs:"):
-            iv_line = line.replace("IVs:","").strip()
+            iv_line = line.replace("IVs:", "").strip()
             _, ivs_parsed = parse_stats(None, iv_line)
             ivs.update(ivs_parsed)
         elif line.startswith("- "):
-            pokemon["moves"].append(line.replace("- ","").strip())
+            pokemon["moves"].append(line.replace("- ", "").strip())
 
-    # Add EVs/IVs to pokemon
     for stat in ["hp","atk","def","spa","spd","spe"]:
         pokemon[f"ev{stat}"] = evs[stat]
         pokemon[f"iv{stat}"] = ivs[stat]
@@ -153,12 +153,7 @@ async def start_handler(event):
 
     existing = users.find_one({"user_id": user_id})
     if not existing:
-        users.insert_one({
-            "user_id": user_id,
-            "name": first_name,
-            "pokemon": [],
-            "team": []
-        })
+        users.insert_one({"user_id": user_id, "name": first_name, "pokemon": [], "team": []})
         await event.respond(f"👋 Welcome {first_name}! Your profile has been created.")
     else:
         await event.respond(f"✅ Welcome back {first_name}, you already have a profile.")
@@ -202,8 +197,8 @@ async def authlist_handler(event):
         return
 
     msg = "👑 Authorised Users:\n"
-    for user in authorised_users:
-        msg += f"- {user['name']} ({user['user_id']})\n"
+    for u in authorised_users:
+        msg += f"- {u['name']} ({u['user_id']})\n"
     await event.respond(msg)
 
 # ==== /add Pokémon command ====
@@ -217,7 +212,7 @@ async def add_pokemon(event):
         await event.reply("User profile not found!")
         return
 
-    awaiting_pokemon.add(user_id)  # mark user as waiting for Pokémon
+    awaiting_pokemon.add(user_id)
     await event.respond(
         "Please paste the meta data of your Pokémon (only next message will be taken)!",
         buttons=[[Button.url("⚡ Open Teambuilder", SHOWDOWN_LINK)]]
@@ -233,20 +228,19 @@ async def handle_pokemon_set(event):
         pokemon = parse_showdown_set(text)
         pokemon_key = f"{pokemon.get('name','Unknown')}_{pokemon['pokemon_id']}"
 
-        # Save to DB
         users.update_one(
             {"user_id": user_id},
             {"$push": {"pokemon": pokemon_key}},
             upsert=True
         )
         pokedata.update_one(
-            {"_id": pokemon_key},   # use pokemon_key as unique id
-            {"$set": pokemon},      # store the dict
+            {"_id": pokemon_key},
+            {"$set": pokemon},
             upsert=True
         )
-        awaiting_pokemon.remove(user_id)  # clear waiting state
 
-        # Response
+        awaiting_pokemon.remove(user_id)
+
         msg = f"✅ Pokémon Saved!\n\n"
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
         msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
@@ -280,8 +274,6 @@ async def server_reset_handler(event):
     matchmaking.delete_many({})
     await event.respond("⚠️ All data wiped from the server!")
 
-from collections import Counter
-
 # ==== /pokemon command ====
 @bot.on(events.NewMessage(pattern="/pokemon"))
 async def pokemon_list_handler(event):
@@ -291,7 +283,6 @@ async def pokemon_list_handler(event):
         await event.respond("❌ You don’t have any Pokémon yet.")
         return
 
-    # Fetch full pokedata for each stored ID
     pokemon_ids = user["pokemon"]
     pokes = pokedata.find({"_id": {"$in": pokemon_ids}})
     names = [poke["name"] for poke in pokes]
@@ -318,7 +309,6 @@ async def send_pokemon_page(event, counts, page):
         buttons.append(Button.inline("➡️ Next", data=f"pokemon:{page+1}"))
     await event.respond(text, buttons=[buttons] if buttons else None)
 
-# ==== Handle button callbacks ====
 @bot.on(events.CallbackQuery(pattern=b"pokemon:(\d+)"))
 async def callback_pokemon_page(event):
     page = int(event.pattern_match.group(1))
@@ -356,7 +346,6 @@ async def team_handler(event):
 
     await send_team_page(event, user)
 
-# ==== Render team ====
 async def send_team_page(event, user):
     team_ids = user.get("team", [])
     pokes = list(pokedata.find({"_id": {"$in": team_ids}}))
@@ -380,7 +369,6 @@ async def send_team_page(event, user):
     else:
         await event.respond(text, buttons=buttons)
 
-# ==== Show Add Pokémon page (paginated) ====
 async def send_add_page(event, user, page=0):
     team_ids = user.get("team", [])
     owned_ids = user.get("pokemon", [])
@@ -431,7 +419,6 @@ async def send_add_page(event, user, page=0):
     else:
         await event.respond(text, buttons=buttons)
 
-# ==== Open Add Pokémon menu ====
 @bot.on(events.CallbackQuery(pattern=b"team:addpage:(\d+)"))
 async def team_add_page(event):
     page = int(event.pattern_match.group(1))
@@ -439,7 +426,6 @@ async def team_add_page(event):
     user = users.find_one({"user_id": user_id})
     await send_add_page(event, user, page)
 
-# ==== Confirm Add ====
 @bot.on(events.CallbackQuery(pattern=b"team:add:(.+)"))
 async def confirm_add(event):
     poke_id = event.pattern_match.group(1).decode()
@@ -464,14 +450,12 @@ async def confirm_add(event):
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
-# ==== Back button to team ====
 @bot.on(events.CallbackQuery(pattern=b"team:back"))
 async def back_to_team(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
-# ==== Show Remove Pokémon page (paginated) ====
 async def send_remove_page(event, user, page=0):
     team = user.get("team", [])
     if not team:
@@ -513,14 +497,12 @@ async def send_remove_page(event, user, page=0):
     else:
         await event.respond(text, buttons=buttons)
 
-# ==== Open Remove Pokémon menu ====
 @bot.on(events.CallbackQuery(pattern=b"team:remove$"))
 async def team_remove_menu(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     await send_remove_page(event, user, 0)
 
-# ==== Paginate Remove ====
 @bot.on(events.CallbackQuery(pattern=b"team:removepage:(\d+)"))
 async def team_remove_page(event):
     page = int(event.pattern_match.group(1))
@@ -528,7 +510,6 @@ async def team_remove_page(event):
     user = users.find_one({"user_id": user_id})
     await send_remove_page(event, user, page)
 
-# ==== Confirm Remove ====
 @bot.on(events.CallbackQuery(pattern=b"team:remove:(.+)"))
 async def confirm_remove(event):
     poke_key = event.pattern_match.group(1).decode()
@@ -544,7 +525,6 @@ async def confirm_remove(event):
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
-# ==== Switch Pokémon (Step 1: Select first Pokémon) ====
 @bot.on(events.CallbackQuery(pattern=b"team:switch$"))
 async def team_switch_start(event):
     user_id = event.sender_id
@@ -572,7 +552,6 @@ async def team_switch_start(event):
 
     await event.edit(text, buttons=buttons)
 
-# ==== Switch Pokémon (Step 2: Select second Pokémon) ====
 @bot.on(events.CallbackQuery(pattern=b"team:switch1:(\d+)"))
 async def team_switch_pick_second(event):
     first_index = int(event.pattern_match.group(1))
@@ -603,7 +582,6 @@ async def team_switch_pick_second(event):
 
     await event.edit(text, buttons=buttons)
 
-# ==== Confirm Switch ====
 @bot.on(events.CallbackQuery(pattern=b"team:switch2:(\d+):(\d+)"))
 async def confirm_switch(event):
     first_index = int(event.pattern_match.group(1))
@@ -625,7 +603,6 @@ async def confirm_switch(event):
 
 # ==== /summary command ====
 active_summaries = {}
-POKEMON_PER_PAGE = 15
 
 @bot.on(events.NewMessage(pattern=r"^/summary (.+)"))
 async def summary_handler(event):
@@ -656,6 +633,8 @@ async def summary_handler(event):
         await send_summary(event, matches[0][1])
     else:
         await send_summary_list(event, matches, 0)
+
+POKEMON_PER_PAGE = 15
 
 async def send_summary_list(event, matches, page=0):
     total_pages = (len(matches) - 1) // POKEMON_PER_PAGE + 1
@@ -703,7 +682,6 @@ async def summary_page(event):
 @bot.on(events.CallbackQuery(pattern=b"summary:show:(.+)"))
 async def summary_show(event):
     poke_id = event.pattern_match.group(1).decode()
-    user_id = event.sender_id
     poke = pokedata.find_one({"_id": poke_id})
     if not poke:
         await event.answer("❌ Pokémon not found.", alert=True)
@@ -717,7 +695,7 @@ async def send_summary(event, poke):
         f"✨ Name: {poke.get('name','Unknown')}\n"
         f"♀️ Gender: {poke.get('gender','?')}\n"
         f"⭐ Level: {poke.get('level','?')}\n"
-        f"💠 Ability: {poke.get('ability','None')}\n"
+        f"💠 Ability: {poke.get('能力','None') if '能力' in poke else poke.get('ability','None')}\n"
         f"🔮 Tera Type: {poke.get('tera_type','None')}\n"
         f"🎒 Item: {poke.get('item','None')}\n\n"
         f"📊 EVs:\n"
@@ -747,7 +725,6 @@ def seconds_between(a, b):
     return int((b - a).total_seconds())
 
 def est_wait_time(queue_len):
-    # Simple ETA heuristic: 30s if someone else is already queued, else 60s
     return 30 if queue_len >= 1 else 60
 
 def team_has_six(user_doc):
@@ -776,6 +753,7 @@ def render_team_preview(user_doc, pick_count):
         nm = pmap.get(pid, {}).get("name", "Unknown")
         lines.append(f"{i}. {nm} ({pid})")
     return "\n".join(lines)
+
 def render_opponent_team(user_doc):
     team_ids = user_doc.get("team", [])
     if not team_ids:
@@ -791,6 +769,21 @@ def render_opponent_team(user_doc):
 def leave_queue(user_id):
     matchmaking.delete_many({"user_id": user_id})
 
+def preview_buttons(user_doc, pick, battle_id, side):
+    team_ids = user_doc.get("team", [])
+    buttons = []
+    row = []
+    for idx, pid in enumerate(team_ids):
+        lab = str(idx+1)
+        row.append(Button.inline(lab, f"battle:teampick:{battle_id}:{side}:{idx}".encode()))
+        if len(row) == 5:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    buttons.append([Button.inline(f"✅ Lock ({pick} required)", f"battle:lock:{battle_id}:{side}".encode())])
+    return buttons
+
 # Entry: /battle (PM-only)
 @bot.on(events.NewMessage(pattern=r"^/battle$"))
 async def battle_entry(event):
@@ -799,7 +792,7 @@ async def battle_entry(event):
         return
     buttons = [
         [Button.inline("🏆 Ranked", b"battle:ranked")],
-        [Button.inline("🎮 Casual", b"battle:casual")],
+        [Button.inline("🎮 Casual", b"battle:casual")]
     ]
     await event.respond("Choose a battle mode:", buttons=buttons)
 
@@ -813,14 +806,14 @@ async def battle_ranked(event):
 async def battle_casual(event):
     buttons = [
         [Button.inline("⚔️ Single (3v3 from 6)", b"battle:queue:single")],
-        [Button.inline("🛡️ Double (4v4 from 6)", b"battle:queue:double")],
+        [Button.inline("🛡️ Double (4v4 from 6)", b"battle:queue:double")]
     ]
     await event.edit("Select a format:", buttons=buttons)
 
 # Join queue
 @bot.on(events.CallbackQuery(pattern=b"battle:queue:(single|double)"))
 async def battle_queue(event):
-    fmt = event.pattern_match.group(1).decode()  # single | double
+    fmt = event.pattern_match.group(1).decode()
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     if not user:
@@ -837,7 +830,7 @@ async def battle_queue(event):
         "user_id": user_id,
         "format": fmt,
         "status": "searching",
-        "started_at": start_ts,
+        "started_at": start_ts
     })
 
     mode_str = "Singles (3/6)" if fmt == "single" else "Doubles (4/6)"
@@ -847,13 +840,11 @@ async def battle_queue(event):
         buttons=[[Button.inline("❌ Cancel", b"battle:cancelq")]]
     )
 
-    # Try immediate opponent
     opp = matchmaking.find_one({"format": fmt, "status": "searching", "user_id": {"$ne": user_id}})
     if opp:
         await pair_and_start_preview(fmt, user_id, opp["user_id"], msg)
         return
 
-    # Poll up to 10 minutes
     timeout = 10 * 60
     interval = 10
     elapsed = 0
@@ -861,7 +852,6 @@ async def battle_queue(event):
         await asyncio.sleep(interval)
         elapsed += interval
 
-        # Still queued?
         me = matchmaking.find_one({"user_id": user_id, "format": fmt, "status": "searching"})
         if not me:
             try:
@@ -884,7 +874,6 @@ async def battle_queue(event):
         except:
             pass
 
-    # Timeout
     leave_queue(user_id)
     try:
         await msg.edit("⌛ No opponent found within 10 minutes. Queue cancelled.")
@@ -927,31 +916,26 @@ async def pair_and_start_preview(fmt, p1_id, p2_id, queue_msg):
     p1 = users.find_one({"user_id": p1_id}) or {}
     p2 = users.find_one({"user_id": p2_id}) or {}
 
-    # Own preview messages
     p1_text_self = render_team_preview(p1, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
     p2_text_self = render_team_preview(p2, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
-
-    # Opponent roster messages (read-only)
     p1_text_opp = render_opponent_team(p2)
     p2_text_opp = render_opponent_team(p1)
 
     btns1 = preview_buttons(p1, pick, battle_id, side="p1")
     btns2 = preview_buttons(p2, pick, battle_id, side="p2")
 
-    # Send to both players: first the opponent’s visible 6, then own selection UI
     await bot.send_message(p1_id, p1_text_opp)
     await bot.send_message(p1_id, p1_text_self, buttons=btns1)
 
     await bot.send_message(p2_id, p2_text_opp)
     await bot.send_message(p2_id, p2_text_self, buttons=btns2)
 
-    # Start countdown task
     asyncio.create_task(preview_timer_task(battle_id))
 
 @bot.on(events.CallbackQuery(pattern=b"battle:teampick:([0-9a-fA-F]+):([a-z0-9]+):(\d+)"))
 async def team_pick_toggle(event):
     battle_id = event.pattern_match.group(1).decode()
-    side = event.pattern_match.group(2).decode()  # p1/p2
+    side = event.pattern_match.group(2).decode()
     idx = int(event.pattern_match.group(3).decode())
     user_id = event.sender_id
 
@@ -1015,7 +999,6 @@ async def team_lock(event):
     battles.update_one({"_id": battle["_id"]}, {"$set": {lock_key: True}})
     await event.answer("✅ Locked!", alert=False)
 
-    # If both locked, proceed
     battle = battles.find_one({"_id": battle["_id"]})
     if battle.get("p1_locked") and battle.get("p2_locked"):
         await start_battle_ready(battle)
