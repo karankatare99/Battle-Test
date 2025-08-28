@@ -359,16 +359,21 @@ async def team_handler(event):
 
     await send_team_page(event, user)
 
-
 # ==== Render team ====
 async def send_team_page(event, user):
-    team = user.get("team", [])
-    pokemon = user.get("pokemon", {})
+    team_ids = user.get("team", [])
+    
+    # Fetch Pokémon details from pokedata
+    pokes = list(pokedata.find({"_id": {"$in": team_ids}}))
+    poke_map = {p["_id"]: p for p in pokes}
 
     text = "⚔️ **Your Team**:\n\n"
-    for i, poke_key in enumerate(team, 1):
-        poke = pokemon.get(poke_key, {})
-        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+    for i, poke_id in enumerate(team_ids, 1):
+        poke = poke_map.get(poke_id)
+        if poke:
+            text += f"{i}. {poke['name']} (ID: {poke['_id']})\n"
+        else:
+            text += f"{i}. ❓ Unknown Pokémon ({poke_id})\n"
 
     buttons = [
         [Button.inline("➕ Add", b"team:addpage:0"), Button.inline("➖ Remove", b"team:remove")],
@@ -383,30 +388,37 @@ async def send_team_page(event, user):
 
 # ==== Show Add Pokémon page (paginated) ====
 async def send_add_page(event, user, page=0):
-    team = user.get("team", [])
-    pokemon = user.get("pokemon", {})
-    available = [k for k in pokemon.keys() if k not in team]
+    team_ids = user.get("team", [])
+    owned_ids = user.get("pokemon", [])   # now just a list of IDs
+    available_ids = [pid for pid in owned_ids if pid not in team_ids]
 
-    if not available:
+    if not available_ids:
         await event.answer("❌ No more Pokémon left in your profile to add.", alert=True)
         return
 
-    total_pages = (len(available) - 1) // POKEMON_PER_PAGE + 1
+    total_pages = (len(available_ids) - 1) // POKEMON_PER_PAGE + 1
     start = page * POKEMON_PER_PAGE
     end = start + POKEMON_PER_PAGE
-    page_items = available[start:end]
+    page_items = available_ids[start:end]
+
+    # Fetch Pokémon details from pokedata
+    pokes = list(pokedata.find({"_id": {"$in": page_items}}))
+    poke_map = {p["_id"]: p for p in pokes}
 
     # Text list
     text = f"➕ **Select a Pokémon to Add** (Page {page+1}/{total_pages})\n\n"
-    for i, key in enumerate(page_items, start=1):
-        poke = pokemon[key]
-        text += f"{i}. {poke['name']} ({poke['pokemon_id']})\n"
+    for i, pid in enumerate(page_items, start=1):
+        poke = poke_map.get(pid)
+        if poke:
+            text += f"{i}. {poke['name']} (ID: {poke['_id']})\n"
+        else:
+            text += f"{i}. ❓ Unknown ({pid})\n"
 
     # Numbered buttons
     buttons = []
     row = []
-    for i, key in enumerate(page_items, start=start):
-        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1), f"team:add:{key}".encode()))
+    for i, pid in enumerate(page_items, start=start):
+        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1), f"team:add:{pid}".encode()))
         if len(row) == 5:  # 5 buttons per row
             buttons.append(row)
             row = []
@@ -443,7 +455,7 @@ async def team_add_page(event):
 # ==== Confirm Add ====
 @bot.on(events.CallbackQuery(pattern=b"team:add:(.+)"))
 async def confirm_add(event):
-    poke_key = event.pattern_match.group(1).decode()
+    poke_id = event.pattern_match.group(1).decode()  # Pokémon ID string
     user_id = event.sender_id
 
     user = users.find_one({"user_id": user_id})
@@ -453,12 +465,19 @@ async def confirm_add(event):
         await event.answer("⚠️ Team is already full (6 Pokémon max)!", alert=True)
         return
 
-    if poke_key not in team:
-        users.update_one({"user_id": user_id}, {"$push": {"team": poke_key}})
+    # Make sure user actually owns this Pokémon
+    owned_ids = user.get("pokemon", [])
+    if poke_id not in owned_ids:
+        await event.answer("❌ You don’t own this Pokémon.", alert=True)
+        return
+
+    if poke_id not in team:
+        users.update_one({"user_id": user_id}, {"$push": {"team": poke_id}})
         await event.answer("✅ Pokémon added to team!")
     else:
         await event.answer("⚠️ That Pokémon is already in your team.", alert=True)
 
+    # Reload user + refresh UI
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
@@ -473,7 +492,6 @@ async def back_to_team(event):
 # ==== Show Remove Pokémon page (paginated) ====
 async def send_remove_page(event, user, page=0):
     team = user.get("team", [])
-    pokemon = user.get("pokemon", {})
 
     if not team:
         await event.answer("⚠️ Your team is empty!", alert=True)
@@ -484,17 +502,20 @@ async def send_remove_page(event, user, page=0):
     end = start + POKEMON_PER_PAGE
     page_items = team[start:end]
 
-    # Text list
+    # Build text list
     text = f"➖ **Select a Pokémon to Remove** (Page {page+1}/{total_pages})\n\n"
-    for i, key in enumerate(page_items, start=1):
-        poke = pokemon.get(key, {})
-        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+    for i, poke_id in enumerate(page_items, start=1):
+        poke = pokedata.find_one({"_id": poke_id}) or {}
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
 
     # Numbered buttons
     buttons = []
     row = []
-    for i, key in enumerate(page_items, start=start):
-        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1), f"team:remove:{key}".encode()))
+    for i, poke_id in enumerate(page_items, start=start):
+        row.append(Button.inline(
+            str((i % POKEMON_PER_PAGE) + 1),
+            f"team:remove:{poke_id}".encode()
+        ))
         if len(row) == 5:  # 5 per row
             buttons.append(row)
             row = []
@@ -517,7 +538,6 @@ async def send_remove_page(event, user, page=0):
         await event.edit(text, buttons=buttons)
     else:
         await event.respond(text, buttons=buttons)
-
 
 # ==== Open Remove Pokémon menu ====
 @bot.on(events.CallbackQuery(pattern=b"team:remove$"))
@@ -560,7 +580,6 @@ async def team_switch_start(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     team = user.get("team", [])
-    pokemon = user.get("pokemon", {})
 
     if len(team) < 2:
         await event.answer("⚠️ You need at least 2 Pokémon in your team to switch.", alert=True)
@@ -568,8 +587,8 @@ async def team_switch_start(event):
 
     text = "🔄 **Select the first Pokémon to switch**:\n\n"
     for i, key in enumerate(team, start=1):
-        poke = pokemon.get(key, {})
-        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+        poke = pokedata.find_one({"_id": key}) or {}
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
 
     buttons = []
     row = []
@@ -593,12 +612,15 @@ async def team_switch_pick_second(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
     team = user.get("team", [])
-    pokemon = user.get("pokemon", {})
 
-    text = f"🔄 **Select the second Pokémon to swap with** (first chosen: {pokemon.get(team[first_index], {}).get('name','Unknown')})\n\n"
+    first_poke = pokedata.find_one({"_id": team[first_index]}) or {}
+    first_name = first_poke.get("name", "Unknown")
+
+    text = f"🔄 **Select the second Pokémon to swap with** (first chosen: {first_name})\n\n"
+
     for i, key in enumerate(team, start=1):
-        poke = pokemon.get(key, {})
-        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id')})\n"
+        poke = pokedata.find_one({"_id": key}) or {}
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
 
     buttons = []
     row = []
@@ -615,7 +637,6 @@ async def team_switch_pick_second(event):
     buttons.append([Button.inline("⬅️ Back", b"team:back")])
 
     await event.edit(text, buttons=buttons)
-
 
 # ==== Confirm Switch ====
 @bot.on(events.CallbackQuery(pattern=b"team:switch2:(\d+):(\d+)"))
@@ -638,8 +659,6 @@ async def confirm_switch(event):
     await event.answer("✅ Pokémon switched!")
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
-
-
 
 # Cache for active searches {user_id: [matches]}
 active_summaries = {}
