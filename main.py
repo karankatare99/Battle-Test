@@ -231,7 +231,6 @@ async def handle_pokemon_set(event):
     upsert=True
         )
         pokemon.update_one(
-            {"user_id": user_id},
             {"$set": {f"pokemon.{pokemon_key}": pokemon}},
             upsert=True
         )
