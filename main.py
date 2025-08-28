@@ -335,10 +335,13 @@ async def team_handler(event):
     pokemon = user.get("pokemon", {})
 
     if not team:
-        await event.respond("⚠️ Your team is empty! Use /add to register Pokémon first.")
+        # Empty team → still give Add button
+        text = "⚠️ Your team is empty!\n\nUse ➕ Add to select Pokémon from your profile."
+        buttons = [[Button.inline("➕ Add", b"team:add")]]
+        await event.respond(text, buttons=buttons)
         return
 
-    # Display team
+    # Otherwise, show full team
     text = "⚔️ **Your Team**:\n\n"
     for i, poke_key in enumerate(team, 1):
         poke = pokemon.get(poke_key, {})
