@@ -453,7 +453,7 @@ async def confirm_remove(event):
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
-@bot.on(events.CallbackQuery(pattern=b"team:s witch$".replace(" ", "")))
+@bot.on(events.CallbackQuery(pattern=b"team:switch$"))
 async def team_switch_start(event):
     user_id = event.sender_id
     user = users.find_one({"user_id": user_id})
