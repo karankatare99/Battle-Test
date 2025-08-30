@@ -67,6 +67,69 @@ def parse_stats(ev_str, iv_str):
                 ivs[stat] = int(val)
     return evs, ivs
 
+# ==== STAT CALC ADDITIONS: Natures and stat formulas (Gen 3+) ====
+NEUTRAL_NATURES = {"Hardy","Docile","Serious","Bashful","Quirky"}
+NATURES = {
+    "Lonely": ("atk","def"), "Adamant": ("atk","spa"), "Naughty": ("atk","spd"), "Brave": ("atk","spe"),
+    "Bold": ("def","atk"), "Impish": ("def","spa"), "Lax": ("def","spd"), "Relaxed": ("def","spe"),
+    "Modest": ("spa","atk"), "Mild": ("spa","def"), "Rash": ("spa","spd"), "Quiet": ("spa","spe"),
+    "Calm": ("spd","atk"), "Gentle": ("spd","def"), "Careful": ("spd","spa"), "Sassy": ("spd","spe"),
+    "Timid": ("spe","atk"), "Hasty": ("spe","def"), "Jolly": ("spe","spa"), "Naive": ("spe","spd"),
+}
+
+STAT_KEYS = ["hp","atk","def","spa","spd","spe"]
+
+def nature_multipliers(nature: str):
+    mult = {s:1.0 for s in STAT_KEYS}
+    if not nature:
+        return mult
+    nat = nature.strip().title()
+    if nat in NEUTRAL_NATURES or nat in ("None",""):
+        return mult
+    up_down = NATURES.get(nat)
+    if up_down:
+        up, down = up_down
+        mult[up] = 1.1
+        mult[down] = 0.9
+    return mult
+
+def calc_hp(base, iv, ev, level):
+    # HP: floor(((2*Base + IV + floor(EV/4)) * Level)/100) + Level + 10
+    return math.floor(((2*base + iv + ev//4) * level) / 100) + level + 10
+
+def calc_other(base, iv, ev, level, nmult):
+    # Non-HP: floor((floor(((2*Base + IV + floor(EV/4)) * Level)/100) + 5) * Nature)
+    raw = math.floor(((2*base + iv + ev//4) * level) / 100) + 5
+    return math.floor(raw * nmult)
+
+def load_kanto_base_stats(path, species_name):
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    entry = data.get(species_name)
+    if not entry:
+        raise KeyError(f"Species not found in kanto data: {species_name}")
+    bs = entry["Base_Stats"]
+    return {
+        "hp": int(bs["Hp"]),
+        "atk": int(bs["Attack"]),
+        "def": int(bs["Defense"]),
+        "spa": int(bs["Sp.Attack"]),
+        "spd": int(bs["Sp.Defense"]),
+        "spe": int(bs["Speed"]),
+    }
+
+def attach_total_stats(pokemon: dict, base_stats: dict):
+    level = int(pokemon.get("level", 100))
+    mults = nature_multipliers(pokemon.get("nature", "None"))
+    pokemon["totalhp"]  = calc_hp(base_stats["hp"],  int(pokemon.get("ivhp",31)),  int(pokemon.get("evhp",0)),  level)
+    pokemon["totalatk"] = calc_other(base_stats["atk"], int(pokemon.get("ivatk",31)), int(pokemon.get("evatk",0)), level, mults["atk"])
+    pokemon["totaldef"] = calc_other(base_stats["def"], int(pokemon.get("ivdef",31)), int(pokemon.get("evdef",0)), level, mults["def"])
+    pokemon["totalspa"] = calc_other(base_stats["spa"], int(pokemon.get("ivspa",31)), int(pokemon.get("evspa",0)), level, mults["spa"])
+    pokemon["totalspd"] = calc_other(base_stats["spd"], int(pokemon.get("ivspd",31)), int(pokemon.get("evspd",0)), level, mults["spd"])
+    pokemon["totalspe"] = calc_other(base_stats["spe"], int(pokemon.get("ivspe",31)), int(pokemon.get("evspe",0)), level, mults["spe"])
+    return pokemon
+# ==== END STAT CALC ADDITIONS ====
+
 # ==== Helper: Parse Pokémon Showdown Set ====
 def parse_showdown_set(text):
     lines = text.strip().splitlines()
@@ -75,7 +138,7 @@ def parse_showdown_set(text):
     evs = {s: 0 for s in ["hp","atk","def","spa","spd","spe"]}
     ivs = {s: 31 for s in ["hp","atk","def","spa","spd","spe"]}
 
-    first_line = lines[0]
+    first_line = lines
     if "(M)" in first_line:
         gender = "Male"; first_line = first_line.replace("(M)", "").strip()
     elif "(F)" in first_line:
@@ -84,7 +147,7 @@ def parse_showdown_set(text):
         gender = random.choice(["Male","Female"])
 
     if "@" in first_line:
-        name_part, item = first_line.split("@")
+        name_part, item = first_line.split("@", 1)
         pokemon["name"] = name_part.strip()
         pokemon["item"] = item.strip()
     else:
@@ -110,8 +173,13 @@ def parse_showdown_set(text):
                 pokemon["level"] = int(line.replace("Level:", "").strip())
             except:
                 pokemon["level"] = 100
-        elif line.startswith("Nature"):
-            pokemon["nature"] = line.replace("Nature", "").strip()
+        elif line.endswith("Nature") or line.startswith("Nature"):
+            # Supports "Adamant Nature" and "Nature: Adamant"
+            if line.endswith("Nature") and ":" not in line:
+                # e.g., "Adamant Nature"
+                pokemon["nature"] = line.replace("Nature", "").strip()
+            else:
+                pokemon["nature"] = line.replace("Nature", "").replace(":", "").strip()
         elif line.startswith("EVs:"):
             ev_line = line.replace("EVs:", "").strip()
             evs_parsed, _ = parse_stats(ev_line, None)
@@ -127,8 +195,18 @@ def parse_showdown_set(text):
         pokemon[f"ev{stat}"] = evs[stat]
         pokemon[f"iv{stat}"] = ivs[stat]
 
+    # ==== STAT CALC ADDITIONS: compute total stats using kanto_data.json ====
+    # If forms/nickname don't match file keys exactly, this may raise; guard to avoid breaking UX.
+    try:
+        base_stats = load_kanto_base_stats("kanto_data.json", pokemon["name"])
+        attach_total_stats(pokemon, base_stats)
+    except Exception as e:
+        pokemon["totalhp"]=pokemon["totalatk"]=pokemon["totaldef"]=pokemon["totalspa"]=pokemon["totalspd"]=pokemon["totalspe"]=None
+    # ==== END STAT CALC ADDITIONS ====
+
     pokemon["pokemon_id"] = generate_pokemon_id()
     return pokemon
+
 
 # ==== /start ====
 @bot.on(events.NewMessage(pattern="/start"))
@@ -195,6 +273,7 @@ async def add_pokemon(event):
     if not existing:
         await event.reply("User profile not found!")
         return
+
     awaiting_pokemon.add(user_id)
     await event.respond(
         "Please paste the meta data of your Pokémon (only next message will be taken)!",
@@ -206,12 +285,16 @@ async def add_pokemon(event):
 async def handle_pokemon_set(event):
     user_id = event.sender_id
     text = event.raw_text
+
     if user_id in awaiting_pokemon and any(k in text for k in ["Ability:", "EVs:", "Nature", "- "]):
         pokemon = parse_showdown_set(text)
+
         pokemon_key = f"{pokemon.get('name','Unknown')}_{pokemon['pokemon_id']}"
         users.update_one({"user_id": user_id}, {"$push": {"pokemon": pokemon_key}}, upsert=True)
         pokedata.update_one({"_id": pokemon_key}, {"$set": pokemon}, upsert=True)
+
         awaiting_pokemon.remove(user_id)
+
         msg = f"✅ Pokémon Saved!\n\n"
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
         msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
@@ -221,9 +304,14 @@ async def handle_pokemon_set(event):
         msg += f"🌩️ Ability: {pokemon.get('ability','None')}\n"
         msg += f"🌈 Tera Type: {pokemon.get('tera_type','None')}\n"
         msg += f"🌿 Nature: {pokemon.get('nature','None')}\n"
+        if pokemon.get("totalhp") is not None:
+            msg += f"📈 Stats: HP {pokemon['totalhp']} / Atk {pokemon['totalatk']} / Def {pokemon['totaldef']} / SpA {pokemon['totalspa']} / SpD {pokemon['totalspd']} / Spe {pokemon['totalspe']}\n\n"
+        else:
+            msg += f"📈 Stats: N/A (base stats not found)\n\n"
         msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}\n\n"
         msg += "📊 EVs: " + ", ".join([f"{k.upper()}={pokemon.get(f'ev{k}',0)}" for k in ['hp','atk','def','spa','spd','spe']]) + "\n"
         msg += "🔢 IVs: " + ", ".join([f"{k.upper()}={pokemon.get(f'iv{k}',31)}" for k in ['hp','atk','def','spa','spd','spe']])
+
         await event.respond(msg)
 
 # ==== /server_reset (Owner only) ====
