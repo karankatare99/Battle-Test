@@ -502,4 +502,443 @@ async def team_switch_pick_second(event):
 async def confirm_switch(event):
     first_index = int(event.pattern_match.group(1))
     second_index = int(event.pattern_match.group(2))
-   
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    team = user.get("team", [])
+    if first_index >= len(team) or second_index >= len(team):
+        await event.answer("⚠️ Invalid Pokémon selection.", alert=True)
+        return
+    team[first_index], team[second_index] = team[second_index], team[first_index]
+    users.update_one({"user_id": user_id}, {"$set": {"team": team}})
+    await event.answer("✅ Pokémon switched!")
+    user = users.find_one({"user_id": user_id})
+    await send_team_page(event, user)
+
+# ==== /summary ====
+active_summaries = {}
+
+@bot.on(events.NewMessage(pattern=r"^/summary (.+)"))
+async def summary_handler(event):
+    query = event.pattern_match.group(1).strip().lower()
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    if not user or "pokemon" not in user or not user["pokemon"]:
+        await event.reply("❌ You don’t have any Pokémon.")
+        return
+    matches = []
+    for poke_id in user["pokemon"]:
+        poke = pokedata.find_one({"_id": poke_id}) or {}
+        if not poke: continue
+        name_lower = poke.get("name","").lower()
+        poke_id_lower = poke.get("pokemon_id","").lower()
+        if query == name_lower or query == poke_id_lower or query in name_lower:
+            matches.append((poke_id, poke))
+    if not matches:
+        await event.reply("❌ No Pokémon found.")
+        return
+    active_summaries[user_id] = matches
+    if len(matches) == 1:
+        await send_summary(event, matches[0][1])
+    else:
+        await send_summary_list(event, matches, 0)
+
+async def send_summary_list(event, matches, page=0):
+    total_pages = (len(matches) - 1) // POKEMON_PER_PAGE + 1
+    start = page * POKEMON_PER_PAGE
+    end = start + POKEMON_PER_PAGE
+    page_items = matches[start:end]
+    text = f"⚠️ Multiple Pokémon found (Page {page+1}/{total_pages}):\n\n"
+    for i, (_, poke) in enumerate(page_items, start=1):
+        text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
+    buttons = []
+    row = []
+    for i, (poke_id, poke) in enumerate(page_items, start=start):
+        row.append(Button.inline(str((i % POKEMON_PER_PAGE) + 1), f"summary:show:{poke_id}".encode()))
+        if len(row) == 5:
+            buttons.append(row); row = []
+    if row: buttons.append(row)
+    nav = []
+    if page > 0: nav.append(Button.inline("⬅️ Prev", f"summary:page:{page-1}".encode()))
+    if page < total_pages - 1: nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}".encode()))
+    if nav: buttons.append(nav)
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text, buttons=buttons)
+    else:
+        await event.reply(text, buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=b"summary:page:(\d+)"))
+async def summary_page(event):
+    page = int(event.pattern_match.group(1))
+    user_id = event.sender_id
+    matches = active_summaries.get(user_id)
+    if not matches:
+        await event.answer("❌ No active summary search.", alert=True)
+        return
+    await send_summary_list(event, matches, page)
+
+@bot.on(events.CallbackQuery(pattern=b"summary:show:(.+)"))
+async def summary_show(event):
+    poke_id = event.pattern_match.group(1).decode()
+    poke = pokedata.find_one({"_id": poke_id})
+    if not poke:
+        await event.answer("❌ Pokémon not found.", alert=True)
+        return
+    await send_summary(event, poke)
+
+async def send_summary(event, poke):
+    text = (
+        f"📜 Pokémon Summary\n\n"
+        f"🆔 `{poke.get('pokemon_id','?')}`\n"
+        f"✨ Name: {poke.get('name','Unknown')}\n"
+        f"♀️ Gender: {poke.get('gender','?')}\n"
+        f"⭐ Level: {poke.get('level','?')}\n"
+        f"💠 Ability: {poke.get('ability','None')}\n"
+        f"🔮 Tera Type: {poke.get('tera_type','None')}\n"
+        f"🎒 Item: {poke.get('item','None')}\n\n"
+        f"📊 EVs:\n"
+        f"HP: {poke.get('evhp',0)} | Atk: {poke.get('evatk',0)} | Def: {poke.get('evdef',0)}\n"
+        f"SpA: {poke.get('evspa',0)} | SpD: {poke.get('evspd',0)} | Spe: {poke.get('evspe',0)}\n\n"
+        f"🧬 IVs:\n"
+        f"HP: {poke.get('ivhp',31)} | Atk: {poke.get('ivatk',31)} | Def: {poke.get('ivdef',31)}\n"
+        f"SpA: {poke.get('ivspa',31)} | SpD: {poke.get('ivspd',31)} | Spe: {poke.get('ivspe',31)}\n\n"
+        f"⚔️ Moves: {', '.join(poke.get('moves', [])) if poke.get('moves') else 'None'}"
+    )
+    if isinstance(event, events.CallbackQuery.Event):
+        await event.edit(text)
+    else:
+        await event.reply(text)
+
+# =========================
+# ===== BATTLE: MVP =======
+# =========================
+
+def is_private_chat(event):
+    return getattr(event, "is_private", False)
+
+def now_utc():
+    return datetime.utcnow()
+
+def seconds_between(a, b):
+    return int((b - a).total_seconds())
+
+def est_wait_time(queue_len):
+    return 30 if queue_len >= 1 else 60
+
+def team_has_six(user_doc):
+    return len(user_doc.get("team", [])) >= 6
+
+def render_queue_text(start_ts, qlen, mode_str):
+    elapsed = seconds_between(start_ts, now_utc())
+    eta = est_wait_time(qlen)
+    mm_e, ss_e = divmod(elapsed, 60)
+    mm_eta, ss_eta = divmod(eta, 60)
+    return (
+        f"🔎 Finding a {mode_str} match…\n"
+        f"⏳ Estimated wait: {mm_eta:02d}:{ss_eta:02d}\n"
+        f"🕒 Time elapsed: {mm_e:02d}:{ss_e:02d}\n\n"
+        f"Tap Cancel to leave the queue."
+    )
+
+def render_team_preview(user_doc, pick_count):
+    team_ids = user_doc.get("team", [])
+    if not team_ids:
+        return "❌ No team found."
+    pokes = list(pokedata.find({"_id": {"$in": team_ids}}))
+    pmap = {p["_id"]: p for p in pokes}
+    lines = ["👥 Team Preview", f"Pick {pick_count} Pokémon:"]
+    for i, pid in enumerate(team_ids, 1):
+        nm = pmap.get(pid, {}).get("name", "Unknown")
+        lines.append(f"{i}. {nm} ({pid})")
+    return "\n".join(lines)
+
+def render_opponent_team(user_doc):
+    team_ids = user_doc.get("team", [])
+    if not team_ids:
+        return "❌ Opponent has no team."
+    pokes = list(pokedata.find({"_id": {"$in": team_ids}}))
+    pmap = {p["_id"]: p for p in pokes}
+    lines = ["👀 Opponent Team (6 shown)", "You can’t see which 3/4 they’ll bring."]
+    for i, pid in enumerate(team_ids, 1):
+        nm = pmap.get(pid, {}).get("name", "Unknown")
+        lines.append(f"{i}. {nm} ({pid})")
+    return "\n".join(lines)
+
+def leave_queue(user_id):
+    matchmaking.delete_many({"user_id": user_id})
+
+def preview_buttons(user_doc, pick, battle_id, side):
+    team_ids = user_doc.get("team", [])
+    buttons = []
+    row = []
+    for idx, pid in enumerate(team_ids):
+        lab = str(idx+1)
+        row.append(Button.inline(lab, f"battle:teampick:{battle_id}:{side}:{idx}".encode()))
+        if len(row) == 5:
+            buttons.append(row); row = []
+    if row: buttons.append(row)
+    buttons.append([Button.inline(f"✅ Lock ({pick} required)", f"battle:lock:{battle_id}:{side}".encode())])
+    return buttons
+
+# /battle entry (PM-only)
+@bot.on(events.NewMessage(pattern=r"^/battle$"))
+async def battle_entry(event):
+    if not is_private_chat(event):
+        await event.respond("⚠️ Please use /battle in a private chat (PM).")
+        return
+    buttons = [
+        [Button.inline("🏆 Ranked", b"battle:ranked")],
+        [Button.inline("🎮 Casual", b"battle:casual")]
+    ]
+    await event.respond("Choose a battle mode:", buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=b"battle:ranked"))
+async def battle_ranked(event):
+    await event.answer("⚠️ Ranked is still in development.", alert=True)
+
+@bot.on(events.CallbackQuery(pattern=b"battle:casual"))
+async def battle_casual(event):
+    buttons = [
+        [Button.inline("⚔️ Single (3v3 from 6)", b"battle:queue:single")],
+        [Button.inline("🛡️ Double (4v4 from 6)", b"battle:queue:double")]
+    ]
+    await event.edit("Select a format:", buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=b"battle:queue:(single|double)"))
+async def battle_queue(event):
+    fmt = event.pattern_match.group(1).decode()
+    user_id = event.sender_id
+    user = users.find_one({"user_id": user_id})
+    if not user:
+        await event.answer("❌ No profile found. Use /start first.", alert=True); return
+    if not team_has_six(user):
+        await event.answer("❌ A full team of 6 is required.", alert=True); return
+
+    leave_queue(user_id)
+    start_ts = now_utc()
+    matchmaking.insert_one({"user_id": user_id, "format": fmt, "status": "searching", "started_at": start_ts})
+    mode_str = "Singles (3/6)" if fmt == "single" else "Doubles (4/6)"
+    qcount = matchmaking.count_documents({"format": fmt, "status": "searching"})
+    msg = await event.edit(
+        render_queue_text(start_ts, qcount, mode_str),
+        buttons=[[Button.inline("❌ Cancel", b"battle:cancelq")]]
+    )
+
+    opp = matchmaking.find_one({"format": fmt, "status": "searching", "user_id": {"$ne": user_id}})
+    if opp:
+        await pair_and_start_preview(fmt, user_id, opp["user_id"], msg); return
+
+    timeout = 10 * 60
+    interval = 10
+    elapsed = 0
+    while elapsed < timeout:
+        await asyncio.sleep(interval)
+        elapsed += interval
+        me = matchmaking.find_one({"user_id": user_id, "format": fmt, "status": "searching"})
+        if not me:
+            try: await msg.edit("❌ You left the queue.")
+            except: pass
+            return
+        opp = matchmaking.find_one({"format": fmt, "status": "searching", "user_id": {"$ne": user_id}})
+        if opp:
+            await pair_and_start_preview(fmt, user_id, opp["user_id"], msg); return
+        try:
+            qcount = matchmaking.count_documents({"format": fmt, "status": "searching"})
+            await msg.edit(
+                render_queue_text(start_ts, qcount, mode_str),
+                buttons=[[Button.inline("❌ Cancel", b"battle:cancelq")]]
+            )
+        except:
+            pass
+
+    leave_queue(user_id)
+    try: await msg.edit("⌛ No opponent found within 10 minutes. Queue cancelled.")
+    except: pass
+
+@bot.on(events.CallbackQuery(pattern=b"battle:cancelq"))
+async def cancel_queue(event):
+    user_id = event.sender_id
+    leave_queue(user_id)
+    await event.edit("❌ Queue cancelled.", buttons=None)
+
+async def pair_and_start_preview(fmt, p1_id, p2_id, queue_msg):
+    leave_queue(p1_id); leave_queue(p2_id)
+    pick = 3 if fmt == "single" else 4
+    battle = {
+        "format": fmt,
+        "status": "preview",
+        "p1_id": p1_id,
+        "p2_id": p2_id,
+        "pick_count": pick,
+        "created_at": now_utc(),
+        "preview_started_at": now_utc(),
+        "p1_selected": [],
+        "p2_selected": [],
+        "p1_locked": False,
+        "p2_locked": False,
+        "timer_secs": 90
+    }
+    res = battles.insert_one(battle)
+    battle_id = str(res.inserted_id)
+    try: await queue_msg.edit("✅ Opponent found! Opening Team Preview…")
+    except: pass
+
+    p1 = users.find_one({"user_id": p1_id}) or {}
+    p2 = users.find_one({"user_id": p2_id}) or {}
+    p1_text_self = render_team_preview(p1, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
+    p2_text_self = render_team_preview(p2, pick) + f"\n\n⏱ 90s to choose.\nBattle ID: {battle_id}"
+    p1_text_opp = render_opponent_team(p2)
+    p2_text_opp = render_opponent_team(p1)
+    btns1 = preview_buttons(p1, pick, battle_id, side="p1")
+    btns2 = preview_buttons(p2, pick, battle_id, side="p2")
+
+    await bot.send_message(p1_id, p1_text_opp)
+    await bot.send_message(p1_id, p1_text_self, buttons=btns1)
+    await bot.send_message(p2_id, p2_text_opp)
+    await bot.send_message(p2_id, p2_text_self, buttons=btns2)
+
+    asyncio.create_task(preview_timer_task(battle_id))
+
+@bot.on(events.CallbackQuery(pattern=b"battle:teampick:([0-9a-fA-F]+):([a-z0-9]+):(\d+)"))
+async def team_pick_toggle(event):
+    battle_id = event.pattern_match.group(1).decode()
+    side = event.pattern_match.group(2).decode()
+    idx = int(event.pattern_match.group(3).decode())
+    user_id = event.sender_id
+
+    battle = battles.find_one({"_id": ObjectId(battle_id)})
+    if not battle or battle.get("status") != "preview":
+        await event.answer("❌ Preview not active.", alert=True); return
+    if (side == "p1" and battle.get("p1_id") != user_id) or (side == "p2" and battle.get("p2_id") != user_id):
+        await event.answer("❌ Not your preview.", alert=True); return
+
+    pick = battle.get("pick_count", 3 if battle.get("format") == "single" else 4)
+    user = users.find_one({"user_id": user_id}) or {}
+    team_ids = user.get("team", [])
+    if idx < 0 or idx >= len(team_ids):
+        await event.answer("❌ Invalid slot.", alert=True); return
+    pid = team_ids[idx]
+
+    sel_key = "p1_selected" if side == "p1" else "p2_selected"
+    selected = list(battle.get(sel_key, []))
+    if pid in selected:
+        selected.remove(pid)
+    else:
+        if len(selected) >= pick:
+            await event.answer(f"⚠️ You can only pick {pick}.", alert=True); return
+        selected.append(pid)  # preserve order
+
+    battles.update_one({"_id": battle["_id"]}, {"$set": {sel_key: selected}})
+
+    text = render_team_preview(user, pick) + f"\n\nSelected: {len(selected)}/{pick}"
+    btns = preview_buttons(user, pick, str(battle["_id"]), side)
+    try: await event.edit(text, buttons=btns)
+    except: pass
+
+@bot.on(events.CallbackQuery(pattern=b"battle:lock:([0-9a-fA-F]+):([a-z0-9]+)"))
+async def team_lock(event):
+    battle_id = event.pattern_match.group(1).decode()
+    side = event.pattern_match.group(2).decode()
+    user_id = event.sender_id
+
+    battle = battles.find_one({"_id": ObjectId(battle_id)})
+    if not battle or battle.get("status") != "preview":
+        await event.answer("❌ Preview not active.", alert=True); return
+    if (side == "p1" and battle.get("p1_id") != user_id) or (side == "p2" and battle.get("p2_id") != user_id):
+        await event.answer("❌ Not your preview.", alert=True); return
+
+    pick = battle.get("pick_count", 3 if battle.get("format") == "single" else 4)
+    sel_key = "p1_selected" if side == "p1" else "p2_selected"
+    lock_key = "p1_locked" if side == "p1" else "p2_locked"
+    selected = battle.get(sel_key, [])
+    if len(selected) != pick:
+        await event.answer(f"⚠️ Select exactly {pick} Pokémon before locking.", alert=True); return
+
+    battles.update_one({"_id": battle["_id"]}, {"$set": {lock_key: True}})
+    await event.answer("✅ Locked!", alert=False)
+
+    battle = battles.find_one({"_id": battle["_id"]})
+    if battle.get("p1_locked") and battle.get("p2_locked"):
+        await start_battle_ready(battle)
+
+async def preview_timer_task(battle_id):
+    tick = 5
+    total = 90
+    elapsed = 0
+    while elapsed < total:
+        await asyncio.sleep(tick)
+        elapsed += tick
+        battle = battles.find_one({"_id": ObjectId(battle_id)})
+        if not battle or battle.get("status") != "preview":
+            return
+        if battle.get("p1_locked") and battle.get("p2_locked"):
+            await start_battle_ready(battle)
+            return
+
+    battle = battles.find_one({"_id": ObjectId(battle_id)})
+    if not battle or battle.get("status") != "preview":
+        return
+    pick = battle.get("pick_count", 3 if battle.get("format") == "single" else 4)
+    p1_ok = len(battle.get("p1_selected", [])) == pick
+    p2_ok = len(battle.get("p2_selected", [])) == pick
+    if p1_ok and p2_ok:
+        battles.update_one({"_id": battle["_id"]}, {"$set": {"p1_locked": True, "p2_locked": True}})
+        await start_battle_ready(battle)
+    else:
+        battles.update_one({"_id": battle["_id"]}, {"$set": {"status": "cancelled"}})
+        try: await bot.send_message(battle["p1_id"], "⏰ Team preview expired, match cancelled.")
+        except: pass
+        try: await bot.send_message(battle["p2_id"], "⏰ Team preview expired, match cancelled.")
+        except: pass
+
+# Lead order equals pick order
+def build_battle_sides_from_picks(battle):
+    fmt = battle.get("format", "single")
+    p1_sel = battle.get("p1_selected", [])
+    p2_sel = battle.get("p2_selected", [])
+    if fmt == "single":
+        p1_active = p1_sel[:1]; p1_bench = p1_sel[1:]
+        p2_active = p2_sel[:1]; p2_bench = p2_sel[1:]
+    else:
+        p1_active = p1_sel[:2]; p1_bench = p1_sel[2:]
+        p2_active = p2_sel[:2]; p2_bench = p2_sel[2:]
+    return {"p1_active": p1_active, "p1_bench": p1_bench, "p2_active": p2_active, "p2_bench": p2_bench}
+
+def names_for_ids(id_list):
+    if not id_list: return []
+    pokes = list(pokedata.find({"_id": {"$in": id_list}}))
+    pmap = {p["_id"]: p for p in pokes}
+    return [pmap.get(pid, {}).get("name", "Unknown") for pid in id_list]
+
+def format_lead_message(fmt, active_ids, bench_ids):
+    active_names = names_for_ids(active_ids)
+    bench_names = names_for_ids(bench_ids)
+    if fmt == "single":
+        lead_line = f"Lead: {active_names[0] if active_names else 'Unknown'}"
+    else:
+        lead_line = f"Leads: {', '.join(active_names) if active_names else 'Unknown'}"
+    bench_line = f"Bench: {', '.join(bench_names) if bench_names else 'None'}"
+    return f"{lead_line}\n{bench_line}"
+
+async def start_battle_ready(battle):
+    fmt = battle.get("format", "single")
+    picks = build_battle_sides_from_picks(battle)
+    battles.update_one(
+        {"_id": battle["_id"]},
+        {"$set": {
+            "status": "active",
+            "p1_active": picks["p1_active"],
+            "p1_bench": picks["p1_bench"],
+            "p2_active": picks["p2_active"],
+            "p2_bench": picks["p2_bench"],
+            "turn": 1
+        }}
+    )
+    p1_msg = "✅ Team locked. Battle starts!\n\n" + format_lead_message(fmt, picks["p1_active"], picks["p1_bench"])
+    p2_msg = "✅ Team locked. Battle starts!\n\n" + format_lead_message(fmt, picks["p2_active"], picks["p2_bench"])
+    try: await bot.send_message(battle["p1_id"], p1_msg)
+    except: pass
+    try: await bot.send_message(battle["p2_id"], p2_msg)
+    except: pass
+
+print("Bot running...")
+bot.run_until_disconnected()
