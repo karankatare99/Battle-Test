@@ -126,9 +126,9 @@ def parse_showdown_set(text):
     for stat in ["hp","atk","def","spa","spd","spe"]:
         pokemon[f"ev{stat}"] = evs[stat]
         pokemon[f"iv{stat}"] = ivs[stat]
-    
+    add_final_stata(pokemon["name"]) 
     pokemon["pokemon_id"] = generate_pokemon_id()
-    return add_final_stats(pokemon)
+    return pokemon
 
 
 with open("kanto_data.json", "r") as f:
@@ -185,7 +185,7 @@ def add_final_stats(pokemon):
     final_stats["spe"] = calculate_stat(base_stats["Speed"], pokemon["ivspe"], pokemon["evspe"], level, nature, "spe")
 
     pokemon.update(final_stats)
-    return pokemon
+    
 # ==== /start ====
 @bot.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
