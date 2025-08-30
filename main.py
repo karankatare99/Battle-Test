@@ -1198,7 +1198,7 @@ async def start_battle_ready(battle):
         "p1_time": 7*60, "p2_time": 7*60, "game_time": 20*60,
         "turn_deadline": now + 45,
         "p1_choice": None, "p2_choice": None
-    }}})
+    }})
     try: await bot.send_message(battle["p1_id"], "✅ Team locked. Battle starts!")
     except: pass
     try: await bot.send_message(battle["p2_id"], "✅ Team locked. Battle starts!")
