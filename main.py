@@ -66,6 +66,39 @@ def parse_stats(ev_str, iv_str):
                 if stat == "spe": stat = "spe"
                 ivs[stat] = int(val)
     return evs, ivs
+NATURES = {
+    "Hardy": {},
+    "Docile": {},
+    "Serious": {},
+    "Bashful": {},
+    "Quirky": {},
+    "None": {},
+
+    "Lonely": {"atk": 1.1, "def": 0.9},
+    "Adamant": {"atk": 1.1, "spa": 0.9},
+    "Naughty": {"atk": 1.1, "spd": 0.9},
+    "Brave": {"atk": 1.1, "spe": 0.9},
+
+    "Bold": {"def": 1.1, "atk": 0.9},
+    "Impish": {"def": 1.1, "spa": 0.9},
+    "Lax": {"def": 1.1, "spd": 0.9},
+    "Relaxed": {"def": 1.1, "spe": 0.9},
+
+    "Modest": {"spa": 1.1, "atk": 0.9},
+    "Mild": {"spa": 1.1, "def": 0.9},
+    "Rash": {"spa": 1.1, "spd": 0.9},
+    "Quiet": {"spa": 1.1, "spe": 0.9},
+
+    "Calm": {"spd": 1.1, "atk": 0.9},
+    "Gentle": {"spd": 1.1, "def": 0.9},
+    "Careful": {"spd": 1.1, "spa": 0.9},
+    "Sassy": {"spd": 1.1, "spe": 0.9},
+
+    "Timid": {"spe": 1.1, "atk": 0.9},
+    "Hasty": {"spe": 1.1, "def": 0.9},
+    "Jolly": {"spe": 1.1, "spa": 0.9},
+    "Naive": {"spe": 1.1, "spd": 0.9},
+}
 
 # ==== Helper: Parse Pokémon Showdown Set ====
 def parse_showdown_set(text):
