@@ -120,14 +120,13 @@ def _level50_stats(poke):
     n = _nature_tuple(poke.get("nature","None"))
     L = 50
 
-    # Non-HP stat helper
     def s(ev, iv, base_val, nmult):
         return math.floor((math.floor(((2*base_val + iv + math.floor(ev/4)) * L) / 100) + 5) * nmult)
 
-    # HP uses base and no nature
+    # HP uses base and no nature multiplier
     hp = math.floor(((2*base + poke.get("ivhp",31) + math.floor(poke.get("evhp",0)/4)) * L) / 100) + L + 10
 
-    # Others use base[1..5] and apply nature multipliers in order (Atk, Def, SpA, SpD, Spe)
+    # Others use base[1..5] with nature multipliers (Atk, Def, SpA, SpD, Spe)
     atk = s(poke.get("evatk",0), poke.get("ivatk",31), base[1], n)
     dfn = s(poke.get("evdef",0), poke.get("ivdef",31), base[12], n[1])
     spa = s(poke.get("evspa",0), poke.get("ivspa",31), base[13], n[12])
@@ -135,6 +134,7 @@ def _level50_stats(poke):
     spe = s(poke.get("evspe",0), poke.get("ivspe",31), base[15], n[14])
 
     return {"hp": hp, "atk": atk, "def": dfn, "spa": spa, "spd": spd, "spe": spe, "level": L}
+
 
 
 
