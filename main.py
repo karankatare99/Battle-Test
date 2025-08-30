@@ -170,7 +170,7 @@ def calculate_stat(base, iv, ev, level, nature, stat):
         return stat_val
 
 def add_final_stats(pokemon):
-    name = pokemon["name"]
+    name = pokemon
     base_stats = kanto_data[name]["Base_Stats"]
 
     level = pokemon.get("level", 100)
