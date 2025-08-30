@@ -1,4 +1,4 @@
-import random
+import random, json, math
 import string
 import asyncio
 from datetime import datetime
@@ -66,39 +66,6 @@ def parse_stats(ev_str, iv_str):
                 if stat == "spe": stat = "spe"
                 ivs[stat] = int(val)
     return evs, ivs
-NATURES = {
-    "Hardy": {},
-    "Docile": {},
-    "Serious": {},
-    "Bashful": {},
-    "Quirky": {},
-    "None": {},
-
-    "Lonely": {"atk": 1.1, "def": 0.9},
-    "Adamant": {"atk": 1.1, "spa": 0.9},
-    "Naughty": {"atk": 1.1, "spd": 0.9},
-    "Brave": {"atk": 1.1, "spe": 0.9},
-
-    "Bold": {"def": 1.1, "atk": 0.9},
-    "Impish": {"def": 1.1, "spa": 0.9},
-    "Lax": {"def": 1.1, "spd": 0.9},
-    "Relaxed": {"def": 1.1, "spe": 0.9},
-
-    "Modest": {"spa": 1.1, "atk": 0.9},
-    "Mild": {"spa": 1.1, "def": 0.9},
-    "Rash": {"spa": 1.1, "spd": 0.9},
-    "Quiet": {"spa": 1.1, "spe": 0.9},
-
-    "Calm": {"spd": 1.1, "atk": 0.9},
-    "Gentle": {"spd": 1.1, "def": 0.9},
-    "Careful": {"spd": 1.1, "spa": 0.9},
-    "Sassy": {"spd": 1.1, "spe": 0.9},
-
-    "Timid": {"spe": 1.1, "atk": 0.9},
-    "Hasty": {"spe": 1.1, "def": 0.9},
-    "Jolly": {"spe": 1.1, "spa": 0.9},
-    "Naive": {"spe": 1.1, "spd": 0.9},
-}
 
 # ==== Helper: Parse Pokémon Showdown Set ====
 def parse_showdown_set(text):
@@ -161,8 +128,64 @@ def parse_showdown_set(text):
         pokemon[f"iv{stat}"] = ivs[stat]
     
     pokemon["pokemon_id"] = generate_pokemon_id()
-    return pokemon
+    return add_final_stats(pokemon)
 
+
+with open("kanto_data.json", "r") as f:
+    kanto_data = json.load(f)
+
+nature_chart = {
+    "Adamant": {"atk": 1.1, "spa": 0.9},
+    "Lonely": {"atk": 1.1, "def": 0.9},
+    "Brave": {"atk": 1.1, "spe": 0.9},
+    "Naughty": {"atk": 1.1, "spd": 0.9},
+    "Bold": {"def": 1.1, "atk": 0.9},
+    "Impish": {"def": 1.1, "spa": 0.9},
+    "Relaxed": {"def": 1.1, "spe": 0.9},
+    "Lax": {"def": 1.1, "spd": 0.9},
+    "Modest": {"spa": 1.1, "atk": 0.9},
+    "Mild": {"spa": 1.1, "def": 0.9},
+    "Quiet": {"spa": 1.1, "spe": 0.9},
+    "Rash": {"spa": 1.1, "spd": 0.9},
+    "Calm": {"spd": 1.1, "atk": 0.9},
+    "Gentle": {"spd": 1.1, "def": 0.9},
+    "Sassy": {"spd": 1.1, "spe": 0.9},
+    "Careful": {"spd": 1.1, "spa": 0.9},
+    "Timid": {"spe": 1.1, "atk": 0.9},
+    "Hasty": {"spe": 1.1, "def": 0.9},
+    "Jolly": {"spe": 1.1, "spa": 0.9},
+    "Naive": {"spe": 1.1, "spd": 0.9},
+}
+
+def calculate_stat(base, iv, ev, level, nature, stat):
+    if stat == "hp":
+        if base == 1:  # Shedinja case
+            return 1
+        return math.floor(((2 * base + iv + ev // 4) * level) / 100) + level + 10
+    else:
+        stat_val = math.floor(((2 * base + iv + ev // 4) * level) / 100) + 5
+        if nature in nature_chart:
+            if stat in nature_chart[nature]:
+                stat_val = math.floor(stat_val * nature_chart[nature][stat])
+        return stat_val
+
+def add_final_stats(pokemon):
+    name = pokemon["name"]
+    base_stats = kanto_data[name]["Base_Stats"]
+
+    level = pokemon.get("level", 100)
+    nature = pokemon.get("nature", "None")
+
+    final_stats = {}
+    final_stats["hp"] = calculate_stat(base_stats["Hp"], pokemon["ivhp"], pokemon["evhp"], level, nature, "hp")
+    final_stats["atk"] = calculate_stat(base_stats["Attack"], pokemon["ivatk"], pokemon["evatk"], level, nature, "atk")
+    final_stats["def"] = calculate_stat(base_stats["Defense"], pokemon["ivdef"], pokemon["evdef"], level, nature, "def")
+    final_stats["spa"] = calculate_stat(base_stats["Sp.Attack"], pokemon["ivspa"], pokemon["evspa"], level, nature, "spa")
+    final_stats["spd"] = calculate_stat(base_stats["Sp.Defense"], pokemon["ivspd"], pokemon["evspd"], level, nature, "spd")
+    final_stats["spe"] = calculate_stat(base_stats["Speed"], pokemon["ivspe"], pokemon["evspe"], level, nature, "spe")
+
+    pokemon.update(final_stats)
+    return pokemon
 # ==== /start ====
 @bot.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
