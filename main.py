@@ -173,7 +173,8 @@ def calculate_stat(base, iv, ev, level, nature, stat):
 
 def add_final_stats(pokemon):
     name = pokemon["name"] 
-    level = pokemon["name"] 
+    level = pokemon["level"] 
+    nature = pokemon["nature"] 
     base_stats = kanto_data[name]["Base_Stats"]
     hp = base_stats["Hp"]
     atk = base_stats["Attack"]
@@ -181,8 +182,7 @@ def add_final_stats(pokemon):
     spa = base_stats["Sp.Attack"]
     spd = base_stats["Sp.Defense"]
     spe = base_stats["Speed"]
-    level = level
-    nature = nature
+    
 
     final_stats = {}
     final_stats["hp"] = calculate_stat(hp, pokemon["ivhp"] , pokemon["evhp"], level, nature, "hp")
