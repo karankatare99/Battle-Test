@@ -1,10 +1,9 @@
 import random
 import string
 import asyncio
-import json
-import math
 from datetime import datetime
 from collections import Counter
+
 from telethon import TelegramClient, events, Button
 from pymongo import MongoClient
 from bson import ObjectId
@@ -43,7 +42,6 @@ def generate_pokemon_id():
 def parse_stats(ev_str, iv_str):
     evs = {s: 0 for s in ["hp","atk","def","spa","spd","spe"]}
     ivs = {s: 31 for s in ["hp","atk","def","spa","spd","spe"]}
-
     if ev_str:
         parts = ev_str.split("/")
         for p in parts:
@@ -56,7 +54,6 @@ def parse_stats(ev_str, iv_str):
                 if stat == "spe": stat = "spe"
                 val = min(int(val), 252)
                 evs[stat] = val
-
     if iv_str:
         parts = iv_str.split("/")
         for p in parts:
@@ -68,91 +65,17 @@ def parse_stats(ev_str, iv_str):
                 if stat == "spd": stat = "spd"
                 if stat == "spe": stat = "spe"
                 ivs[stat] = int(val)
-
     return evs, ivs
-
-# ==== STAT CALC ADDITIONS: Natures and stat formulas (Gen 3+) ====
-NEUTRAL_NATURES = {"Hardy","Docile","Serious","Bashful","Quirky"}
-NATURES = {
-    "Lonely": ("atk","def"), "Adamant": ("atk","spa"), "Naughty": ("atk","spd"), "Brave": ("atk","spe"),
-    "Bold": ("def","atk"), "Impish": ("def","spa"), "Lax": ("def","spd"), "Relaxed": ("def","spe"),
-    "Modest": ("spa","atk"), "Mild": ("spa","def"), "Rash": ("spa","spd"), "Quiet": ("spa","spe"),
-    "Calm": ("spd","atk"), "Gentle": ("spd","def"), "Careful": ("spd","spa"), "Sassy": ("spd","spe"),
-    "Timid": ("spe","atk"), "Hasty": ("spe","def"), "Jolly": ("spe","spa"), "Naive": ("spe","spd"),
-}
-STAT_KEYS = ["hp","atk","def","spa","spd","spe"]
-
-def nature_multipliers(nature: str):
-    mult = {s:1.0 for s in STAT_KEYS}
-    if not nature:
-        return mult
-    nat = nature.strip().title()
-    if nat in NEUTRAL_NATURES or nat in ("None",""):
-        return mult
-    up_down = NATURES.get(nat)
-    if up_down:
-        up, down = up_down
-        mult[up] = 1.1
-        mult[down] = 0.9
-    return mult
-
-def calc_hp(base, iv, ev, level):
-    # HP: floor(((2*Base + IV + floor(EV/4)) * Level)/100) + Level + 10
-    return math.floor(((2*base + iv + ev//4) * level) / 100) + level + 10
-
-def calc_other(base, iv, ev, level, nmult):
-    # Non-HP: floor((floor(((2*Base + IV + floor(EV/4)) * Level)/100) + 5) * Nature)
-    raw = math.floor(((2*base + iv + ev//4) * level) / 100) + 5
-    return math.floor(raw * nmult)
-
-def load_kanto_base_stats(path, species_name):
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    entry = data.get(species_name)
-    if not entry:
-        raise KeyError(f"Species not found in kanto data: {species_name}")
-    bs = entry["Base_Stats"]
-    return {
-        "hp": int(bs["Hp"]),
-        "atk": int(bs["Attack"]),
-        "def": int(bs["Defense"]),
-        "spa": int(bs["Sp.Attack"]),
-        "spd": int(bs["Sp.Defense"]),
-        "spe": int(bs["Speed"]),
-    }
-
-def attach_total_stats(pokemon: dict, base_stats: dict):
-    level = int(pokemon.get("level", 100))
-    mults = nature_multipliers(pokemon.get("nature", "None"))
-    pokemon["totalhp"]  = calc_hp(base_stats["hp"],  int(pokemon.get("ivhp",31)),  int(pokemon.get("evhp",0)),  level)
-    pokemon["totalatk"] = calc_other(base_stats["atk"], int(pokemon.get("ivatk",31)), int(pokemon.get("evatk",0)), level, mults["atk"])
-    pokemon["totaldef"] = calc_other(base_stats["def"], int(pokemon.get("ivdef",31)), int(pokemon.get("evdef",0)), level, mults["def"])
-    pokemon["totalspa"] = calc_other(base_stats["spa"], int(pokemon.get("ivspa",31)), int(pokemon.get("evspa",0)), level, mults["spa"])
-    pokemon["totalspd"] = calc_other(base_stats["spd"], int(pokemon.get("ivspd",31)), int(pokemon.get("evspd",0)), level, mults["spd"])
-    pokemon["totalspe"] = calc_other(base_stats["spe"], int(pokemon.get("ivspe",31)), int(pokemon.get("evspe",0)), level, mults["spe"])
-    return pokemon
-# ==== END STAT CALC ADDITIONS ====
 
 # ==== Helper: Parse Pokémon Showdown Set ====
 def parse_showdown_set(text):
-    # Normalize to string to avoid '.strip' on list/tuple
-    if isinstance(text, (list, tuple)):
-        text = "\n".join(map(str, text))
-    elif not isinstance(text, str):
-        text = str(text)
-
-    lines = text.splitlines()
-    # Trim and drop empties for robustness
-    lines = [ln.strip() for ln in lines if isinstance(ln, str) and ln.strip()]
-    if not lines:
-        raise ValueError("Empty Showdown set input")
-
+    lines = text.strip().splitlines()
     pokemon = {}
 
     evs = {s: 0 for s in ["hp","atk","def","spa","spd","spe"]}
     ivs = {s: 31 for s in ["hp","atk","def","spa","spd","spe"]}
 
-    first_line = lines
+    first_line = lines[0]
     if "(M)" in first_line:
         gender = "Male"; first_line = first_line.replace("(M)", "").strip()
     elif "(F)" in first_line:
@@ -161,7 +84,7 @@ def parse_showdown_set(text):
         gender = random.choice(["Male","Female"])
 
     if "@" in first_line:
-        name_part, item = first_line.split("@", 1)
+        name_part, item = first_line.split("@")
         pokemon["name"] = name_part.strip()
         pokemon["item"] = item.strip()
     else:
@@ -176,8 +99,6 @@ def parse_showdown_set(text):
 
     for line in lines[1:]:
         line = line.strip()
-        if not line:
-            continue
         if line.startswith("Ability:"):
             pokemon["ability"] = line.replace("Ability:", "").strip()
         elif line.startswith("Shiny:"):
@@ -189,12 +110,8 @@ def parse_showdown_set(text):
                 pokemon["level"] = int(line.replace("Level:", "").strip())
             except:
                 pokemon["level"] = 100
-        elif line.endswith("Nature") or line.startswith("Nature"):
-            # Accept "Adamant Nature" and "Nature: Adamant"
-            if line.endswith("Nature") and ":" not in line:
-                pokemon["nature"] = line.replace("Nature", "").strip()
-            else:
-                pokemon["nature"] = line.replace("Nature", "").replace(":", "").strip()
+        elif line.startswith("Nature"):
+            pokemon["nature"] = line.replace("Nature", "").strip()
         elif line.startswith("EVs:"):
             ev_line = line.replace("EVs:", "").strip()
             evs_parsed, _ = parse_stats(ev_line, None)
@@ -205,18 +122,11 @@ def parse_showdown_set(text):
             ivs.update(ivs_parsed)
         elif line.startswith("- "):
             pokemon["moves"].append(line.replace("- ", "").strip())
-
+    
     for stat in ["hp","atk","def","spa","spd","spe"]:
         pokemon[f"ev{stat}"] = evs[stat]
         pokemon[f"iv{stat}"] = ivs[stat]
-
-    # Compute total stats from kanto_data.json; non-fatal on missing species
-    try:
-        base_stats = load_kanto_base_stats("kanto_data.json", pokemon["name"])
-        attach_total_stats(pokemon, base_stats)
-    except Exception:
-        pokemon["totalhp"]=pokemon["totalatk"]=pokemon["totaldef"]=pokemon["totalspa"]=pokemon["totalspd"]=pokemon["totalspe"]=None
-
+    
     pokemon["pokemon_id"] = generate_pokemon_id()
     return pokemon
 
@@ -225,12 +135,10 @@ def parse_showdown_set(text):
 async def start_handler(event):
     user_id = event.sender_id
     first_name = event.sender.first_name
-
     authorised = auth.find_one({"user_id": user_id})
     if not authorised and user_id != owner:
         await event.respond("❌ You are not authorised to use this bot.")
         return
-
     existing = users.find_one({"user_id": user_id})
     if not existing:
         users.insert_one({"user_id": user_id, "name": first_name, "pokemon": [], "team": []})
@@ -252,15 +160,12 @@ async def authorise_handler(event):
     if not event.is_reply:
         await event.respond("⚠️ Please reply to a user's message with /authorise.")
         return
-
     reply_msg = await event.get_reply_message()
     target_id = reply_msg.sender_id
     target = await bot.get_entity(target_id)
-
     if user_id != owner:
         await event.reply("❌ You are not the Owner!")
         return
-
     existing = auth.find_one({"user_id": target_id})
     if existing:
         await event.respond(f"✅ {target.first_name} is already authorised.")
@@ -275,7 +180,6 @@ async def authlist_handler(event):
     if not authorised_users:
         await event.respond("📂 No authorised users yet.")
         return
-
     msg = "👑 Authorised Users:\n"
     for u in authorised_users:
         msg += f"- {u['name']} ({u['user_id']})\n"
@@ -291,7 +195,6 @@ async def add_pokemon(event):
     if not existing:
         await event.reply("User profile not found!")
         return
-
     awaiting_pokemon.add(user_id)
     await event.respond(
         "Please paste the meta data of your Pokémon (only next message will be taken)!",
@@ -303,16 +206,12 @@ async def add_pokemon(event):
 async def handle_pokemon_set(event):
     user_id = event.sender_id
     text = event.raw_text
-
-    if user_id in awaiting_pokemon and isinstance(text, str) and any(k in text for k in ["Ability:", "EVs:", "Nature", "- "]):
+    if user_id in awaiting_pokemon and any(k in text for k in ["Ability:", "EVs:", "Nature", "- "]):
         pokemon = parse_showdown_set(text)
-
         pokemon_key = f"{pokemon.get('name','Unknown')}_{pokemon['pokemon_id']}"
         users.update_one({"user_id": user_id}, {"$push": {"pokemon": pokemon_key}}, upsert=True)
         pokedata.update_one({"_id": pokemon_key}, {"$set": pokemon}, upsert=True)
-
         awaiting_pokemon.remove(user_id)
-
         msg = f"✅ Pokémon Saved!\n\n"
         msg += f"🆔 ID: `{pokemon['pokemon_id']}`\n"
         msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
@@ -322,15 +221,9 @@ async def handle_pokemon_set(event):
         msg += f"🌩️ Ability: {pokemon.get('ability','None')}\n"
         msg += f"🌈 Tera Type: {pokemon.get('tera_type','None')}\n"
         msg += f"🌿 Nature: {pokemon.get('nature','None')}\n"
-        if pokemon.get("totalhp") is not None:
-            msg += f"📈 Stats: HP {pokemon['totalhp']} / Atk {pokemon['totalatk']} / Def {pokemon['totaldef']} / SpA {pokemon['totalspa']} / SpD {pokemon['totalspd']} / Spe {pokemon['totalspe']}\n\n"
-        else:
-            msg += f"📈 Stats: N/A (base stats not found)\n\n"
-        moves = pokemon.get('moves', [])
-        msg += f"⚔️ Moves: {', '.join(moves) if moves else 'None'}\n\n"
+        msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}\n\n"
         msg += "📊 EVs: " + ", ".join([f"{k.upper()}={pokemon.get(f'ev{k}',0)}" for k in ['hp','atk','def','spa','spd','spe']]) + "\n"
         msg += "🔢 IVs: " + ", ".join([f"{k.upper()}={pokemon.get(f'iv{k}',31)}" for k in ['hp','atk','def','spa','spd','spe']])
-
         await event.respond(msg)
 
 # ==== /server_reset (Owner only) ====
@@ -340,7 +233,6 @@ async def server_reset_handler(event):
     if user_id != owner:
         await event.respond("❌ You are not authorised to use this command.")
         return
-
     users.delete_many({})
     auth.delete_many({})
     pokedata.delete_many({})
@@ -356,7 +248,6 @@ async def pokemon_list_handler(event):
     if not user or not user.get("pokemon"):
         await event.respond("❌ You don’t have any Pokémon yet.")
         return
-
     pokemon_ids = user["pokemon"]
     pokes = pokedata.find({"_id": {"$in": pokemon_ids}})
     names = [poke["name"] for poke in pokes]
@@ -370,10 +261,8 @@ async def send_pokemon_page(event, counts, page):
     start = page * per_page
     end = start + per_page
     page_items = poke_list[start:end]
-
     text = f"📜 Your Pokémon (Page {page+1}/{total_pages})\n\n"
     text += "\n".join(page_items) if page_items else "No Pokémon on this page."
-
     buttons = []
     if page > 0:
         buttons.append(Button.inline("⬅️ Prev", data=f"pokemon:{page-1}"))
@@ -406,21 +295,18 @@ async def team_handler(event):
     if not user:
         await event.respond("❌ No profile found. Use /start first.")
         return
-
     team = user.get("team", [])
     if not team:
         text = "⚠️ Your team is empty!\n\nUse ➕ Add to select Pokémon from your profile."
         buttons = [[Button.inline("➕ Add", b"team:addpage:0")]]
         await event.respond(text, buttons=buttons)
         return
-
     await send_team_page(event, user)
 
 async def send_team_page(event, user):
     team_ids = user.get("team", [])
     pokes = list(pokedata.find({"_id": {"$in": team_ids}}))
     poke_map = {p["_id"]: p for p in pokes}
-
     text = "⚔️ Your Team:\n\n"
     for i, poke_id in enumerate(team_ids, 1):
         poke = poke_map.get(poke_id)
@@ -428,12 +314,10 @@ async def send_team_page(event, user):
             text += f"{i}. {poke['name']} (ID: {poke['_id']})\n"
         else:
             text += f"{i}. ❓ Unknown Pokémon ({poke_id})\n"
-
     buttons = [
         [Button.inline("➕ Add", b"team:addpage:0"), Button.inline("➖ Remove", b"team:remove")],
         [Button.inline("🔄 Switch", b"team:switch")]
     ]
-
     if isinstance(event, events.CallbackQuery.Event):
         await event.edit(text, buttons=buttons)
     else:
@@ -446,15 +330,12 @@ async def send_add_page(event, user, page=0):
     if not available_ids:
         await event.answer("❌ No more Pokémon left in your profile to add.", alert=True)
         return
-
     total_pages = (len(available_ids) - 1) // POKEMON_PER_PAGE + 1
     start = page * POKEMON_PER_PAGE
     end = start + POKEMON_PER_PAGE
     page_items = available_ids[start:end]
-
     pokes = list(pokedata.find({"_id": {"$in": page_items}}))
     poke_map = {p["_id"]: p for p in pokes}
-
     text = f"➕ Select a Pokémon to Add (Page {page+1}/{total_pages})\n\n"
     for i, pid in enumerate(page_items, start=1):
         poke = poke_map.get(pid)
@@ -462,7 +343,6 @@ async def send_add_page(event, user, page=0):
             text += f"{i}. {poke['name']} (ID: {poke['_id']})\n"
         else:
             text += f"{i}. ❓ Unknown ({pid})\n"
-
     buttons = []
     row = []
     for i, pid in enumerate(page_items, start=start):
@@ -471,13 +351,11 @@ async def send_add_page(event, user, page=0):
             buttons.append(row)
             row = []
     if row: buttons.append(row)
-
     nav = []
     if page > 0: nav.append(Button.inline("⬅️ Prev", f"team:addpage:{page-1}".encode()))
     if page < total_pages - 1: nav.append(Button.inline("➡️ Next", f"team:addpage:{page+1}".encode()))
     if nav: buttons.append(nav)
     buttons.append([Button.inline("⬅️ Back", b"team:back")])
-
     if isinstance(event, events.CallbackQuery.Event):
         await event.edit(text, buttons=buttons)
     else:
@@ -494,25 +372,20 @@ async def team_add_page(event):
 async def confirm_add(event):
     poke_id = event.pattern_match.group(1).decode()
     user_id = event.sender_id
-
     user = users.find_one({"user_id": user_id})
     team = user.get("team", [])
-
     if len(team) >= 6:
         await event.answer("⚠️ Team is already full (6 Pokémon max)!", alert=True)
         return
-
     owned_ids = user.get("pokemon", [])
     if poke_id not in owned_ids:
         await event.answer("❌ You don’t own this Pokémon.", alert=True)
         return
-
     if poke_id not in team:
         users.update_one({"user_id": user_id}, {"$push": {"team": poke_id}})
         await event.answer("✅ Pokémon added to team!")
     else:
         await event.answer("⚠️ That Pokémon is already in your team.", alert=True)
-
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
@@ -527,17 +400,14 @@ async def send_remove_page(event, user, page=0):
     if not team:
         await event.answer("⚠️ Your team is empty!", alert=True)
         return
-
     total_pages = (len(team) - 1) // POKEMON_PER_PAGE + 1
     start = page * POKEMON_PER_PAGE
     end = start + POKEMON_PER_PAGE
     page_items = team[start:end]
-
     text = f"➖ Select a Pokémon to Remove (Page {page+1}/{total_pages})\n\n"
     for i, poke_id in enumerate(page_items, start=1):
         poke = pokedata.find_one({"_id": poke_id}) or {}
         text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
-
     buttons = []
     row = []
     for i, poke_id in enumerate(page_items, start=start):
@@ -546,13 +416,11 @@ async def send_remove_page(event, user, page=0):
             buttons.append(row)
             row = []
     if row: buttons.append(row)
-
     nav = []
     if page > 0: nav.append(Button.inline("⬅️ Prev", f"team:removepage:{page-1}".encode()))
     if page < total_pages - 1: nav.append(Button.inline("➡️ Next", f"team:removepage:{page+1}".encode()))
     if nav: buttons.append(nav)
     buttons.append([Button.inline("⬅️ Back", b"team:back")])
-
     if isinstance(event, events.CallbackQuery.Event):
         await event.edit(text, buttons=buttons)
     else:
@@ -582,7 +450,6 @@ async def confirm_remove(event):
         await event.answer("🗑 Pokémon removed from team!")
     else:
         await event.answer("⚠️ That Pokémon is not in your team.", alert=True)
-
     user = users.find_one({"user_id": user_id})
     await send_team_page(event, user)
 
@@ -594,12 +461,10 @@ async def team_switch_start(event):
     if len(team) < 2:
         await event.answer("⚠️ You need at least 2 Pokémon in your team to switch.", alert=True)
         return
-
     text = "🔄 Select the first Pokémon to switch:\n\n"
     for i, key in enumerate(team, start=1):
         poke = pokedata.find_one({"_id": key}) or {}
         text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
-
     buttons = []
     row = []
     for i, key in enumerate(team, start=1):
@@ -608,7 +473,6 @@ async def team_switch_start(event):
             buttons.append(row); row = []
     if row: buttons.append(row)
     buttons.append([Button.inline("⬅️ Back", b"team:back")])
-
     await event.edit(text, buttons=buttons)
 
 @bot.on(events.CallbackQuery(pattern=b"team:switch1:(\d+)"))
@@ -619,12 +483,10 @@ async def team_switch_pick_second(event):
     team = user.get("team", [])
     first_poke = pokedata.find_one({"_id": team[first_index]}) or {}
     first_name = first_poke.get("name", "Unknown")
-
     text = f"🔄 Select the second Pokémon to swap with (first chosen: {first_name})\n\n"
     for i, key in enumerate(team, start=1):
         poke = pokedata.find_one({"_id": key}) or {}
         text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
-
     buttons = []
     row = []
     for i in range(len(team)):
@@ -634,7 +496,6 @@ async def team_switch_pick_second(event):
             buttons.append(row); row = []
     if row: buttons.append(row)
     buttons.append([Button.inline("⬅️ Back", b"team:back")])
-
     await event.edit(text, buttons=buttons)
 
 @bot.on(events.CallbackQuery(pattern=b"team:switch2:(\d+):(\d+)"))
@@ -664,7 +525,6 @@ async def summary_handler(event):
     if not user or "pokemon" not in user or not user["pokemon"]:
         await event.reply("❌ You don’t have any Pokémon.")
         return
-
     matches = []
     for poke_id in user["pokemon"]:
         poke = pokedata.find_one({"_id": poke_id}) or {}
@@ -673,14 +533,12 @@ async def summary_handler(event):
         poke_id_lower = poke.get("pokemon_id","").lower()
         if query == name_lower or query == poke_id_lower or query in name_lower:
             matches.append((poke_id, poke))
-
     if not matches:
         await event.reply("❌ No Pokémon found.")
         return
-
     active_summaries[user_id] = matches
     if len(matches) == 1:
-        await send_summary(event, matches[1])
+        await send_summary(event, matches[0][1])
     else:
         await send_summary_list(event, matches, 0)
 
@@ -689,11 +547,9 @@ async def send_summary_list(event, matches, page=0):
     start = page * POKEMON_PER_PAGE
     end = start + POKEMON_PER_PAGE
     page_items = matches[start:end]
-
     text = f"⚠️ Multiple Pokémon found (Page {page+1}/{total_pages}):\n\n"
     for i, (_, poke) in enumerate(page_items, start=1):
         text += f"{i}. {poke.get('name','Unknown')} ({poke.get('pokemon_id','?')})\n"
-
     buttons = []
     row = []
     for i, (poke_id, poke) in enumerate(page_items, start=start):
@@ -701,12 +557,10 @@ async def send_summary_list(event, matches, page=0):
         if len(row) == 5:
             buttons.append(row); row = []
     if row: buttons.append(row)
-
     nav = []
     if page > 0: nav.append(Button.inline("⬅️ Prev", f"summary:page:{page-1}".encode()))
     if page < total_pages - 1: nav.append(Button.inline("➡️ Next", f"summary:page:{page+1}".encode()))
     if nav: buttons.append(nav)
-
     if isinstance(event, events.CallbackQuery.Event):
         await event.edit(text, buttons=buttons)
     else:
@@ -747,15 +601,8 @@ async def send_summary(event, poke):
         f"🧬 IVs:\n"
         f"HP: {poke.get('ivhp',31)} | Atk: {poke.get('ivatk',31)} | Def: {poke.get('ivdef',31)}\n"
         f"SpA: {poke.get('ivspa',31)} | SpD: {poke.get('ivspd',31)} | Spe: {poke.get('ivspe',31)}\n\n"
-        f"📈 Stats: "
-        + (
-            f"HP {poke.get('totalhp','?')} | Atk {poke.get('totalatk','?')} | Def {poke.get('totaldef','?')} | "
-            f"SpA {poke.get('totalspa','?')} | SpD {poke.get('totalspd','?')} | Spe {poke.get('totalspe','?')}\n\n"
-            if poke.get('totalhp') is not None else "N/A (base stats not found)\n\n"
-        )
-        + f"⚔️ Moves: {', '.join(poke.get('moves', [])) if poke.get('moves') else 'None'}"
+        f"⚔️ Moves: {', '.join(poke.get('moves', [])) if poke.get('moves') else 'None'}"
     )
-
     if isinstance(event, events.CallbackQuery.Event):
         await event.edit(text)
     else:
@@ -969,8 +816,8 @@ async def team_pick_toggle(event):
     team_ids = user.get("team", [])
     if idx < 0 or idx >= len(team_ids):
         await event.answer("❌ Invalid slot.", alert=True); return
-
     pid = team_ids[idx]
+
     sel_key = "p1_selected" if side == "p1" else "p2_selected"
     selected = list(battle.get(sel_key, []))
     if pid in selected:
@@ -978,9 +825,10 @@ async def team_pick_toggle(event):
     else:
         if len(selected) >= pick:
             await event.answer(f"⚠️ You can only pick {pick}.", alert=True); return
-        selected.append(pid) # preserve order
+        selected.append(pid)  # preserve order
 
     battles.update_one({"_id": battle["_id"]}, {"$set": {sel_key: selected}})
+
     text = render_team_preview(user, pick) + f"\n\nSelected: {len(selected)}/{pick}"
     btns = preview_buttons(user, pick, str(battle["_id"]), side)
     try: await event.edit(text, buttons=btns)
@@ -1023,12 +871,12 @@ async def preview_timer_task(battle_id):
         if not battle or battle.get("status") != "preview":
             return
         if battle.get("p1_locked") and battle.get("p2_locked"):
-            await start_battle_ready(battle); return
+            await start_battle_ready(battle)
+            return
 
     battle = battles.find_one({"_id": ObjectId(battle_id)})
     if not battle or battle.get("status") != "preview":
         return
-
     pick = battle.get("pick_count", 3 if battle.get("format") == "single" else 4)
     p1_ok = len(battle.get("p1_selected", [])) == pick
     p2_ok = len(battle.get("p2_selected", [])) == pick
@@ -1065,7 +913,7 @@ def format_lead_message(fmt, active_ids, bench_ids):
     active_names = names_for_ids(active_ids)
     bench_names = names_for_ids(bench_ids)
     if fmt == "single":
-        lead_line = f"Lead: {active_names if active_names else 'Unknown'}"
+        lead_line = f"Lead: {active_names[0] if active_names else 'Unknown'}"
     else:
         lead_line = f"Leads: {', '.join(active_names) if active_names else 'Unknown'}"
     bench_line = f"Bench: {', '.join(bench_names) if bench_names else 'None'}"
