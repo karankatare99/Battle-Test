@@ -127,7 +127,7 @@ def parse_showdown_set(text):
         pokemon[f"ev{stat}"] = evs[stat]
         pokemon[f"iv{stat}"] = ivs[stat]
     print(pokemon)
-    add_final_stats(pokemon["name"],pokemon["level"],pokemon["nature"]) 
+    add_final_stats(pokemon) 
     pokemon["pokemon_id"] = generate_pokemon_id()
      
     return pokemon
@@ -171,8 +171,9 @@ def calculate_stat(base, iv, ev, level, nature, stat):
                 stat_val = math.floor(stat_val * nature_chart[nature][stat])
         return stat_val
 
-def add_final_stats(pokemon, level, nature):
-    name = pokemon
+def add_final_stats(pokemon):
+    name = pokemon["name"] 
+    level = pokemon["name"] 
     base_stats = kanto_data[name]["Base_Stats"]
     hp = base_stats["Hp"]
     atk = base_stats["Attack"]
@@ -192,7 +193,7 @@ def add_final_stats(pokemon, level, nature):
     final_stats["spe"] = calculate_stat(spe, pokemon["ivspe"], pokemon["evspe"], level, nature, "spe")
 
     pokemon.update(final_stats)
-    
+    return pokemon
 # ==== /start ====
 @bot.on(events.NewMessage(pattern="/start"))
 async def start_handler(event):
