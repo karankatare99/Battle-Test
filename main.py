@@ -128,6 +128,7 @@ def parse_showdown_set(text):
         pokemon[f"iv{stat}"] = ivs[stat]
     add_final_stats(pokemon["name"],pokemon["level"],pokemon["nature"]) 
     pokemon["pokemon_id"] = generate_pokemon_id()
+    print(pokemon) 
     return pokemon
 
 
@@ -177,7 +178,7 @@ def add_final_stats(pokemon, level, nature):
     nature = nature
 
     final_stats = {}
-    final_stats["hp"] = calculate_stat(base_stats["Hp"], pokemon["ivhp"], pokemon["evhp"], level, nature, "hp")
+    final_stats["hp"] = calculate_stat(int(base_stats["Hp"]) , int(pokemon["ivhp"]) , int(pokemon["evhp"]) , level, nature, "hp")
     final_stats["atk"] = calculate_stat(base_stats["Attack"], pokemon["ivatk"], pokemon["evatk"], level, nature, "atk")
     final_stats["def"] = calculate_stat(base_stats["Defense"], pokemon["ivdef"], pokemon["evdef"], level, nature, "def")
     final_stats["spa"] = calculate_stat(base_stats["Sp.Attack"], pokemon["ivspa"], pokemon["evspa"], level, nature, "spa")
