@@ -116,24 +116,27 @@ def _species_base(nm): return _SPECIES_BASE.get(nm,_FALLBACK_BASE)
 
 def _level50_stats(poke):
     # base is a 6-tuple: (HP, Atk, Def, SpA, SpD, Spe)
-    base = _species_base(poke.get("name","Unknown"))
-    n = _nature_tuple(poke.get("nature","None"))
+    base_hp, base_atk, base_def, base_spa, base_spd, base_spe = _species_base(poke.get("name", "Unknown"))
+    n_atk, n_def, n_spa, n_spd, n_spe = _nature_tuple(poke.get("nature", "None"))
+
     L = 50
 
-    def s(ev, iv, base_val, nmult):
-        return math.floor((math.floor(((2*base_val + iv + math.floor(ev/4)) * L) / 100) + 5) * nmult)
+    # Helper: non-HP stat with nature multiplier
+    def non_hp_stat(ev, iv, base_val, nmult):
+        core = math.floor(((2 * base_val + iv + math.floor(ev / 4)) * L) / 100) + 5
+        return math.floor(core * nmult)
 
-    # HP uses base and no nature multiplier
-    hp = math.floor(((2*base + poke.get("ivhp",31) + math.floor(poke.get("evhp",0)/4)) * L) / 100) + L + 10
+    # HP stat (no nature)
+    hp = math.floor(((2 * base_hp + poke.get("ivhp", 31) + math.floor(poke.get("evhp", 0) / 4)) * L) / 100) + L + 10
 
-    # Others use base[1..5] with nature multipliers (Atk, Def, SpA, SpD, Spe)
-    atk = s(poke.get("evatk",0), poke.get("ivatk",31), base[1], n)
-    dfn = s(poke.get("evdef",0), poke.get("ivdef",31), base[12], n[1])
-    spa = s(poke.get("evspa",0), poke.get("ivspa",31), base[13], n[12])
-    spd = s(poke.get("evspd",0), poke.get("ivspd",31), base[14], n[13])
-    spe = s(poke.get("evspe",0), poke.get("ivspe",31), base[15], n[14])
+    atk = non_hp_stat(poke.get("evatk", 0), poke.get("ivatk", 31), base_atk, n_atk)
+    dfn = non_hp_stat(poke.get("evdef", 0), poke.get("ivdef", 31), base_def, n_def)
+    spa = non_hp_stat(poke.get("evspa", 0), poke.get("ivspa", 31), base_spa, n_spa)
+    spd = non_hp_stat(poke.get("evspd", 0), poke.get("ivspd", 31), base_spd, n_spd)
+    spe = non_hp_stat(poke.get("evspe", 0), poke.get("ivspe", 31), base_spe, n_spe)
 
     return {"hp": hp, "atk": atk, "def": dfn, "spa": spa, "spd": spd, "spe": spe, "level": L}
+
 
 
 
