@@ -126,7 +126,7 @@ def parse_showdown_set(text):
     for stat in ["hp","atk","def","spa","spd","spe"]:
         pokemon[f"ev{stat}"] = evs[stat]
         pokemon[f"iv{stat}"] = ivs[stat]
-    add_final_stats(pokemon["name"]) 
+    add_final_stats(pokemon["name"],pokemon["level"],pokemon["nature"]) 
     pokemon["pokemon_id"] = generate_pokemon_id()
     return pokemon
 
@@ -169,12 +169,12 @@ def calculate_stat(base, iv, ev, level, nature, stat):
                 stat_val = math.floor(stat_val * nature_chart[nature][stat])
         return stat_val
 
-def add_final_stats(pokemon):
+def add_final_stats(pokemon, level, nature):
     name = pokemon
     base_stats = kanto_data[name]["Base_Stats"]
 
-    level = pokemon["level"] 
-    nature = pokemon["nature"]
+    level = level
+    nature = nature
 
     final_stats = {}
     final_stats["hp"] = calculate_stat(base_stats["Hp"], pokemon["ivhp"], pokemon["evhp"], level, nature, "hp")
