@@ -115,17 +115,21 @@ _FALLBACK_BASE=(60,60,60,60,60,60)
 def _species_base(nm): return _SPECIES_BASE.get(nm,_FALLBACK_BASE)
 
 def _level50_stats(poke):
-    base=_species_base(poke.get("name","Unknown"))
-    n=_nature_tuple(poke.get("nature","None"))
-    L=50
-    def s(ev,iv,b,nm): return math.floor((math.floor(((2*b+iv+math.floor(ev/4))*L)/100)+5)*nm)
-    hp=math.floor(((2*base+poke.get("ivhp",31)+math.floor(poke.get("evhp",0)/4))*L)/100)+L+10
-    atk=s(poke.get("evatk",0),poke.get("ivatk",31),base[1],n)
-    dfn=s(poke.get("evdef",0),poke.get("ivdef",31),base[17],n[1])
-    spa=s(poke.get("evspa",0),poke.get("ivspa",31),base[18],n[17])
-    spd=s(poke.get("evspd",0),poke.get("ivspd",31),base[19],n[18])
-    spe=s(poke.get("evspe",0),poke.get("ivspe",31),base[20],n[19])
-    return {"hp":hp,"atk":atk,"def":dfn,"spa":spa,"spd":spd,"spe":spe,"level":L}
+    base = _species_base(poke.get("name","Unknown"))  # tuple: (hp, atk, def, spa, spd, spe)
+    n = _nature_tuple(poke.get("nature","None"))
+    L = 50
+    # helper for non-HP stats
+    def s(ev, iv, base_val, nmult):
+        return math.floor((math.floor(((2*base_val + iv + math.floor(ev/4)) * L) / 100) + 5) * nmult)
+    # HP uses base
+    hp = math.floor(((2*base + poke.get("ivhp",31) + math.floor(poke.get("evhp",0)/4)) * L) / 100) + L + 10
+    atk = s(poke.get("evatk",0), poke.get("ivatk",31), base[1], n)
+    dfn = s(poke.get("evdef",0), poke.get("ivdef",31), base[14], n[1])
+    spa = s(poke.get("evspa",0), poke.get("ivspa",31), base[15], n[14])
+    spd = s(poke.get("evspd",0), poke.get("ivspd",31), base[16], n[15])
+    spe = s(poke.get("evspe",0), poke.get("ivspe",31), base[13], n[16])
+    return {"hp": hp, "atk": atk, "def": dfn, "spa": spa, "spd": spd, "spe": spe, "level": L}
+
 
 def _infer_types(poke):
     nm=(poke.get("name","") or "").lower()
