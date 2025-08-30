@@ -153,45 +153,72 @@ def _hp_opp(cur,maxhp):
     pct=0 if maxhp<=0 else max(0,min(100,round(cur*100/maxhp)))
     return f"{pct}% HP"
 
-def _move_buttons(poke_doc,battle_id,side):
-    moves=(poke_doc.get("moves") or [])[:4]
-    rows=[]; row=[]
-    for i,mv in enumerate(moves):
-        lab=(mv or f"M{i+1}").split("(").strip()
-        row.append(Button.inline(lab[:24], f"bt:mv:{battle_id}:{side}:{i}".encode()))
-        if len(row)==2: rows.append(row); row=[]
+def _move_buttons(poke_doc, battle_id, side, slot_idx):
+    moves = (poke_doc.get("moves") or [])[:4]
+    rows, row = [], []
+    for i, mv in enumerate(moves):
+        raw = mv or f"M{i+1}"
+        lab = raw.split("(", 1).strip()
+        row.append(Button.inline(lab[:24], f"bt:mv:{battle_id}:{side}:{slot_idx}:{i}".encode()))
+        if len(row) == 2:
+            rows.append(row); row = []
     if row: rows.append(row)
-    rows.append([Button.inline("🔁 Switch", f"bt:sw:{battle_id}:{side}".encode()),
-                 Button.inline("🏳️ Forfeit", f"bt:ff:{battle_id}:{side}".encode())])
+    rows.append([
+        Button.inline("🔁 Switch", f"bt:sw:{battle_id}:{side}:{slot_idx}".encode()),
+        Button.inline("🏳️ Forfeit", f"bt:ff:{battle_id}:{side}".encode())
+    ])
     return rows
 
+
 def _render_move_ui(battle, viewer):
-    p1s=battle.get("p1_state",{}); p2s=battle.get("p2_state",{})
-    p1=pokedata.find_one({"_id":p1s.get("active_id")}) or {}
-    p2=pokedata.find_one({"_id":p2s.get("active_id")}) or {}
-    p1n=p1.get("name","?"); p2n=p2.get("name","?")
-    logs=[]
-    if p1s.get("last"): logs.append(p1s["last"])
-    if p2s.get("last"): logs.append(p2s["last"])
-    last_txt=("\n".join(logs)+"\n") if logs else ""
-    remain=max(0,battle.get("turn_deadline",0)-int(_dt.utcnow().timestamp()))
-    if viewer=="p1":
-        header=f"Turn {battle.get('turn',1)}  ⏱ Your: {_fmt_mmss(battle.get('p1_time',0))} | Game: {_fmt_mmss(battle.get('game_time',0))} | Move: {_fmt_mmss(remain)}\n"
-        hps=f"{p1n}: {_hp_own(p1s.get('hp',0),p1s.get('stats',{}).get('hp',1))}\n{p2n}: {_hp_opp(p2s.get('hp',0),p2s.get('stats',{}).get('hp',1))}"
+    p1s, p2s = battle.get("p1_state", {}), battle.get("p2_state", {})
+    p1_act = p1s.get("active", []) or []
+    p2_act = p2s.get("active", []) or []
+
+    def names_for(act_list):
+        ids = [s.get("id") for s in act_list]
+        pokes = list(pokedata.find({"_id": {"$in": ids}}))
+        pmap = {p["_id"]: p for p in pokes}
+        return [pmap.get(i, {}).get("name", "?") for i in ids]
+
+    p1_names = names_for(p1_act)
+    p2_names = names_for(p2_act)
+
+    logs = []
+    for s in p1_act:
+        if s.get("last"): logs.append(s["last"])
+    for s in p2_act:
+        if s.get("last"): logs.append(s["last"])
+    last_txt = ("\n".join([l if isinstance(l,str) else str(l) for l in logs]) + "\n") if logs else ""
+
+    remain = max(0, battle.get("turn_deadline", 0) - int(_dt.utcnow().timestamp()))
+    if viewer == "p1":
+        header = f"Turn {battle.get('turn',1)} ⏱ Your: {_fmt_mmss(battle.get('p1_time',0))} | Game: {_fmt_mmss(battle.get('game_time',0))} | Move: {_fmt_mmss(remain)}\n"
+        own_lines = [f"{p1_names[i]}: {_hp_own(s['hp'], s['stats']['hp'])}" for i, s in enumerate(p1_act)]
+        opp_lines = [f"{p2_names[i]}: {_hp_opp(s['hp'], s['stats']['hp'])}" for i, s in enumerate(p2_act)]
     else:
-        header=f"Turn {battle.get('turn',1)}  ⏱ Your: {_fmt_mmss(battle.get('p2_time',0))} | Game: {_fmt_mmss(battle.get('game_time',0))} | Move: {_fmt_mmss(remain)}\n"
-        hps=f"{p2n}: {_hp_own(p2s.get('hp',0),p2s.get('stats',{}).get('hp',1))}\n{p1n}: {_hp_opp(p1s.get('hp',0),p1s.get('stats',{}).get('hp',1))}"
-    return header+last_txt+"\n"+hps
+        header = f"Turn {battle.get('turn',1)} ⏱ Your: {_fmt_mmss(battle.get('p2_time',0))} | Game: {_fmt_mmss(battle.get('game_time',0))} | Move: {_fmt_mmss(remain)}\n"
+        own_lines = [f"{p2_names[i]}: {_hp_own(s['hp'], s['stats']['hp'])}" for i, s in enumerate(p2_act)]
+        opp_lines = [f"{p1_names[i]}: {_hp_opp(s['hp'], s['stats']['hp'])}" for i, s in enumerate(p1_act)]
+    return header + last_txt + "\n".join(own_lines + opp_lines)
 
 async def _push_move_ui(battle):
-    p1s=battle.get("p1_state",{}); p2s=battle.get("p2_state",{})
-    p1=pokedata.find_one({"_id":p1s.get("active_id")}) or {}
-    p2=pokedata.find_one({"_id":p2s.get("active_id")}) or {}
-    txt1=_render_move_ui(battle,"p1"); txt2=_render_move_ui(battle,"p2")
-    btn1=_move_buttons(p1,str(battle["_id"]),"p1")
-    btn2=_move_buttons(p2,str(battle["_id"]),"p2")
-    await bot.send_message(battle["p1_id"], txt1, buttons=btn1)  # Telethon send [7]
+    def build_buttons_for_side(view_side):
+        act = battle.get(f"{view_side}_state", {}).get("active", [])
+        all_rows = []
+        for slot_idx, s in enumerate(act):
+            poke = pokedata.find_one({"_id": s.get("id")}) or {}
+            rows = _move_buttons(poke, str(battle["_id"]), view_side, slot_idx)
+            all_rows.extend(rows)
+        return all_rows or None
+
+    txt1 = _render_move_ui(battle, "p1")
+    txt2 = _render_move_ui(battle, "p2")
+    btn1 = build_buttons_for_side("p1")
+    btn2 = build_buttons_for_side("p2")
+    await bot.send_message(battle["p1_id"], txt1, buttons=btn1)
     await bot.send_message(battle["p2_id"], txt2, buttons=btn2)
+
 
 # ==== Helper: Generate Pokémon ID ====
 def generate_pokemon_id():
@@ -1020,30 +1047,45 @@ async def team_lock(event):
     battle = battles.find_one({"_id": battle["_id"]})
     if battle.get("p1_locked") and battle.get("p2_locked"):
         await start_battle_ready(battle)
-@bot.on(events.CallbackQuery(pattern=b"bt:mv:([0-9a-fA-F]+):(p1|p2):(\d+)"))
+
+@bot.on(events.CallbackQuery(pattern=b"bt:mv:([0-9a-fA-F]+):(p1|p2):(\d+):(\d+)"))
 async def _choose_move(event):
-    battle_id=event.pattern_match.group(1).decode()
-    side=event.pattern_match.group(2).decode()
-    idx=int(event.pattern_match.group(3).decode())
-    user_id=event.sender_id
-    b=battles.find_one({"_id":ObjectId(battle_id)})
-    if not b or b.get("status")!="active":
+    battle_id = event.pattern_match.group(1).decode()
+    side = event.pattern_match.group(2).decode()
+    slot_idx = int(event.pattern_match.group(3).decode())
+    mv_idx = int(event.pattern_match.group(4).decode())
+    user_id = event.sender_id
+
+    b = battles.find_one({"_id": ObjectId(battle_id)})
+    if not b or b.get("status") != "active":
         await event.answer("❌ Battle not active.", alert=True); return
-    if (side=="p1" and b.get("p1_id")!=user_id) or (side=="p2" and b.get("p2_id")!=user_id):
+    if (side == "p1" and b.get("p1_id") != user_id) or (side == "p2" and b.get("p2_id") != user_id):
         await event.answer("❌ Not your battle.", alert=True); return
-    key=f"{side}_state"; state=b.get(key,{})
-    poke=pokedata.find_one({"_id":state.get("active_id")}) or {}
-    moves=(poke.get("moves") or [])[:4]
-    if idx<0 or idx>=len(moves): await event.answer("❌ Invalid move.", alert=True); return
-    ck=f"{side}_choice"
-    if b.get(ck) is None:
-        battles.update_one({"_id":b["_id"]},{"$set":{ck:("move",moves[idx])}})
-        await event.answer(f"✅ Selected: {moves[idx]}")
-    else:
-        await event.answer("Already selected.")
-    b2=battles.find_one({"_id":b["_id"]})
-    if b2.get("p1_choice") and b2.get("p2_choice"):
+
+    state = b.get(f"{side}_state", {})
+    act = state.get("active", [])
+    if slot_idx < 0 or slot_idx >= len(act):
+        await event.answer("❌ Invalid slot.", alert=True); return
+
+    poke = pokedata.find_one({"_id": act[slot_idx].get("id")}) or {}
+    moves = (poke.get("moves") or [])[:4]
+    if mv_idx < 0 or mv_idx >= len(moves):
+        await event.answer("❌ Invalid move.", alert=True); return
+
+    ck = f"{side}_choice"
+    choices = b.get(ck) or {}
+    choices[str(slot_idx)] = ("move", moves[mv_idx])
+    battles.update_one({"_id": b["_id"]}, {"$set": {ck: choices}})
+    await event.answer(f"✅ Selected: {moves[mv_idx]}")
+
+    b2 = battles.find_one({"_id": b["_id"]})
+    need = len(b2.get("p1_state", {}).get("active", []))
+    p1_done = b2.get("p1_choice") and len(b2["p1_choice"]) == need
+    p2_done = b2.get("p2_choice") and len(b2["p2_choice"]) == need
+    if p1_done and p2_done:
         await _resolve_turn(b2)
+
+
 
 @bot.on(events.CallbackQuery(pattern=b"bt:ff:([0-9a-fA-F]+):(p1|p2)"))
 async def _forfeit(event):
@@ -1104,6 +1146,17 @@ def build_battle_sides_from_picks(battle):
         p1_active = p1_sel[:2]; p1_bench = p1_sel[2:]
         p2_active = p2_sel[:2]; p2_bench = p2_sel[2:]
     return {"p1_active": p1_active, "p1_bench": p1_bench, "p2_active": p2_active, "p2_bench": p2_bench}
+    
+def build_sides(battle):
+    fmt = battle.get("format","single")
+    need = 1 if fmt == "single" else 2
+    p1_sel = battle.get("p1_selected", [])
+    p2_sel = battle.get("p2_selected", [])
+    p1_active, p1_bench = p1_sel[:need], p1_sel[need:]
+    p2_active, p2_bench = p2_sel[:need], p2_sel[need:]
+    return p1_active, p1_bench, p2_active, p2_bench
+
+
 
 def names_for_ids(id_list):
     if not id_list: return []
@@ -1122,34 +1175,39 @@ def format_lead_message(fmt, active_ids, bench_ids):
     return f"{lead_line}\n{bench_line}"
 
 async def start_battle_ready(battle):
-    # Singles: use first picked as lead per side
-    p1_sel = battle.get("p1_selected", [])[:1]
-    p2_sel = battle.get("p2_selected", [])[:1]
-    if not p1_sel or not p2_sel:
-        battles.update_one({"_id": battle["_id"]}, {"$set": {"status":"cancelled"}})
+    p1_active_ids, p1_bench, p2_active_ids, p2_bench = build_sides(battle)
+    need = len(p1_active_ids)
+    if need == 0 or len(p2_active_ids) != need:
+        battles.update_one({"_id": battle["_id"]}, {"$set": {"status": "cancelled"}})
         return
-    p1_id = p1_sel; p2_id = p2_sel
-    p1doc = pokedata.find_one({"_id": p1_id}) or {}
-    p2doc = pokedata.find_one({"_id": p2_id}) or {}
-    s1 = _level50_stats(p1doc)
-    s2 = _level50_stats(p2doc)
+
+    def mk_state(pid):
+        doc = pokedata.find_one({"_id": pid}) or {}
+        stats = _level50_stats(doc)
+        return {"id": pid, "stats": stats, "hp": stats["hp"], "last": ""}
+
+    p1_active_state = [mk_state(pid) for pid in p1_active_ids]
+    p2_active_state = [mk_state(pid) for pid in p2_active_ids]
+
     now = int(_dt.utcnow().timestamp())
     battles.update_one({"_id": battle["_id"]}, {"$set": {
         "status": "active",
         "turn": 1,
-        "p1_state": {"active_id": p1_id, "stats": s1, "hp": s1["hp"], "last": ""},
-        "p2_state": {"active_id": p2_id, "stats": s2, "hp": s2["hp"], "last": ""},
+        "p1_state": {"active": p1_active_state, "bench": p1_bench},
+        "p2_state": {"active": p2_active_state, "bench": p2_bench},
         "p1_time": 7*60, "p2_time": 7*60, "game_time": 20*60,
         "turn_deadline": now + 45,
         "p1_choice": None, "p2_choice": None
-    }})
+    }}})
     try: await bot.send_message(battle["p1_id"], "✅ Team locked. Battle starts!")
     except: pass
     try: await bot.send_message(battle["p2_id"], "✅ Team locked. Battle starts!")
     except: pass
+
     b = battles.find_one({"_id": battle["_id"]})
     await _push_move_ui(b)
     asyncio.create_task(_turn_timer_task(str(battle["_id"])))
+
 
 def _attack_order(b):
     s1=b["p1_state"]["stats"]["spe"]; s2=b["p2_state"]["stats"]["spe"]
@@ -1190,42 +1248,64 @@ def _do_damage(att_poke, def_poke, att_stats, def_stats, mv_name):
     elif eff<=0.5: eff_txt=" It’s not very effective…"
     return dmg, f"{att_poke.get('name','?')} used {_visible_move_name(mv_name)}.{eff_txt}"
 
+def _attack_order_slots(b):
+    actions = []
+    for side in ("p1","p2"):
+        act = b.get(f"{side}_state", {}).get("active", []) or []
+        for i, s in enumerate(act):
+            actions.append((side, i, s["stats"]["spe"], random.random()))
+    actions.sort(key=lambda x: (-x[20], x[21]))  # fast first; tie: random
+    return [(a, a[1]) for a in actions]
+
 async def _resolve_turn(b):
-    order=_attack_order(b)
-    logs=[]
-    p1=pokedata.find_one({"_id":b["p1_state"]["active_id"]}) or {}
-    p2=pokedata.find_one({"_id":b["p2_state"]["active_id"]}) or {}
-    c1=b.get("p1_choice"); c2=b.get("p2_choice")
-    mv1=c1[1] if c1 and c1=="move" else None
-    mv2=c2[1] if c2 and c2=="move" else None
-    p1hp=b["p1_state"]["hp"]; p2hp=b["p2_state"]["hp"]
-    s1=b["p1_state"]["stats"]; s2=b["p2_state"]["stats"]
-    for side in order:
-        if side=="p1":
-            dmg,msg=_do_damage(p1,p2,s1,s2,mv1)
-            p2hp=max(0,p2hp-dmg); logs.append(msg)
-            if p2hp<=0: break
-        else:
-            dmg,msg=_do_damage(p2,p1,s2,s1,mv2)
-            p1hp=max(0,p1hp-dmg); logs.append(msg)
-            if p1hp<=0: break
-    now=int(_dt.utcnow().timestamp())
-    battles.update_one({"_id":b["_id"]},{
-        "$set":{
-            "p1_state.hp":p1hp,"p2_state.hp":p2hp,
-            "p1_state.last":logs if logs else "",
-            "p2_state.last":logs[1] if len(logs)>1 else "",
-            "turn":b.get("turn",1)+1,"turn_deadline":now+45
+    order = _attack_order_slots(b)
+    p1 = b.get("p1_state", {}); p2 = b.get("p2_state", {})
+    p1_act, p2_act = p1.get("active", []) or [], p2.get("active", []) or []
+    c1, c2 = b.get("p1_choice") or {}, b.get("p2_choice") or {}
+
+    def pick_move(side, slot):
+        c = c1 if side == "p1" else c2
+        t = c.get(str(slot))
+        return t[1] if t and t == "move" else None
+
+    logs = []
+    for side, slot in order:
+        my_act = p1_act if side == "p1" else p2_act
+        opp_act = p2_act if side == "p1" else p1_act
+        if slot >= len(my_act): continue
+        me = my_act[slot]
+        if me["hp"] <= 0: continue
+        mv_name = pick_move(side, slot)
+        if not mv_name: continue
+        tgt = next((s for s in opp_act if s["hp"] > 0), None)
+        if not tgt: continue
+
+        att_doc = pokedata.find_one({"_id": me["id"]}) or {}
+        def_doc = pokedata.find_one({"_id": tgt["id"]}) or {}
+        dmg, msg = _do_damage(att_doc, def_doc, me["stats"], tgt["stats"], mv_name)
+        tgt["hp"] = max(0, tgt["hp"] - dmg)
+        logs.append(msg)
+
+    now = int(_dt.utcnow().timestamp())
+    battles.update_one({"_id": b["_id"]}, {
+        "$set": {
+            "p1_state": {"active": p1_act, "bench": p1.get("bench", [])},
+            "p2_state": {"active": p2_act, "bench": p2.get("bench", [])},
+            "turn": b.get("turn", 1) + 1,
+            "turn_deadline": now + 45
         },
-        "$unset":{"p1_choice":"","p2_choice":""}
+        "$unset": {"p1_choice": "", "p2_choice": ""}
     })
-    b2=battles.find_one({"_id":b["_id"]})
-    if p1hp<=0 or p2hp<=0:
-        if p1hp>0 and p2hp<=0: await _finish_battle(b2,"P1 wins!")
-        elif p2hp>0 and p1hp<=0: await _finish_battle(b2,"P2 wins!")
-        else: await _finish_battle(b2,"Draw!")
+    b2 = battles.find_one({"_id": b["_id"]})
+    p1_alive = any(s["hp"] > 0 for s in p1_act)
+    p2_alive = any(s["hp"] > 0 for s in p2_act)
+    if not p1_alive or not p2_alive:
+        if p1_alive and not p2_alive: await _finish_battle(b2, "P1 wins!")
+        elif p2_alive and not p1_alive: await _finish_battle(b2, "P2 wins!")
+        else: await _finish_battle(b2, "Draw!")
         return
     await _push_move_ui(b2)
+
 
 async def _finish_by_tiebreak(b):
     p1=b["p1_state"]["hp"]; p2=b["p2_state"]["hp"]
