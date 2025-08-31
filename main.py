@@ -189,12 +189,12 @@ def add_final_stats(pokemon):
     
 
     final_stats = {}
-    final_stats["hp"] = calculate_stat(hp, pokemon["ivhp"] , pokemon["evhp"], level, nature, "hp")
-    final_stats["atk"] = calculate_stat(atk, pokemon["ivatk"], pokemon["evatk"], level, nature, "atk")
-    final_stats["def"] = calculate_stat(defense, pokemon["ivdef"], pokemon["evdef"], level, nature, "def")
-    final_stats["spa"] = calculate_stat(spa, pokemon["ivspa"], pokemon["evspa"], level, nature, "spa")
-    final_stats["spd"] = calculate_stat(spd, pokemon["ivspd"], pokemon["evspd"], level, nature, "spd")
-    final_stats["spe"] = calculate_stat(spe, pokemon["ivspe"], pokemon["evspe"], level, nature, "spe")
+    final_stats["hp"] = calculate_stat(hp, pokemon["iv_stats"]["ivhp"] , pokemon["ev_stats"]["evhp"], level, nature, "hp")
+    final_stats["atk"] = calculate_stat(atk, pokemon["iv_stats"]["ivatk"], pokemon["ev_stats"]["evatk"], level, nature, "atk")
+    final_stats["def"] = calculate_stat(defense, pokemon["iv_stats"]["ivdef"], pokemon["ev_stats"]["evdef"], level, nature, "def")
+    final_stats["spa"] = calculate_stat(spa, pokemon["iv_stats"]["ivspa"], pokemon["ev_stats"]["evspa"], level, nature, "spa")
+    final_stats["spd"] = calculate_stat(spd, pokemon["iv_stats"]["ivspd"], pokemon["ev_stats"]["evspd"], level, nature, "spd")
+    final_stats["spe"] = calculate_stat(spe, pokemon["iv_stats"]["ivspe"], pokemon["ev_stats"]["evspe"], level, nature, "spe")
 
     pokemon["stats"].update(final_stats)
     return pokemon
