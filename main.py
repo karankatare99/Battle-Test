@@ -94,15 +94,19 @@ def parse_showdown_set(text):
     pokemon["gender"] = gender
     pokemon["level"] = 100
     pokemon["nature"] = "None"
-    pokemon["shiny"] = "No"
+    pokemon["shiny"] = False
     pokemon["moves"] = []
+    pokemon["iv_stats"] = {} 
+    pokemon["ev_stats"] = {} 
+    pokemon["stats"] = {} 
 
     for line in lines[1:]:
         line = line.strip()
         if line.startswith("Ability:"):
             pokemon["ability"] = line.replace("Ability:", "").strip()
         elif line.startswith("Shiny:"):
-            pokemon["shiny"] = line.replace("Shiny:", "").strip()
+            pokemon["shiny"] = True
+            
         elif line.startswith("Tera Type:"):
             pokemon["tera_type"] = line.replace("Tera Type:", "").strip()
         elif line.startswith("Level:"):
@@ -124,8 +128,8 @@ def parse_showdown_set(text):
             pokemon["moves"].append(line.replace("- ", "").strip())
     
     for stat in ["hp","atk","def","spa","spd","spe"]:
-        pokemon[f"ev{stat}"] = evs[stat]
-        pokemon[f"iv{stat}"] = ivs[stat]
+        pokemon["ev_stats"][f"ev{stat}"] = evs[stat]
+        pokemon["iv_stats"][f"iv{stat}"] = ivs[stat]
     print(pokemon)
     add_final_stats(pokemon) 
     pokemon["pokemon_id"] = generate_pokemon_id()
@@ -192,7 +196,7 @@ def add_final_stats(pokemon):
     final_stats["spd"] = calculate_stat(spd, pokemon["ivspd"], pokemon["evspd"], level, nature, "spd")
     final_stats["spe"] = calculate_stat(spe, pokemon["ivspe"], pokemon["evspe"], level, nature, "spe")
 
-    pokemon.update(final_stats)
+    pokemon["stats"].update(final_stats)
     return pokemon
 # ==== /start ====
 @bot.on(events.NewMessage(pattern="/start"))
