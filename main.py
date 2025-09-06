@@ -1,4 +1,5 @@
 import random, json, math, uuid
+from math import ceil
 import string
 import asyncio
 from datetime import datetime
@@ -693,7 +694,82 @@ def create_battle(challenger_id, opponent_id, battle_type):
         "state": "pending"
     }
     return bid
+async def load_battle_pokemon(bid):
+    """Load both players' Pokémon into the battle dict with HP and moves."""
+    battle = battles.get(bid)
+    if not battle:
+        return False
 
+    battle["battle_state"] = {
+        "challenger": [],
+        "opponent": []
+    }
+
+    # Fetch challenger Pokémon
+    for pkm in battle["pokemon"]["challenger"]:
+        battle["battle_state"]["challenger"].append({
+            "id": pkm["_id"],
+            "name": pkm["name"],
+            "hp": pkm["stats"]["hp"],
+            "max_hp": pkm["stats"]["hp"],
+            "moves": pkm["moves"],
+            "tera_type": pkm.get("tera_type", None),
+            "status": None  # e.g., paralysis, burn
+        })
+
+    # Fetch opponent Pokémon
+    for pkm in battle["pokemon"]["opponent"]:
+        battle["battle_state"]["opponent"].append({
+            "id": pkm["_id"],
+            "name": pkm["name"],
+            "hp": pkm["stats"]["hp"],
+            "max_hp": pkm["stats"]["hp"],
+            "moves": pkm["moves"],
+            "tera_type": pkm.get("tera_type", None),
+            "status": None
+        })
+
+    # Set active Pokémon (first in team)
+    battle["active"] = {
+        "challenger": battle["battle_state"]["challenger"][0],
+        "opponent": battle["battle_state"]["opponent"][0]
+    }
+
+    return True
+
+
+def get_hp_bar(current, max_hp, length=10):
+    """Generate a simple text HP bar."""
+    ratio = current / max_hp
+    filled = ceil(ratio * length)
+    empty = length - filled
+    return "🟩"*filled + "⬜"*empty
+
+async def send_battle_interface(user_id, battle):
+    """Send battle interface with moves, switch, and forfeit."""
+    active_self = battle["active"]["challenger"] if user_id == battle["challenger"] else battle["active"]["opponent"]
+    active_opp = battle["active"]["opponent"] if user_id == battle["challenger"] else battle["active"]["challenger"]
+
+    # HP bars
+    self_hp_bar = get_hp_bar(active_self["hp"], active_self["max_hp"])
+    opp_hp_bar = get_hp_bar(active_opp["hp"], active_opp["max_hp"])
+
+    # Buttons: Moves
+    buttons = []
+    for move in active_self["moves"]:
+        buttons.append([Button.inline(move, f"battle:move:{battle['id']}:{move}")])
+
+    # Switch and Forfeit
+    buttons.append([Button.inline("🔄 Switch", f"battle:switch:{battle['id']}")])
+    buttons.append([Button.inline("🏳️ Forfeit", f"battle:forfeit:{battle['id']}")])
+
+    await bot.send_message(
+        user_id,
+        f"⚔️ Battle Start!\n\n"
+        f"Your Pokémon: {active_self['name']} {self_hp_bar} {active_self['hp']}/{active_self['max_hp']}\n"
+        f"Opponent Pokémon: {active_opp['name']} {opp_hp_bar} {active_opp['hp']}/{active_opp['max_hp']}\n",
+        buttons=buttons
+    )
 # -------------------------------
 # Commands
 # -------------------------------
@@ -757,9 +833,17 @@ async def cb_accept(event):
     battle_map[battle["challenger"]] = bid
     battle_map[battle["opponent"]] = bid
 
+    # -----------------------------
+    # Load Pokémon into battle memory
+    # -----------------------------
+    await init_battle_pokemon(bid)
+    await load_battle_pokemon(bid)
+
     await event.edit("✅ Battle accepted! Check your PMs to continue.")
-    await bot.send_message(battle["challenger"], "⚔️ Your battle has started! (Singles)" if battle["type"] == "singles" else "⚔️ Your battle has started! (Doubles)")
-    await bot.send_message(battle["opponent"], "⚔️ Your battle has started! Get ready!")
+
+    # Send battle interface to both players
+    await send_battle_interface(battle["challenger"], battle)
+    await send_battle_interface(battle["opponent"], battle)
 
 @bot.on(events.CallbackQuery(pattern=b"battle:decline:(.+)"))
 async def cb_decline(event):
@@ -774,7 +858,6 @@ async def cb_decline(event):
     battle["state"] = "cancelled"
     await event.edit("❌ Battle cancelled by opponent.")
 
-print("Bot is running...")
-bot.run_until_disconnected()        
+
 print("Bot running...")
 bot.run_until_disconnected()
