@@ -735,7 +735,100 @@ async def decline_battle(event, battle_id, user_id):
     
     battles.update_one({"_id": battle_id}, {"$set": {"state": "cancelled"}})
     await event.respond("❌ Battle was declined.")
+# -------------------------------
+# Helper to get first Pokémon
+# -------------------------------
+def get_first_pokemon(user_id):
+    user = users.find_one({"user_id": user_id})
+    if not user or not user.get("team"):
+        return None
+    
+    poke_id = user["team"][0]
+    pokemon = db["pokemon_data"].find_one({"_id": poke_id})
+    return pokemon
 
+
+# -------------------------------
+# Start battle in PM
+# -------------------------------
+async def start_battle_pm(client, battle):
+    challenger = battle["challenger"]
+    opponent = battle["opponent"]
+
+    # Load first Pokémon
+    poke_a = get_first_pokemon(challenger)
+    poke_b = get_first_pokemon(opponent)
+
+    # Update DB with active Pokémon
+    battles.update_one(
+        {"_id": battle["_id"]},
+        {"$set": {
+            "active_pokemon": {
+                "challenger": poke_a["_id"],
+                "opponent": poke_b["_id"]
+            },
+            "turn": challenger  # challenger starts
+        }}
+    )
+
+    # Send PM to both players
+    await show_pokemon_ui(client, challenger, poke_a, battle["_id"])
+    await show_pokemon_ui(client, opponent, poke_b, battle["_id"])
+
+
+# -------------------------------
+# Show Pokémon UI with moves
+# -------------------------------
+async def show_pokemon_ui(client, user_id, pokemon, battle_id):
+    if not pokemon:
+        await client.send_message(user_id, "⚠️ You don’t have a Pokémon ready!")
+        return
+
+    moves = pokemon.get("moves", [])
+    name = pokemon["name"]
+
+    # Build move buttons
+    move_buttons = [
+        [Button.inline(moves[0] if len(moves) > 0 else "—", f"battle:move:{battle_id}:{name}:{0}"),
+         Button.inline(moves[1] if len(moves) > 1 else "—", f"battle:move:{battle_id}:{name}:{1}")],
+        [Button.inline(moves[2] if len(moves) > 2 else "—", f"battle:move:{battle_id}:{name}:{2}"),
+         Button.inline(moves[3] if len(moves) > 3 else "—", f"battle:move:{battle_id}:{name}:{3}")]
+    ]
+
+    # Switch / Forfeit
+    extra_buttons = [
+        [Button.inline("🔄 Switch", f"battle:switch:{battle_id}:{name}"),
+         Button.inline("🏳 Forfeit", f"battle:forfeit:{battle_id}:{name}")]
+    ]
+
+    await client.send_message(
+        user_id,
+        f"⚔️ <b>{name}</b> is ready!\nChoose your action:",
+        buttons=move_buttons + extra_buttons,
+        parse_mode="html"
+    )
+
+
+# -------------------------------
+# Extend accept_battle to call start_battle_pm
+# -------------------------------
+async def accept_battle(event, battle_id, user_id):
+    battle = battles.find_one({"_id": battle_id})
+    if not battle or battle["state"] != "pending":
+        await event.answer("⚠️ This battle is no longer available.", alert=True)
+        return
+
+    if battle["opponent"] != user_id:
+        await event.answer("⚠️ Only the challenged player can accept!", alert=True)
+        return
+
+    # Update state → active
+    battles.update_one({"_id": battle_id}, {"$set": {"state": "active"}})
+    
+    # Send PMs + start battle
+    await event.respond("✅ Battle started! Check your PMs.")
+    battle = battles.find_one({"_id": battle_id})  # refresh
+    await start_battle_pm(event.client, battle)
 # -------------------------------
 # Command Handlers
 # -------------------------------
