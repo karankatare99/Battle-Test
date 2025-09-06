@@ -676,5 +676,113 @@ async def send_summary(event, poke):
     else:
         await event.reply(text)
 
+
+# -------------------------------
+# Utility Functions
+# -------------------------------
+
+def create_battle(challenger_id, opponent_id, battle_type):
+    battle_id = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
+    battle_data = {
+        "_id": battle_id,
+        "type": battle_type,
+        "challenger": challenger_id,
+        "opponent": opponent_id,
+        "state": "pending",
+        "turn": None,
+        "teams": {},
+        "log": []
+    }
+    battles.insert_one(battle_data)
+    return battle_id
+
+async def send_challenge(event, challenger, opponent, battle_type):
+    battle_id = create_battle(challenger, opponent, battle_type)
+    battle_text = f"⚔️ <b>{challenger}</b> has challenged <b>{opponent}</b> to a <i>{battle_type}</i> battle!"
+    await event.reply(
+        battle_text,
+        buttons=[
+            [
+                Button.inline("✅ Accept", f"battle:accept:{battle_id}"),
+                Button.inline("❌ Decline", f"battle:decline:{battle_id}")
+            ]
+        ]
+    )
+
+async def accept_battle(event, battle_id, user_id):
+    battle = battles.find_one({"_id": battle_id})
+    if not battle or battle["state"] != "pending":
+        await event.answer("⚠️ This battle is no longer available.", alert=True)
+        return
+
+    if battle["opponent"] != user_id:
+        await event.answer("⚠️ Only the challenged player can accept!", alert=True)
+        return
+
+    # Update state → active
+    battles.update_one({"_id": battle_id}, {"$set": {"state": "active", "turn": battle["challenger"]}})
+    
+    # Send PMs
+    await event.respond(f"✅ Battle started! Check your PMs.")
+    await event.client.send_message(battle["challenger"], f"🏟️ Your battle vs {battle['opponent']} has begun!")
+    await event.client.send_message(battle["opponent"], f"🏟️ Your battle vs {battle['challenger']} has begun!")
+
+async def decline_battle(event, battle_id, user_id):
+    battle = battles.find_one({"_id": battle_id})
+    if not battle:
+        await event.answer("⚠️ Invalid battle.", alert=True)
+        return
+    
+    battles.update_one({"_id": battle_id}, {"$set": {"state": "cancelled"}})
+    await event.respond("❌ Battle was declined.")
+
+# -------------------------------
+# Command Handlers
+# -------------------------------
+
+@bot.on(events.NewMessage(pattern="/battleS"))
+async def battle_singles(event):
+    if not event.is_reply:
+        await event.reply("⚠️ Reply to a user’s message to challenge them.")
+        return
+    
+    opponent = (await event.get_reply_message()).sender_id
+    challenger = event.sender_id
+
+    if challenger == opponent:
+        await event.reply("⚠️ You can’t battle yourself!")
+        return
+
+    await send_challenge(event, challenger, opponent, "singles")
+
+@bot.on(events.NewMessage(pattern="/battleD"))
+async def battle_doubles(event):
+    if not event.is_reply:
+        await event.reply("⚠️ Reply to a user’s message to challenge them.")
+        return
+    
+    opponent = (await event.get_reply_message()).sender_id
+    challenger = event.sender_id
+
+    if challenger == opponent:
+        await event.reply("⚠️ You can’t battle yourself!")
+        return
+
+    await send_challenge(event, challenger, opponent, "doubles")
+
+# -------------------------------
+# Button Callbacks
+# -------------------------------
+
+@bot.on(events.CallbackQuery(pattern=b"battle:accept:(.+)"))
+async def on_accept(event):
+    battle_id = event.pattern_match.group(1).decode("utf-8")
+    await accept_battle(event, battle_id, event.sender_id)
+
+@bot.on(events.CallbackQuery(pattern=b"battle:decline:(.+)"))
+async def on_decline(event):
+    battle_id = event.pattern_match.group(1).decode("utf-8")
+    await decline_battle(event, battle_id, event.sender_id)
+    
 print("Bot running...")
 bot.run_until_disconnected()
