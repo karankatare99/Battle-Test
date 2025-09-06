@@ -751,6 +751,9 @@ def get_first_pokemon(user_id):
 # -------------------------------
 # Start battle in PM
 # -------------------------------
+# -------------------------------
+# Start battle in PM
+# -------------------------------
 async def start_battle_pm(client, battle):
     challenger = battle["challenger"]
     opponent = battle["opponent"]
@@ -758,6 +761,11 @@ async def start_battle_pm(client, battle):
     # Load first Pokémon
     poke_a = get_first_pokemon(challenger)
     poke_b = get_first_pokemon(opponent)
+
+    if not poke_a or not poke_b:
+        await client.send_message(challenger, "⚠️ You or your opponent don’t have a valid team.")
+        await client.send_message(opponent, "⚠️ You or your opponent don’t have a valid team.")
+        return
 
     # Update DB with active Pokémon
     battles.update_one(
@@ -771,10 +779,9 @@ async def start_battle_pm(client, battle):
         }}
     )
 
-    # Send PM to both players
-    await show_battle_ui(client, challenger, poke_a, battle["_id"])
-    await show_battle_ui(client, opponent, poke_b, battle["_id"])
-
+    # Send UI to both players
+    await show_battle_ui(client, challenger, opponent, poke_a, poke_b)
+    await show_battle_ui(client, opponent, challenger, poke_b, poke_a)
 # ----------------------------
 # Utility: Create HP bar
 # ----------------------------
