@@ -676,79 +676,105 @@ async def send_summary(event, poke):
     else:
         await event.reply(text)
 
-# In-memory battles for now (we'll shift to DB later)
-active_battles = {}
+# -------------------------------
+# In-memory battles (for now)
+# -------------------------------
+battles = {}  # battle_id -> dict
+battle_map = {}  # user_id -> battle_id
+import uuid
 
-@bot.on(events.NewMessage(pattern=r'^/battle\s+@(\w+)'))
-async def battle_handler(event):
-    challenger = await event.get_sender()
-    username = event.pattern_match.group(1)
+def create_battle(challenger_id, opponent_id, battle_type):
+    bid = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
+    battles[bid] = {
+        "id": bid,
+        "challenger": challenger_id,
+        "opponent": opponent_id,
+        "type": battle_type,
+        "state": "pending"
+    }
+    return bid
 
-    try:
-        opponent = await client.get_entity(username)
-    except:
-        return await event.reply("❌ Could not find that user.")
+# -------------------------------
+# Commands
+# -------------------------------
+@bot.on(events.NewMessage(pattern=r"/battleS"))
+async def battle_singles(event):
+    if not event.is_reply:
+        return await event.reply("⚠️ Reply to a user to challenge them to a Singles battle.")
+    reply_msg = await event.get_reply_message()
+    opp = reply_msg.sender_id
+    me = event.sender_id
+    if me == opp:
+        return await event.reply("❌ You can’t battle yourself!")
 
-    # Prevent self-battle
-    if opponent.id == challenger.id:
-        return await event.reply("⚠️ You cannot battle yourself!")
-
-    # Create challenge message
-    buttons = [
-        [
-            Button.inline("✅ Accept", data=f"accept:{challenger.id}:{opponent.id}"),
-            Button.inline("❌ Decline", data=f"decline:{challenger.id}:{opponent.id}")
-        ]
-    ]
-
-    msg = await event.respond(
-        f"⚔️ **{challenger.first_name}** has challenged **{opponent.first_name}** to a battle!\n\n"
-        f"{opponent.first_name}, do you accept?",
-        buttons=buttons
+    bid = create_battle(me, opp, "singles")
+    await event.reply(
+        f"🔥 <a href='tg://user?id={me}'>Player</a> challenged <a href='tg://user?id={opp}'>Opponent</a> to a Singles battle!",
+        buttons=[
+            [Button.inline("✅ Accept", f"battle:accept:{bid}".encode()),
+             Button.inline("❌ Decline", f"battle:decline:{bid}".encode())]
+        ],
+        parse_mode="html"
     )
 
-    # Store active challenge
-    active_battles[msg.id] = {
-        "challenger": challenger.id,
-        "opponent": opponent.id,
-        "status": "pending"
-}
+@bot.on(events.NewMessage(pattern=r"/battleD"))
+async def battle_doubles(event):
+    if not event.is_reply:
+        return await event.reply("⚠️ Reply to a user to challenge them to a Doubles battle.")
+    reply_msg = await event.get_reply_message()
+    opp = reply_msg.sender_id
+    me = event.sender_id
+    if me == opp:
+        return await event.reply("❌ You can’t battle yourself!")
 
-@bot.on(events.CallbackQuery)
-async def callback_handler(event):
-    data = event.data.decode("utf-8")
+    bid = create_battle(me, opp, "doubles")
+    await event.reply(
+        f"🔥 <a href='tg://user?id={me}'>Player</a> challenged <a href='tg://user?id={opp}'>Opponent</a> to a Doubles battle!",
+        buttons=[
+            [Button.inline("✅ Accept", f"battle:accept:{bid}".encode()),
+             Button.inline("❌ Decline", f"battle:decline:{bid}".encode())]
+        ],
+        parse_mode="html"
+    )
 
-    if data.startswith("accept"):
-        _, challenger_id, opponent_id = data.split(":")
-        challenger_id, opponent_id = int(challenger_id), int(opponent_id)
+# -------------------------------
+# Accept / Decline
+# -------------------------------
+@bot.on(events.CallbackQuery(pattern=b"battle:accept:(.+)"))
+async def cb_accept(event):
+    bid = event.pattern_match.group(1).decode()
+    battle = battles.get(bid)
+    if not battle:
+        return await event.answer("❌ Battle not found.", alert=True)
 
-        # Ensure only the opponent can accept
-        if event.sender_id != opponent_id:
-            return await event.answer("Not your battle!", alert=True)
+    if event.sender_id != battle["opponent"]:
+        return await event.answer("Only the challenged user can accept.", alert=True)
 
-        # Update challenge
-        active_battles[event.message_id]["status"] = "accepted"
+    if battle["state"] != "pending":
+        return await event.answer("This battle is not available.", alert=True)
 
-        await event.edit(
-            "✅ Battle request accepted!\n"
-            "👉 Check your PM with the bot to continue."
-        )
+    battle["state"] = "active"
+    battle_map[battle["challenger"]] = bid
+    battle_map[battle["opponent"]] = bid
 
-        # Notify both players in PM
-        await client.send_message(challenger_id, "⚔️ Battle starting! Check here for updates.")
-        await client.send_message(opponent_id, "⚔️ Battle starting! Check here for updates.")
+    await event.edit("✅ Battle accepted! Check your PMs to continue.")
+    await bot.send_message(battle["challenger"], "⚔️ Your battle has started! (Singles)" if battle["type"] == "singles" else "⚔️ Your battle has started! (Doubles)")
+    await bot.send_message(battle["opponent"], "⚔️ Your battle has started! Get ready!")
 
-    elif data.startswith("decline"):
-        _, challenger_id, opponent_id = data.split(":")
-        challenger_id, opponent_id = int(challenger_id), int(opponent_id)
+@bot.on(events.CallbackQuery(pattern=b"battle:decline:(.+)"))
+async def cb_decline(event):
+    bid = event.pattern_match.group(1).decode()
+    battle = battles.get(bid)
+    if not battle:
+        return await event.answer("❌ Battle not found.", alert=True)
 
-        # Ensure only the opponent can decline
-        if event.sender_id != opponent_id:
-            return await event.answer("Not your battle!", alert=True)
+    if event.sender_id != battle["opponent"]:
+        return await event.answer("Only the challenged user can decline.", alert=True)
 
-        active_battles[event.message_id]["status"] = "declined"
+    battle["state"] = "cancelled"
+    await event.edit("❌ Battle cancelled by opponent.")
 
-        await event.edit("❌ Battle cancelled.")
-        
+print("Bot is running...")
+bot.run_until_disconnected()        
 print("Bot running...")
 bot.run_until_disconnected()
