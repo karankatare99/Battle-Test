@@ -677,27 +677,52 @@ async def send_summary(event, poke):
     else:
         await event.reply(text)
 
+    
 # -------------------------------
-# In-memory battles (for now)
+# In-memory battles
 # -------------------------------
-battles = {}  # battle_id -> dict
-battle_map = {}  # user_id -> battle_id
 import uuid
+from math import ceil
+from telethon import events, Button
 
-def create_battle(challenger_id, opponent_id, battle_type):
-    bid = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
-    battles[bid] = {
-        "id": bid,
-        "challenger": challenger_id,
-        "opponent": opponent_id,
-        "type": battle_type,
-        "state": "pending"
-    }
-    return bid
-async def load_battle_pokemon(bid):
-    """Load both players' Pokémon into the battle dict with HP and moves."""
+battles = {}      # battle_id -> battle info
+battle_map = {}   # user_id -> battle_id
+
+# -------------------------------
+# Helper Functions
+# -------------------------------
+
+async def get_user_team(user_id):
+    """Fetch user's team Pokémon from DB."""
+    user = await db.users.find_one({"user_id": user_id})
+    if not user or "team" not in user:
+        return []
+    
+    team = []
+    for pkm_id in user["team"]:
+        pkm = await db.pokemon_data.find_one({"_id": pkm_id})
+        if pkm:
+            team.append(pkm)
+    return team
+
+async def init_battle_pokemon(bid):
+    """Fetch both players' Pokémon and store in battle memory."""
     battle = battles.get(bid)
     if not battle:
+        return False
+
+    # Fetch Pokémon for both players
+    battle["pokemon"] = {
+        "challenger": await get_user_team(battle["challenger"]),
+        "opponent": await get_user_team(battle["opponent"])
+    }
+
+    return True
+
+async def load_battle_pokemon(bid):
+    """Load Pokémon into battle state with HP, moves, and status."""
+    battle = battles.get(bid)
+    if not battle or "pokemon" not in battle:
         return False
 
     battle["battle_state"] = {
@@ -705,7 +730,7 @@ async def load_battle_pokemon(bid):
         "opponent": []
     }
 
-    # Fetch challenger Pokémon
+    # Challenger Pokémon
     for pkm in battle["pokemon"]["challenger"]:
         battle["battle_state"]["challenger"].append({
             "id": pkm["_id"],
@@ -714,10 +739,10 @@ async def load_battle_pokemon(bid):
             "max_hp": pkm["stats"]["hp"],
             "moves": pkm["moves"],
             "tera_type": pkm.get("tera_type", None),
-            "status": None  # e.g., paralysis, burn
+            "status": None
         })
 
-    # Fetch opponent Pokémon
+    # Opponent Pokémon
     for pkm in battle["pokemon"]["opponent"]:
         battle["battle_state"]["opponent"].append({
             "id": pkm["_id"],
@@ -736,7 +761,6 @@ async def load_battle_pokemon(bid):
     }
 
     return True
-
 
 def get_hp_bar(current, max_hp, length=10):
     """Generate a simple text HP bar."""
@@ -770,8 +794,21 @@ async def send_battle_interface(user_id, battle):
         f"Opponent Pokémon: {active_opp['name']} {opp_hp_bar} {active_opp['hp']}/{active_opp['max_hp']}\n",
         buttons=buttons
     )
+
+def create_battle(challenger_id, opponent_id, battle_type):
+    """Create a new battle entry."""
+    bid = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
+    battles[bid] = {
+        "id": bid,
+        "challenger": challenger_id,
+        "opponent": opponent_id,
+        "type": battle_type,
+        "state": "pending"
+    }
+    return bid
+
 # -------------------------------
-# Commands
+# Battle Commands
 # -------------------------------
 @bot.on(events.NewMessage(pattern=r"/battleS"))
 async def battle_singles(event):
@@ -834,8 +871,9 @@ async def cb_accept(event):
     battle_map[battle["opponent"]] = bid
 
     # -----------------------------
-    # Load Pokémon into battle memory
+    # Initialize battle Pokémon
     # -----------------------------
+    await init_battle_pokemon(bid)
     await load_battle_pokemon(bid)
 
     await event.edit("✅ Battle accepted! Check your PMs to continue.")
@@ -856,7 +894,6 @@ async def cb_decline(event):
 
     battle["state"] = "cancelled"
     await event.edit("❌ Battle cancelled by opponent.")
-
 
 print("Bot running...")
 bot.run_until_disconnected()
