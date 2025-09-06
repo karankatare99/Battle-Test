@@ -775,39 +775,53 @@ async def start_battle_pm(client, battle):
     await show_pokemon_ui(client, challenger, poke_a, battle["_id"])
     await show_pokemon_ui(client, opponent, poke_b, battle["_id"])
 
+# ----------------------------
+# Utility: Create HP bar
+# ----------------------------
+def make_hp_bar(current_hp, max_hp, length=10):
+    filled = int((current_hp / max_hp) * length)
+    empty = length - filled
+    bar = "█" * filled + "░" * empty
+    percent = int((current_hp / max_hp) * 100)
+    return f"{bar} {percent}%"
 
-# -------------------------------
-# Show Pokémon UI with moves
-# -------------------------------
-async def show_pokemon_ui(client, user_id, pokemon, battle_id):
-    if not pokemon:
-        await client.send_message(user_id, "⚠️ You don’t have a Pokémon ready!")
-        return
+# ----------------------------
+# Battle UI
+# ----------------------------
+async def show_battle_ui(bot, player, opponent, player_poke, opp_poke):
+    # HP bars
+    player_hp = make_hp_bar(player_poke['hp'], player_poke['max_hp'])
+    opp_hp = make_hp_bar(opp_poke['hp'], opp_poke['max_hp'])
 
-    moves = pokemon.get("moves", [])
-    name = pokemon["name"]
-
-    # Build move buttons
-    move_buttons = [
-        [Button.inline(moves[0] if len(moves) > 0 else "—", f"battle:move:{battle_id}:{name}:{0}"),
-         Button.inline(moves[1] if len(moves) > 1 else "—", f"battle:move:{battle_id}:{name}:{1}")],
-        [Button.inline(moves[2] if len(moves) > 2 else "—", f"battle:move:{battle_id}:{name}:{2}"),
-         Button.inline(moves[3] if len(moves) > 3 else "—", f"battle:move:{battle_id}:{name}:{3}")]
-    ]
-
-    # Switch / Forfeit
-    extra_buttons = [
-        [Button.inline("🔄 Switch", f"battle:switch:{battle_id}:{name}"),
-         Button.inline("🏳 Forfeit", f"battle:forfeit:{battle_id}:{name}")]
-    ]
-
-    await client.send_message(
-        user_id,
-        f"⚔️ <b>{name}</b> is ready!\nChoose your action:",
-        buttons=move_buttons + extra_buttons,
-        parse_mode="html"
+    # Message
+    text = (
+        f"⚔️ **Battle Started!** ⚔️\n\n"
+        f"👤 {player.first_name}'s Pokémon:\n"
+        f"{player_poke['name']} HP: {player_hp}\n\n"
+        f"👤 {opponent.first_name}'s Pokémon:\n"
+        f"{opp_poke['name']} HP: {opp_hp}"
     )
 
+    # Move buttons (4 moves)
+    move_buttons = [
+        [Button.inline(player_poke['moves'][0], data=f"move:{player.id}:0"),
+         Button.inline(player_poke['moves'][1], data=f"move:{player.id}:1")],
+        [Button.inline(player_poke['moves'][2], data=f"move:{player.id}:2"),
+         Button.inline(player_poke['moves'][3], data=f"move:{player.id}:3")],
+    ]
+
+    # Extra buttons (Switch + Forfeit)
+    extra_buttons = [
+        [Button.inline("🔄 Switch", data=f"switch:{player.id}"),
+         Button.inline("🏳️ Forfeit", data=f"forfeit:{player.id}")]
+    ]
+
+    # Send UI
+    await bot.send_message(
+        player.id,
+        text,
+        buttons=move_buttons + extra_buttons
+    )
 
 # -------------------------------
 # Extend accept_battle to call start_battle_pm
