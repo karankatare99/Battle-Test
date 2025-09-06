@@ -797,8 +797,8 @@ def make_hp_bar(current_hp, max_hp, length=10):
 # ----------------------------
 async def show_battle_ui(bot, player, opponent, player_poke, opp_poke):
     # HP bars
-    player_hp = make_hp_bar(player_poke['hp'], player_poke['max_hp'])
-    opp_hp = make_hp_bar(opp_poke['hp'], opp_poke['max_hp'])
+    player_hp = make_hp_bar(player_poke['stats']['hp'], player_poke['stats']['hp'])
+    opp_hp = make_hp_bar(opp_poke['stats']['hp'], opp_poke['stats']['hp'])
 
     # Message
     text = (
@@ -829,7 +829,7 @@ async def show_battle_ui(bot, player, opponent, player_poke, opp_poke):
         text,
         buttons=move_buttons + extra_buttons
     )'''
-    await event.respond(" test") 
+    await event.respond(" test")
 # -------------------------------
 # Extend accept_battle to call start_battle_pm
 # -------------------------------
