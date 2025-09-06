@@ -836,7 +836,6 @@ async def cb_accept(event):
     # -----------------------------
     # Load Pokémon into battle memory
     # -----------------------------
-    await init_battle_pokemon(bid)
     await load_battle_pokemon(bid)
 
     await event.edit("✅ Battle accepted! Check your PMs to continue.")
