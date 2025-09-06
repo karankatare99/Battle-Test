@@ -679,7 +679,7 @@ async def send_summary(event, poke):
 # In-memory battles for now (we'll shift to DB later)
 active_battles = {}
 
-@client.on(events.NewMessage(pattern=r'^/battle\s+@(\w+)'))
+@bot.on(events.NewMessage(pattern=r'^/battle\s+@(\w+)'))
 async def battle_handler(event):
     challenger = await event.get_sender()
     username = event.pattern_match.group(1)
@@ -714,7 +714,7 @@ async def battle_handler(event):
         "status": "pending"
 }
 
-@client.on(events.CallbackQuery)
+@bot.on(events.CallbackQuery)
 async def callback_handler(event):
     data = event.data.decode("utf-8")
 
