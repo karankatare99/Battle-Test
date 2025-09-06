@@ -772,8 +772,8 @@ async def start_battle_pm(client, battle):
     )
 
     # Send PM to both players
-    await show_pokemon_ui(client, challenger, poke_a, battle["_id"])
-    await show_pokemon_ui(client, opponent, poke_b, battle["_id"])
+    await show_battle_ui(client, challenger, poke_a, battle["_id"])
+    await show_battle_ui(client, opponent, poke_b, battle["_id"])
 
 # ----------------------------
 # Utility: Create HP bar
