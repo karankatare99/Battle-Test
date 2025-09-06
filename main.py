@@ -677,38 +677,34 @@ async def send_summary(event, poke):
         await event.reply(text)
 
 # -------------------------------
-# Battle Core + Commands
+# Battle system (clean, plain UI)
 # -------------------------------
 
-# In-memory mapping for fast lookup
-battle_map = {}  # user_id -> battle_id
+# in-memory map for quick routing (user_id -> battle_id)
+battle_map = {}
 
 # ---------- Helpers ----------
 def create_battle(challenger_id, opponent_id, battle_type):
     battle_id = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
-    battle_data = {
+    battles.insert_one({
         "_id": battle_id,
         "type": battle_type,
         "challenger": challenger_id,
         "opponent": opponent_id,
-        "state": "pending",     # pending | active | finished | cancelled
+        "state": "pending",   # pending | active | finished | cancelled
         "turn": None,
-        "teams": {},
         "active_pokemon": {},
         "log": []
-    }
-    battles.insert_one(battle_data)
+    })
     return battle_id
 
 async def send_challenge(event, challenger, opponent, battle_type):
-    battle_id = create_battle(challenger, opponent, battle_type)
-    text = f"⚔️ {challenger} has challenged {opponent} to a {battle_type} battle!"
+    bid = create_battle(challenger, opponent, battle_type)
+    text = f"{challenger} challenged {opponent} to a {battle_type} battle."
     await event.reply(
         text,
-        buttons=[
-            [Button.inline("✅ Accept", f"battle:accept:{battle_id}".encode()),
-             Button.inline("❌ Decline", f"battle:decline:{battle_id}".encode())]
-        ]
+        buttons=[[Button.inline("accept", f"battle:accept:{bid}".encode()),
+                  Button.inline("decline", f"battle:decline:{bid}".encode())]]
     )
 
 def get_first_pokemon(user_id):
@@ -718,230 +714,246 @@ def get_first_pokemon(user_id):
     poke_id = user["team"]
     return db["pokemon_data"].find_one({"_id": poke_id})
 
-def make_hp_bar(current_hp, max_hp, length=10):
-    current_hp = max(0, min(current_hp, max_hp))
-    filled = int((current_hp / max_hp) * length) if max_hp > 0 else 0
-    empty = max(0, length - filled)
-    bar = "█" * filled + "░" * empty
-    percent = int((current_hp / max_hp) * 100) if max_hp > 0 else 0
-    return f"{bar} {percent}%"
+def hp_bar(cur, mx, width=10):
+    cur = max(0, min(cur, mx))
+    filled = int((cur / mx) * width) if mx else 0
+    return "[" + "#" * filled + "-" * (width - filled) + f"] {int((cur/mx)*100) if mx else 0}%"
 
-# ---------- Battle start flow ----------
+# ---------- Accept / Decline ----------
 async def accept_battle(event, battle_id, user_id):
-    battle = battles.find_one({"_id": battle_id})
-    if not battle or battle["state"] != "pending":
-        return await event.answer("⚠️ This battle is no longer available.", alert=True)
-    if battle["opponent"] != user_id:
-        return await event.answer("⚠️ Only the challenged player can accept!", alert=True)
+    b = battles.find_one({"_id": battle_id})
+    if not b or b["state"] != "pending":
+        return await event.answer("not available", alert=True)
+    if b["opponent"] != user_id:
+        return await event.answer("only opponent can accept", alert=True)
 
-    battles.update_one({"_id": battle_id}, {"$set": {"state": "active", "turn": battle["challenger"]}})
-    await event.respond("✅ Battle started! Check your PMs.")
-    battle = battles.find_one({"_id": battle_id})
-    await start_battle_pm(event.client, battle)
+    battles.update_one({"_id": battle_id}, {"$set": {"state": "active", "turn": b["challenger"]}})
+    await event.respond("battle started. check your pm.")
+    # refresh and start PM flow
+    b = battles.find_one({"_id": battle_id})
+    await start_pm(event.client, b)
 
 async def decline_battle(event, battle_id, user_id):
-    battle = battles.find_one({"_id": battle_id})
-    if not battle:
-        return await event.answer("⚠️ Invalid battle.", alert=True)
+    b = battles.find_one({"_id": battle_id})
+    if not b:
+        return await event.answer("invalid", alert=True)
     battles.update_one({"_id": battle_id}, {"$set": {"state": "cancelled"}})
-    await event.respond("❌ Battle was declined.")
+    await event.respond("battle declined.")
 
-async def start_battle_pm(client, battle):
-    challenger = battle["challenger"]
-    opponent = battle["opponent"]
+# ---------- PM bootstrap + render ----------
+async def start_pm(client, battle):
+    a = battle["challenger"]
+    d = battle["opponent"]
 
-    poke_a = get_first_pokemon(challenger)
-    poke_b = get_first_pokemon(opponent)
-    if not poke_a or not poke_b:
-        await client.send_message(challenger, "⚠️ You or your opponent don’t have a valid team.")
-        await client.send_message(opponent, "⚠️ You or your opponent don’t have a valid team.")
+    pa = get_first_pokemon(a)
+    pd = get_first_pokemon(d)
+    if not pa or not pd:
+        await client.send_message(a, "no valid team.")
+        await client.send_message(d, "no valid team.")
         battles.update_one({"_id": battle["_id"]}, {"$set": {"state": "cancelled"}})
         return
 
-    # Initialize active_pokemon and turn
+    # set active mons and turn
     battles.update_one(
         {"_id": battle["_id"]},
-        {"$set": {
-            "active_pokemon": {"challenger": poke_a["_id"], "opponent": poke_b["_id"]},
-            "turn": challenger
-        }}
+        {"$set": {"active_pokemon": {"challenger": pa["_id"], "opponent": pd["_id"]}, "turn": a}}
     )
 
-    # Track in memory for callbacks
-    battle_map[challenger] = battle["_id"]
-    battle_map[opponent] = battle["_id"]
+    # track in memory
+    battle_map[a] = battle["_id"]
+    battle_map[d] = battle["_id"]
 
-    # Render UI to both players
-    await show_battle_ui(client, challenger, opponent, poke_a, poke_b, turn_user_id=challenger)
-    await show_battle_ui(client, opponent, challenger, poke_b, poke_a, turn_user_id=challenger)
+    await render_pm(client, a, d, pa, pd, turn=a)
+    await render_pm(client, d, a, pd, pa, turn=a)
 
-async def show_battle_ui(client, player_id, opponent_id, player_poke, opp_poke, turn_user_id):
-    # Full HP at start; extend later with current HP from DB if implementing damage
-    player_max = player_poke["stats"]["hp"]
-    opp_max = opp_poke["stats"]["hp"]
-    player_hp = make_hp_bar(player_max, player_max)
-    opp_hp = make_hp_bar(opp_max, opp_max)
+async def render_pm(client, you, foe, your_poke, foe_poke, turn):
+    y_max = your_poke["stats"]["hp"]
+    f_max = foe_poke["stats"]["hp"]
+    y_bar = hp_bar(y_max, y_max)
+    f_bar = hp_bar(f_max, f_max)
 
-    your_turn = "🟢 Your turn" if player_id == turn_user_id else "⚪ Opponent’s turn"
-    text = (
-        f"⚔️ Battle Started!\n\n"
-        f"{your_turn}\n\n"
-        f"{player_poke['name']} HP: {player_hp}\n"
-        f"{opp_poke['name']} HP: {opp_hp}\n"
-    )
-
-    # Up to 4 move buttons (pad with em dashes if fewer)
-    mv = player_poke.get("moves", [])
-    labels = [mv[i] if i < len(mv) else "—" for i in range(4)]
-    move_buttons = [
-        [Button.inline(labels, f\"move:{player_id}:0\".encode()),
-         Button.inline(labels[1], f\"move:{player_id}:1\".encode())],
-        [Button.inline(labels, f\"move:{player_id}:2\".encode()),
-         Button.inline(labels, f\"move:{player_id}:3\".encode())],
+    header = "your turn" if you == turn else "opponent's turn"
+    lines = [
+        header,
+        "-----",
+        f"{your_poke['name']} hp {y_bar}",
+        f"{foe_poke['name']} hp {f_bar}",
+        "-----"
     ]
-    extra_buttons = [[
-        Button.inline("🔄 Switch", f\"switch:{player_id}\".encode()),
-        Button.inline("🏳️ Forfeit", f\"forfeit:{player_id}\".encode())
+
+    mv = your_poke.get("moves", []) or []
+    for idx in range(min(4, len(mv))):
+        lines.append(f"{idx+1}. {mv[idx]}")
+
+    text = "\n".join(lines)
+
+    # build 4 labels; pad with "-"
+    labels = [mv[i] if i < len(mv) else "-" for i in range(4)]
+
+    move_row1 = [
+        Button.inline(labels, f"mv:{you}:0".encode()),
+        Button.inline(labels[1], f"mv:{you}:1".encode()),
+    ]
+    move_row2 = [
+        Button.inline(labels, f"mv:{you}:2".encode()),
+        Button.inline(labels, f"mv:{you}:3".encode()),
+    ]
+    extra = [[
+        Button.inline("switch", f"sw:{you}".encode()),
+        Button.inline("forfeit", f"ff:{you}".encode())
     ]]
 
-    await client.send_message(player_id, text, buttons=move_buttons + extra_buttons)
+    await client.send_message(you, text, buttons=[move_row1, move_row2] + extra)
 
-# ---------- Button handlers (battle accept/decline) ----------
+# ---------- Callback: accept / decline ----------
 @bot.on(events.CallbackQuery(pattern=b"battle:accept:(.+)"))
-async def _on_accept(event):
-    battle_id = event.pattern_match.group(1).decode()
-    await accept_battle(event, battle_id, event.sender_id)
+async def cb_accept(event):
+    bid = event.pattern_match.group(1).decode()
+    await accept_battle(event, bid, event.sender_id)
 
 @bot.on(events.CallbackQuery(pattern=b"battle:decline:(.+)"))
-async def _on_decline(event):
-    battle_id = event.pattern_match.group(1).decode()
-    await decline_battle(event, battle_id, event.sender_id)
+async def cb_decline(event):
+    bid = event.pattern_match.group(1).decode()
+    await decline_battle(event, bid, event.sender_id)
 
-# ---------- Button handlers (moves/switch/forfeit) ----------
-@bot.on(events.CallbackQuery(pattern=b"move:(\\d+):(\\d)"))
-async def _on_move(event):
-    user_id = int(event.pattern_match.group(1).decode())
-    move_index = int(event.pattern_match.group(2).decode())
-    if event.sender_id != user_id:
-        return await event.answer("⚠️ Not your button.", alert=True)
+# ---------- Callback: moves / switch / forfeit ----------
+@bot.on(events.CallbackQuery(pattern=b"mv:(\\d+):(\\d)"))
+async def cb_move(event):
+    uid = int(event.pattern_match.group(1).decode())
+    idx = int(event.pattern_match.group(2).decode())
+    if event.sender_id != uid:
+        return await event.answer("not yours", alert=True)
 
-    battle_id = battle_map.get(user_id)
-    if not battle_id:
-        return await event.answer("⚠️ No active battle.", alert=True)
-    battle = battles.find_one({"_id": battle_id})
-    if not battle or battle.get("state") != "active":
-        return await event.answer("⚠️ Battle not active.", alert=True)
-    if battle.get("turn") != user_id:
-        return await event.answer("⚠️ Not your turn.", alert=True)
+    bid = battle_map.get(uid)
+    if not bid:
+        return await event.answer("no active battle", alert=True)
 
-    # Log and toggle turn (no damage stub)
-    battles.update_one({"_id": battle_id}, {"$push": {"log": {"by": user_id, "type": "move", "index": move_index}}})
-    other = battle["opponent"] if user_id == battle["challenger"] else battle["challenger"]
-    battles.update_one({"_id": battle_id}, {"$set": {"turn": other}})
-    battle = battles.find_one({"_id": battle_id})
+    b = battles.find_one({"_id": bid})
+    if not b or b.get("state") != "active":
+        return await event.answer("not active", alert=True)
+    if b.get("turn") != uid:
+        return await event.answer("not your turn", alert=True)
 
-    # Re-render UIs using currently active mons
-    ap = battle.get("active_pokemon", {})
-    poke_a = pokedata.find_one({"_id": ap.get("challenger")})
-    poke_b = pokedata.find_one({"_id": ap.get("opponent")})
-    if not poke_a or not poke_b:
-        return await event.answer("⚠️ Missing active Pokémon.", alert=True)
+    # log move; no damage yet
+    battles.update_one({"_id": bid}, {"$push": {"log": {"by": uid, "move_index": idx}}})
 
-    await show_battle_ui(event.client, battle["challenger"], battle["opponent"], poke_a, poke_b, turn_user_id=battle["turn"])
-    await show_battle_ui(event.client, battle["opponent"], battle["challenger"], poke_b, poke_a, turn_user_id=battle["turn"])
-    await event.answer("✅ Move selected.")
+    other = b["opponent"] if uid == b["challenger"] else b["challenger"]
+    battles.update_one({"_id": bid}, {"$set": {"turn": other}})
+    b = battles.find_one({"_id": bid})
 
-@bot.on(events.CallbackQuery(pattern=b"switch:(\\d+)"))
-async def _on_switch(event):
-    user_id = int(event.pattern_match.group(1).decode())
-    if event.sender_id != user_id:
-        return await event.answer("⚠️ Not your button.", alert=True)
-    battle_id = battle_map.get(user_id)
-    if not battle_id:
-        return await event.answer("⚠️ No active battle.", alert=True)
-    await event.answer("ℹ️ Switch UI not implemented yet.", alert=True)
+    ap = b.get("active_pokemon", {})
+    pa = pokedata.find_one({"_id": ap.get("challenger")})
+    pd = pokedata.find_one({"_id": ap.get("opponent")})
+    if not pa or not pd:
+        return await event.answer("missing active pokemon", alert=True)
 
-@bot.on(events.CallbackQuery(pattern=b"forfeit:(\\d+)"))
-async def _on_forfeit(event):
-    user_id = int(event.pattern_match.group(1).decode())
-    if event.sender_id != user_id:
-        return await event.answer("⚠️ Not your button.", alert=True)
-    battle_id = battle_map.get(user_id)
-    if not battle_id:
-        return await event.answer("⚠️ No active battle.", alert=True)
-    battle = battles.find_one({"_id": battle_id})
-    if not battle or battle.get("state") != "active":
-        return await event.answer("⚠️ Battle not active.", alert=True)
+    await render_pm(event.client, b["challenger"], b["opponent"], pa, pd, turn=b["turn"])
+    await render_pm(event.client, b["opponent"], b["challenger"], pd, pa, turn=b["turn"])
+    await event.answer("ok")
 
-    winner = battle["opponent"] if user_id == battle["challenger"] else battle["challenger"]
-    battles.update_one({"_id": battle_id}, {"$set": {"state": "finished", "winner": winner}})
-    await event.client.send_message(user_id, "🏳️ You forfeited. Battle ended.")
-    await event.client.send_message(winner, "🏆 Opponent forfeited. You win!")
-    battle_map.pop(battle["challenger"], None)
-    battle_map.pop(battle["opponent"], None)
-    await event.answer("✅ Forfeited.")
+@bot.on(events.CallbackQuery(pattern=b"sw:(\\d+)"))
+async def cb_switch(event):
+    uid = int(event.pattern_match.group(1).decode())
+    if event.sender_id != uid:
+        return await event.answer("not yours", alert=True)
+    bid = battle_map.get(uid)
+    if not bid:
+        return await event.answer("no active battle", alert=True)
+    return await event.answer("switch not implemented", alert=True)
 
-# ---------- Public Commands ----------
-@bot.on(events.NewMessage(pattern=r\"/battleS\"))   # reply to a user
-async def battle_singles(event):
+@bot.on(events.CallbackQuery(pattern=b"ff:(\\d+)"))
+async def cb_forfeit(event):
+    uid = int(event.pattern_match.group(1).decode())
+    if event.sender_id != uid:
+        return await event.answer("not yours", alert=True)
+    bid = battle_map.get(uid)
+    if not bid:
+        return await event.answer("no active battle", alert=True)
+    b = battles.find_one({"_id": bid})
+    if not b or b.get("state") != "active":
+        return await event.answer("not active", alert=True)
+
+    win = b["opponent"] if uid == b["challenger"] else b["challenger"]
+    battles.update_one({"_id": bid}, {"$set": {"state": "finished", "winner": win}})
+    await event.client.send_message(uid, "you forfeited. battle ended.")
+    await event.client.send_message(win, "opponent forfeited. you win.")
+    battle_map.pop(b["challenger"], None)
+    battle_map.pop(b["opponent"], None)
+    await event.answer("ok")
+
+# ---------- Commands ----------
+@bot.on(events.NewMessage(pattern=r"/battleS"))
+async def cmd_battle_s(event):
     if not event.is_reply:
-        return await event.reply("⚠️ Reply to a user’s message to challenge them.")
-    opponent = (await event.get_reply_message()).sender_id
-    challenger = event.sender_id
-    if challenger == opponent:
-        return await event.reply("⚠️ You can’t battle yourself!")
-    await send_challenge(event, challenger, opponent, "singles")
+        return await event.reply("reply to a user to challenge.")
+    opp = (await event.get_reply_message()).sender_id
+    me = event.sender_id
+    if me == opp:
+        return await event.reply("cannot challenge self.")
+    bid = create_battle(me, opp, "singles")
+    text = f"{me} challenged {opp} to a singles battle."
+    await event.reply(
+        text,
+        buttons=[[Button.inline("accept", f"battle:accept:{bid}".encode()),
+                  Button.inline("decline", f"battle:decline:{bid}".encode())]]
+    )
 
-@bot.on(events.NewMessage(pattern=r\"/battleD\"))   # reply to a user
-async def battle_doubles(event):
+@bot.on(events.NewMessage(pattern=r"/battleD"))
+async def cmd_battle_d(event):
     if not event.is_reply:
-        return await event.reply("⚠️ Reply to a user’s message to challenge them.")
-    opponent = (await event.get_reply_message()).sender_id
-    challenger = event.sender_id
-    if challenger == opponent:
-        return await event.reply("⚠️ You can’t battle yourself!")
-    await send_challenge(event, challenger, opponent, "doubles")
+        return await event.reply("reply to a user to challenge.")
+    opp = (await event.get_reply_message()).sender_id
+    me = event.sender_id
+    if me == opp:
+        return await event.reply("cannot challenge self.")
+    bid = create_battle(me, opp, "doubles")
+    text = f"{me} challenged {opp} to a doubles battle."
+    await event.reply(
+        text,
+        buttons=[[Button.inline("accept", f"battle:accept:{bid}".encode()),
+                  Button.inline("decline", f"battle:decline:{bid}".encode())]]
+    )
 
-@bot.on(events.NewMessage(pattern=r\"/forfeit\"))   # forfeit own active battle
+@bot.on(events.NewMessage(pattern=r"/forfeit"))
 async def cmd_forfeit(event):
-    user_id = event.sender_id
-    battle_id = battle_map.get(user_id)
-    if not battle_id:
-        return await event.reply("⚠️ No active battle found.")
-    battle = battles.find_one({"_id": battle_id})
-    if not battle or battle.get("state") != "active":
-        return await event.reply("⚠️ Battle not active.")
-    winner = battle["opponent"] if user_id == battle["challenger"] else battle["challenger"]
-    battles.update_one({"_id": battle_id}, {"$set": {"state": "finished", "winner": winner}})
-    await event.respond("🏳️ You forfeited. Battle ended.")
-    await event.client.send_message(winner, "🏆 Opponent forfeited. You win!")
-    battle_map.pop(battle["challenger"], None)
-    battle_map.pop(battle["opponent"], None)
+    me = event.sender_id
+    bid = battle_map.get(me)
+    if not bid:
+        return await event.reply("no active battle.")
+    b = battles.find_one({"_id": bid})
+    if not b or b.get("state") != "active":
+        return await event.reply("not active.")
+    win = b["opponent"] if me == b["challenger"] else b["challenger"]
+    battles.update_one({"_id": bid}, {"$set": {"state": "finished", "winner": win}})
+    await event.reply("you forfeited. battle ended.")
+    await event.client.send_message(win, "opponent forfeited. you win.")
+    battle_map.pop(b["challenger"], None)
+    battle_map.pop(b["opponent"], None)
 
-@bot.on(events.NewMessage(pattern=r\"/mybattle\"))  # inspect current battle id
+@bot.on(events.NewMessage(pattern=r"/mybattle"))
 async def cmd_mybattle(event):
-    user_id = event.sender_id
-    battle_id = battle_map.get(user_id)
-    if not battle_id:
-        return await event.reply("ℹ️ No active battle.")
-    battle = battles.find_one({"_id": battle_id}) or {}
-    await event.reply(f\"🔎 Battle: {battle_id}\\nState: {battle.get('state','?')}\\nTurn: {battle.get('turn','?')}\") 
+    me = event.sender_id
+    bid = battle_map.get(me)
+    if not bid:
+        return await event.reply("no active battle.")
+    b = battles.find_one({"_id": bid}) or {}
+    await event.reply(f"id: {bid}\nstate: {b.get('state','?')}\nturn: {b.get('turn','?')}")
 
-@bot.on(events.NewMessage(pattern=r\"/endbattle\"))  # admin cleanup
+@bot.on(events.NewMessage(pattern=r"/endbattle"))
 async def cmd_endbattle(event):
     if event.sender_id != owner:
-        return await event.reply(\"❌ Owner only.\")
-    parts = event.raw_text.strip().split()
+        return await event.reply("owner only.")
+    parts = event.raw_text.split()
     if len(parts) < 2:
-        return await event.reply(\"Usage: /endbattle BATTLE-XXXXXX\")
-    battle_id = parts[1]
-    battle = battles.find_one({\"_id\": battle_id})
-    if not battle:
-        return await event.reply(\"⚠️ Battle not found.\")
-    battles.update_one({\"_id\": battle_id}, {\"$set\": {\"state\": \"finished\", \"winner\": None}})
-    battle_map.pop(battle.get(\"challenger\"), None)
-    battle_map.pop(battle.get(\"opponent\"), None)
-    await event.reply(\"🧹 Battle ended.\")
+        return await event.reply("usage: /endbattle BATTLE-XXXXXX")
+    bid = parts[1]
+    b = battles.find_one({"_id": bid})
+    if not b:
+        return await event.reply("not found.")
+    battles.update_one({"_id": bid}, {"$set": {"state": "finished"}})
+    battle_map.pop(b.get("challenger"), None)
+    battle_map.pop(b.get("opponent"), None)
+    await event.reply("ended.")
 
 
     
