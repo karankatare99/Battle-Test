@@ -824,12 +824,12 @@ async def show_battle_ui(bot, player, opponent, player_poke, opp_poke):
     ]
 
     # Send UI
-    await bot.send_message(
+    '''await bot.send_message(
         player.id,
         text,
         buttons=move_buttons + extra_buttons
-    )
-
+    )'''
+    await event.respond(" test") 
 # -------------------------------
 # Extend accept_battle to call start_battle_pm
 # -------------------------------
