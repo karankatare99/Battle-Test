@@ -692,20 +692,20 @@ battle_map = {}   # user_id -> battle_id
 # Helper Functions
 # -------------------------------
 
-async def get_user_team(user_id):
-    """Fetch user's team Pokémon from DB."""
-    user = await db.users.find_one({"user_id": user_id})
+def get_user_team(user_id):
+    """Fetch user's team Pokémon from DB (sync)."""
+    user = db.users.find_one({"user_id": user_id})
     if not user or "team" not in user:
         return []
-    
+
     team = []
     for pkm_id in user["team"]:
-        pkm = await db.pokemon_data.find_one({"_id": pkm_id})
+        pkm = db.pokemon_data.find_one({"_id": pkm_id})
         if pkm:
             team.append(pkm)
     return team
 
-async def init_battle_pokemon(bid):
+def init_battle_pokemon(bid):
     """Fetch both players' Pokémon and store in battle memory."""
     battle = battles.get(bid)
     if not battle:
@@ -713,13 +713,13 @@ async def init_battle_pokemon(bid):
 
     # Fetch Pokémon for both players
     battle["pokemon"] = {
-        "challenger": await get_user_team(battle["challenger"]),
-        "opponent": await get_user_team(battle["opponent"])
+        "challenger": get_user_team(battle["challenger"]),
+        "opponent": get_user_team(battle["opponent"])
     }
 
     return True
 
-async def load_battle_pokemon(bid):
+def load_battle_pokemon(bid):
     """Load Pokémon into battle state with HP, moves, and status."""
     battle = battles.get(bid)
     if not battle or "pokemon" not in battle:
@@ -871,10 +871,10 @@ async def cb_accept(event):
     battle_map[battle["opponent"]] = bid
 
     # -----------------------------
-    # Initialize battle Pokémon
+    # Initialize battle Pokémon (sync DB)
     # -----------------------------
-    await init_battle_pokemon(bid)
-    await load_battle_pokemon(bid)
+    init_battle_pokemon(bid)
+    load_battle_pokemon(bid)
 
     await event.edit("✅ Battle accepted! Check your PMs to continue.")
 
@@ -894,6 +894,6 @@ async def cb_decline(event):
 
     battle["state"] = "cancelled"
     await event.edit("❌ Battle cancelled by opponent.")
-
+    
 print("Bot running...")
 bot.run_until_disconnected()
