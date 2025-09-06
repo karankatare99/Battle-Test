@@ -803,9 +803,9 @@ async def show_battle_ui(bot, player, opponent, player_poke, opp_poke, event):
     # Message
     text = (
         f"⚔️ **Battle Started!** ⚔️\n\n"
-        f"👤 {event.sender.first_name}'s Pokémon:\n"
+        #f"👤 {event.sender.first_name}'s Pokémon:\n"
         f"{player_poke['name']} HP: {player_hp}\n\n"
-        f"👤 {event.sender.first_name}'s Pokémon:\n"
+        #f"👤 {event.sender.first_name}'s Pokémon:\n"
         f"{opp_poke['name']} HP: {opp_hp}"
     )
 
