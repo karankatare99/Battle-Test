@@ -780,8 +780,8 @@ async def start_battle_pm(client, battle):
     )
 
     # Send UI to both players
-    await show_battle_ui(client, challenger, opponent, poke_a, poke_b)
-    await show_battle_ui(client, opponent, challenger, poke_b, poke_a)
+    await show_battle_ui(client, challenger, opponent, poke_a, poke_b, event)
+    await show_battle_ui(client, opponent, challenger, poke_b, poke_a, event)
 # ----------------------------
 # Utility: Create HP bar
 # ----------------------------
@@ -795,7 +795,7 @@ def make_hp_bar(current_hp, max_hp, length=10):
 # ----------------------------
 # Battle UI
 # ----------------------------
-async def show_battle_ui(bot, player, opponent, player_poke, opp_poke):
+async def show_battle_ui(bot, player, opponent, player_poke, opp_poke, event):
     # HP bars
     player_hp = make_hp_bar(player_poke['stats']['hp'], player_poke['stats']['hp'])
     opp_hp = make_hp_bar(opp_poke['stats']['hp'], opp_poke['stats']['hp'])
