@@ -1,0 +1,4 @@
+telethon==1.40.0
+pymongo==4.12.1
+pytz==2025.2
+gunicorn == 23.0.0
