@@ -794,6 +794,8 @@ async def send_battle_interface(user_id, battle):
         f"Opponent Pokémon: {active_opp['name']} {opp_hp_bar} {active_opp['hp']}/{active_opp['max_hp']}\n",
         buttons=buttons
     )
+    print(battles)
+    print(battle_map)
 
 def create_battle(challenger_id, opponent_id, battle_type):
     """Create a new battle entry."""
