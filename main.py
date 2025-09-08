@@ -1079,7 +1079,8 @@ async def cb_move(event):
     
     # Save message ID safely
     msg_key = f"move_msg_{side}"
-    battle[msg_key] = event.message.id if event.message else None
+    msg = await event.get_message()  # fetch the message object
+    battle[msg_key] = msg.id if msg else None   
     
     # Update user's own message
     try:
