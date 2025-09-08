@@ -1193,7 +1193,7 @@ async def cb_move(event):
     
     # If both moves chosen → resolve turn
     if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
-        await resolve_turn(bid)
+        await resolve_turn(bid,side)
 
 @bot.on(events.CallbackQuery(pattern=b"battle:forfeit:(.+)"))
 async def cb_forfeit(event):
