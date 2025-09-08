@@ -938,56 +938,49 @@ async def cb_move(event):
     bid = event.pattern_match.group(1).decode()
     move = event.pattern_match.group(2).decode()
     battle = battles.get(bid)
+    if not battle:
+        return await event.answer("❌ Battle not found.", alert=True)
 
-    if not battle or battle["state"] != "active":
-        return await event.answer("❌ Battle not found or inactive.", alert=True)
+    user_id = event.sender_id
+    side = "challenger" if user_id == battle["challenger"] else "opponent"
 
-    # Identify player side
-    if event.sender_id == battle["challenger"]:
-        battle["pending_moves"]["challenger"] = move
-        try:
-            await battle["move_msg_challenger"].edit(
-                f"✅ You selected **{move}**.\n⏳ Waiting for opponent..."
-            )
-        except Exception as e:
-            print("Edit challenger msg failed:", e)
-    elif event.sender_id == battle["opponent"]:
-        battle["pending_moves"]["opponent"] = move
-        try:
-            await battle["move_msg_opponent"].edit(
-                f"✅ You selected **{move}**.\n⏳ Waiting for opponent..."
-            )
-        except Exception as e:
-            print("Edit opponent msg failed:", e)
-    else:
-        return await event.answer("You are not part of this battle.", alert=True)
+    # Save chosen move
+    battle["pending_moves"][side] = move
 
-    # If both moves chosen
-    if (battle["pending_moves"]["challenger"] is not None and
-        battle["pending_moves"]["opponent"] is not None):
+    # Save move message ID for this user
+    msg_key = f"move_msg_{side}"
+    battle[msg_key] = event.message_id
 
-        # Tell both players the moves
-        try:
-            await battle["move_msg_challenger"].edit(
-                f"📝 You used **{battle['pending_moves']['challenger']}**!\n"
-                f"Opponent used **{battle['pending_moves']['opponent']}**!"
-            )
-        except Exception as e:
-            print("Final challenger msg edit failed:", e)
+    # Update this user's own message
+    try:
+        await event.edit(f"✅ You selected {move}. Waiting for opponent...")
+    except Exception as e:
+        print(f"Edit {side} msg failed: {e}")
 
-        try:
-            await battle["move_msg_opponent"].edit(
-                f"📝 You used **{battle['pending_moves']['opponent']}**!\n"
-                f"Opponent used **{battle['pending_moves']['challenger']}**!"
-            )
-        except Exception as e:
-            print("Final opponent msg edit failed:", e)
+    # If both moves are selected -> show result to both
+    if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
+        challenger_move = battle["pending_moves"]["challenger"]
+        opponent_move = battle["pending_moves"]["opponent"]
 
-        # Reset for next turn
-        battle["pending_moves"] = {
-            "challenger": None,
-            "opponent": None
-        }
+        challenger_text = f"👉 You used {challenger_move}!\nOpponent used {opponent_move}!"
+        opponent_text = f"👉 You used {opponent_move}!\nOpponent used {challenger_move}!"
+
+        # Edit challenger's message if it exists
+        if "move_msg_challenger" in battle:
+            try:
+                await bot.edit_message(battle["challenger"], battle["move_msg_challenger"], challenger_text)
+            except Exception as e:
+                print(f"Final challenger msg edit failed: {e}")
+
+        # Edit opponent's message if it exists
+        if "move_msg_opponent" in battle:
+            try:
+                await bot.edit_message(battle["opponent"], battle["move_msg_opponent"], opponent_text)
+            except Exception as e:
+                print(f"Final opponent msg edit failed: {e}")
+
+        # Reset moves for next turn
+        battle["pending_moves"] = {"challenger": None, "opponent": None}
     
 print("Bot running...")
 bot.run_until_disconnected()
