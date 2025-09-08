@@ -28,6 +28,7 @@ pokedata = db["pokemon_data"]
 battles = db["battles"]
 matchmaking = db["matchmaking"]
 
+
 owner = 6735548827
 
 # State tracking so /add expects next msg
@@ -688,6 +689,30 @@ from telethon import events, Button
 battles = {}      # battle_id -> battle info
 battle_map = {}   # user_id -> battle_id
 
+type_chart = {
+    "Normal":     {"Rock": 0.5, "Ghost": 0,   "Steel": 0.5},
+    "Fire":       {"Bug": 2,   "Steel": 2,   "Grass": 2,   "Ice": 2,   "Rock": 0.5, "Fire": 0.5, "Water": 0.5, "Dragon": 0.5},
+    "Water":      {"Ground": 2,"Rock": 2,    "Fire": 2,    "Water": 0.5,"Grass": 0.5,"Dragon": 0.5},
+    "Electric":   {"Flying": 2,"Water": 2,   "Grass": 0.5,"Electric": 0.5,"Dragon": 0.5,"Ground": 0},
+    "Grass":      {"Ground": 2,"Rock": 2,    "Water": 2,   "Flying": 0.5,"Poison": 0.5,"Bug": 0.5,"Steel": 0.5,"Fire": 0.5,"Grass": 0.5,"Dragon": 0.5},
+    "Ice":        {"Flying": 2,"Ground": 2,  "Grass": 2,   "Dragon": 2, "Steel": 0.5,"Fire": 0.5,"Water": 0.5,"Ice": 0.5},
+    "Fighting":   {"Normal": 2,"Rock": 2,    "Steel": 2,   "Ice": 2,    "Dark": 2,   "Flying": 0.5,"Poison": 0.5,"Bug": 0.5,"Psychic": 0.5,"Fairy": 0.5,"Ghost": 0},
+    "Poison":     {"Grass": 2, "Fairy": 2,   "Poison": 0.5,"Ground": 0.5,"Rock": 0.5,"Ghost": 0.5,"Steel": 0},
+    "Ground":     {"Poison": 2,"Rock": 2,    "Steel": 2,   "Fire": 2,   "Electric": 2,"Bug": 0.5,"Grass": 0.5,"Flying": 0},
+    "Flying":     {"Fighting": 2,"Bug": 2,   "Grass": 2,   "Rock": 0.5, "Steel": 0.5,"Electric": 0.5},
+    "Psychic":    {"Fighting": 2,"Poison": 2,"Steel": 0.5,"Psychic": 0.5,"Dark": 0},
+    "Bug":        {"Grass": 2, "Psychic": 2, "Dark": 2,    "Fighting": 0.5,"Flying": 0.5,"Poison": 0.5,"Ghost": 0.5,"Steel": 0.5,"Fire": 0.5,"Fairy": 0.5},
+    "Rock":       {"Flying": 2,"Bug": 2,     "Fire": 2,    "Ice": 2,    "Fighting": 0.5,"Ground": 0.5,"Steel": 0.5},
+    "Ghost":      {"Ghost": 2, "Psychic": 2, "Dark": 0.5,  "Normal": 0},
+    "Dragon":     {"Dragon": 2,"Steel": 0.5,"Fairy": 0},
+    "Dark":       {"Ghost": 2, "Psychic": 2, "Fighting": 0.5,"Dark": 0.5,"Fairy": 0.5},
+    "Steel":      {"Rock": 2,  "Ice": 2,     "Fairy": 2,   "Steel": 0.5,"Fire": 0.5,"Water": 0.5,"Electric": 0.5},
+    "Fairy":      {"Fighting": 2,"Dragon": 2,"Dark": 2,    "Poison": 0.5,"Steel": 0.5,"Fire": 0.5}
+}
+
+
+with open("moves.json", "r", encoding="utf-8") as f:
+    MOVES = json.load(f)
 # -------------------------------
 # Helper Functions
 # -------------------------------
@@ -844,6 +869,98 @@ async def send_move_menu(bid):
     # Store these messages in the battle
     battle["move_msg_challenger"] = msg_challenger
     battle["move_msg_opponent"] = msg_opponent
+
+def get_type_multiplier(move_type, defender_types):
+    """
+    Returns (multiplier, phrase_text) for the move vs defender's types.
+    Supports dual-types.
+    """
+    total = 1.0
+    phrases = []
+
+    for d_type in defender_types:
+        mult = type_chart.get(move_type, {}).get(d_type, 1)
+        total *= mult
+
+        if mult == 0:
+            phrases.append(f"It doesn't affect opposing {d_type} types!")
+        elif mult == 4:
+            phrases.append("Extremely Effective!")
+        elif mult == 2:
+            phrases.append("Super Effective!")
+        elif mult == 0.5:
+            phrases.append("Not Very Effective.")
+        elif mult == 0.25:
+            phrases.append("Mostly Ineffective.")
+        else:
+            phrases.append("Effective.")
+
+    return total, " ".join(phrases)
+
+def calculate_damage(attacker, defender, move_key):
+    """
+    Returns (damage, battle_text) for one move.
+    attacker/defender = dicts with at least:
+      {name, level, types, atk, def, spa, spd}
+    """
+    move = MOVES[move_key]
+
+    # Status move = no damage
+    if move["Category"] == "Status":
+        return 0, f"{attacker['name']} used {move['Name']}!\n{move['Effects']}"
+
+    # Handle power
+    power = move["Power"]
+    if power in ["—", None]:
+        return 0, f"{attacker['name']} used {move['Name']}!"
+    power = int(power)
+
+    # Accuracy check
+    acc = move["Accuracy"]
+    if acc not in ["—", None]:
+        if random.randint(1, 100) > int(acc):
+            # Miss
+            if random.choice([True, False]):
+                return 0, f"{attacker['name']} avoided the attack!"
+            else:
+                return 0, f"Opposing {defender['name']} avoided the attack!"
+
+    # Crit (1/24 chance)
+    crit = 1.5 if random.randint(1, 24) == 1 else 1.0
+
+    # Random factor (85–100%)
+    rand = random.uniform(0.85, 1.0)
+
+    # Stats
+    if move["Category"] == "Physical":
+        A = attacker["atk"]
+        D = defender["def"]
+    else:  # Special
+        A = attacker["spa"]
+        D = defender["spd"]
+
+    L = attacker["level"]
+
+    # STAB (same type bonus)
+    stab = 1.5 if move["Type"] in attacker["types"] else 1.0
+
+    # Type multiplier
+    multiplier, phrase = get_type_multiplier(move["Type"], defender["types"])
+
+    # Damage formula
+    damage = (((((2 * L / 5) + 2) * power * A / D) / 50) + 2)
+    damage *= stab * multiplier * rand * crit
+    damage = max(1, int(damage))  # at least 1
+
+    # Build text
+    text = f"{attacker['name']} used {move['Name']}!\n"
+    if crit > 1.0:
+        text += "A critical hit!\n"
+    if phrase:
+        text += f"It was {phrase}\n"
+    text += f"{defender['name']} lost {damage} HP!"
+
+    return damage, text
     
 # -------------------------------
 # Battle Commands
