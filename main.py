@@ -1065,65 +1065,62 @@ async def cb_decline(event):
 @bot.on(events.CallbackQuery(pattern=b"battle:move:(.+):(.+)"))
 async def cb_move(event):
     bid = event.pattern_match.group(1).decode()
-    move = event.pattern_match.group(2).decode()
+    move_selected = event.pattern_match.group(2).decode()
     battle = battles.get(bid)
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
 
     user_id = event.sender_id
     side = "challenger" if user_id == battle["challenger"] else "opponent"
-    opponent_side = "opponent" if side == "challenger" else "challenger"
 
     # Save chosen move
-    battle["pending_moves"][side] = move
+    battle["pending_moves"][side] = move_selected
 
-    # Update this user's message
+    # Save move message ID
+    msg_key = f"move_msg_{side}"
+    battle[msg_key] = event.message.id
+
+    # Acknowledge selection
     try:
-        await event.edit(f"✅ You selected {move}. Waiting for opponent...")
+        await event.edit(f"✅ You selected {move_selected}. Waiting for opponent...")
     except Exception as e:
         print(f"Edit {side} msg failed: {e}")
 
-    # If both moves are selected -> calculate damage
-    if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
-        # Active Pokémon
+    # If both moves selected
+    if all(battle["pending_moves"].values()):
+        # Get active Pokémon for both sides
         atk_challenger = battle["active"]["challenger"]
-        print(battle["active"]["challenger"])
         atk_opponent = battle["active"]["opponent"]
 
-        # Moves
         move_challenger = battle["pending_moves"]["challenger"]
         move_opponent = battle["pending_moves"]["opponent"]
 
-        move_challenger_key = move_challenger.lower().replace(" ", "-")
-        move_opponent_key = move_opponent.lower().replace(" ", "-")
-        
         # Calculate damage
-        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
-        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)
+        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger)
+        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent)
 
-        # Reduce HP
+        # Apply HP
         atk_opponent["hp"] = max(0, atk_opponent["hp"] - dmg_to_opponent)
         atk_challenger["hp"] = max(0, atk_challenger["hp"] - dmg_to_challenger)
 
-        # Add HP bars to messages
-        text_challenger += f"\n\nYour Pokémon: {atk_challenger['name']} {get_hp_bar(atk_challenger['hp'], atk_challenger['max_hp'])} {atk_challenger['hp']}/{atk_challenger['max_hp']}\n"
-        text_challenger += f"Opponent Pokémon: {atk_opponent['name']} {get_hp_bar(atk_opponent['hp'], atk_opponent['max_hp'])} {atk_opponent['hp']}/{atk_opponent['max_hp']}"
+        # Edit messages safely
+        if "move_msg_challenger" in battle:
+            try:
+                await bot.edit_message(battle["challenger"], battle["move_msg_challenger"], text_challenger)
+            except Exception as e:
+                print(f"Final challenger msg edit failed: {e}")
 
-        text_opponent += f"\n\nYour Pokémon: {atk_opponent['name']} {get_hp_bar(atk_opponent['hp'], atk_opponent['max_hp'])} {atk_opponent['hp']}/{atk_opponent['max_hp']}\n"
-        text_opponent += f"Opponent Pokémon: {atk_challenger['name']} {get_hp_bar(atk_challenger['hp'], atk_challenger['max_hp'])} {atk_challenger['hp']}/{atk_challenger['max_hp']}"
+        if "move_msg_opponent" in battle:
+            try:
+                await bot.edit_message(battle["opponent"], battle["move_msg_opponent"], text_opponent)
+            except Exception as e:
+                print(f"Final opponent msg edit failed: {e}")
 
-        # Update messages
-        try:
-            await bot.edit_message(battle["challenger"], battle["move_msg_challenger"], text_challenger)
-        except Exception as e:
-            print(f"Final challenger msg edit failed: {e}")
-        try:
-            await bot.edit_message(battle["opponent"], battle["move_msg_opponent"], text_opponent)
-        except Exception as e:
-            print(f"Final opponent msg edit failed: {e}")
-
-        # Reset pending moves for next turn
+        # Reset moves
         battle["pending_moves"] = {"challenger": None, "opponent": None}
+
+        # Send next move menu
+        await send_move_menu(bid)
         
 print("Bot running...")
 bot.run_until_disconnected()
