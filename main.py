@@ -1098,10 +1098,13 @@ async def cb_move(event):
         move_challenger = battle["pending_moves"]["challenger"]
         move_opponent = battle["pending_moves"]["opponent"]
         
-        # Calculate damages
-        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger)
-        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent)
-        
+        # In cb_move, before calling calculate_damage
+        move_challenger_key = move_challenger.lower().replace(" ", "-")
+        move_opponent_key = move_opponent.lower().replace(" ", "-")
+   
+        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
+        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)     
+
         # Apply damage
         atk_opponent["hp"] = max(0, atk_opponent["hp"] - dmg_to_opponent)
         atk_challenger["hp"] = max(0, atk_challenger["hp"] - dmg_to_challenger)
