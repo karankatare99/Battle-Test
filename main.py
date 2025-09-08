@@ -1080,7 +1080,7 @@ async def resolve_turn(bid):
         pass
 
     # Refresh UI
-    await send_battle_ui(bid)
+    await send_battle_ui(bid,side)
     
 # -------------------------------
 # Battle Commands
