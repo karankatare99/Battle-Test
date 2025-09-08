@@ -998,7 +998,7 @@ async def send_battle_ui(bid):
         [Button.inline(move, f"battle:move:{bid}:{move}")]
         for move in challenger["moves"]
     ]
-    c_buttons.append([Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")])
+    c_buttons.append([Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}"),Button.inline("🔄 Switch", f"battle:switch:{bid}:{side}")])
 
     # Opponent view
     o_text = (
@@ -1225,5 +1225,58 @@ async def cb_forfeit(event):
 
     # Remove battle from memory
     battles.pop(bid, None)
+
+@bot.on(events.CallbackQuery(pattern=b"battle:switch:(.+):(.+)"))
+async def cb_switch(event):
+    bid = event.pattern_match.group(1).decode()
+    side = event.pattern_match.group(2).decode()
+    battle = battles.get(bid)
+    if not battle:
+        return await event.answer("❌ Battle not found.", alert=True)
+
+    # List the player's team
+    team = battle["battle_state"][side]
+
+    # Only show Pokémon that are NOT fainted and not already active
+    buttons = []
+    for idx, pkm in enumerate(team):
+        if pkm["hp"] > 0 and pkm != battle["active"][side]:
+            buttons.append([Button.inline(
+                f"{pkm['name']} ({pkm['hp']}/{pkm['max_hp']})",
+                f"battle:choose_switch:{bid}:{side}:{idx}"
+            )])
+
+    if not buttons:
+        return await event.answer("⚠ No healthy Pokémon to switch.", alert=True)
+
+    await event.edit("🔄 Choose a Pokémon to switch in:", buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=b"battle:choose_switch:(.+):(.+):(.+)"))
+async def cb_choose_switch(event):
+    bid = event.pattern_match.group(1).decode()
+    side = event.pattern_match.group(2).decode()
+    idx = int(event.pattern_match.group(3).decode())
+
+    battle = battles.get(bid)
+    if not battle:
+        return await event.answer("❌ Battle not found.", alert=True)
+
+    # Switch the active Pokémon
+    new_pkm = battle["battle_state"][side][idx]
+    old_pkm = battle["active"][side]
+    battle["active"][side] = new_pkm
+
+    # Announce the switch
+    text = f"🔄 {new_pkm['name']} was sent out!"
+    await bot.send_message(battle[side], text)
+
+    # Update opponent too
+    opponent = "challenger" if side == "opponent" else "opponent"
+    await bot.send_message(battle[opponent], f"🔄 Opponent switched to {new_pkm['name']}!")
+
+    # TODO: After switching, send updated UI again
+    await send_battle_ui(bid, side)
+    await send_battle_ui(bid, opponent)
+    
 print("Bot running...")
 bot.run_until_disconnected()
