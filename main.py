@@ -729,6 +729,7 @@ def load_battle_pokemon(bid):
         "challenger": [],
         "opponent": []
     }
+    print("challengerhhghhbbbbbbvvvvv",battle["battle_state"]["challenger"])
 
     # Challenger Pokémon
     for pkm in battle["pokemon"]["challenger"]:
