@@ -745,7 +745,7 @@ def init_battle_pokemon(bid):
     return True
 
 def load_battle_pokemon(bid):
-    """Load Pokémon into battle state with HP, moves, and status."""
+    """Load Pokémon into battle state with full stats for damage calculation."""
     battle = battles.get(bid)
     if not battle or "pokemon" not in battle:
         return False
@@ -754,7 +754,6 @@ def load_battle_pokemon(bid):
         "challenger": [],
         "opponent": []
     }
-    print("challengerhhghhbbbbbbvvvvv",battle["battle_state"]["challenger"])
 
     # Challenger Pokémon
     for pkm in battle["pokemon"]["challenger"]:
@@ -763,6 +762,13 @@ def load_battle_pokemon(bid):
             "name": pkm["name"],
             "hp": pkm["stats"]["hp"],
             "max_hp": pkm["stats"]["hp"],
+            "atk": pkm["stats"]["atk"],
+            "def": pkm["stats"]["def"],
+            "spa": pkm["stats"]["spa"],
+            "spd": pkm["stats"]["spd"],
+            "spe": pkm["stats"]["spe"],
+            "level": pkm.get("level", 50),   # default level
+            "types": pkm.get("types", [pkm.get("tera_type")]),  # for STAB
             "moves": pkm["moves"],
             "tera_type": pkm.get("tera_type", None),
             "status": None
@@ -775,6 +781,13 @@ def load_battle_pokemon(bid):
             "name": pkm["name"],
             "hp": pkm["stats"]["hp"],
             "max_hp": pkm["stats"]["hp"],
+            "atk": pkm["stats"]["atk"],
+            "def": pkm["stats"]["def"],
+            "spa": pkm["stats"]["spa"],
+            "spd": pkm["stats"]["spd"],
+            "spe": pkm["stats"]["spe"],
+            "level": pkm.get("level", 50),
+            "types": pkm.get("types", [pkm.get("tera_type")]),
             "moves": pkm["moves"],
             "tera_type": pkm.get("tera_type", None),
             "status": None
@@ -785,7 +798,6 @@ def load_battle_pokemon(bid):
         "challenger": battle["battle_state"]["challenger"][0],
         "opponent": battle["battle_state"]["opponent"][0]
     }
-    
 
     return True
 
