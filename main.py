@@ -1194,6 +1194,31 @@ async def cb_move(event):
     # If both moves chosen → resolve turn
     if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
         await resolve_turn(bid)
-        
+
+@bot.on(events.CallbackQuery(pattern=b"battle:forfeit:(.+)"))
+async def cb_forfeit(event):
+    bid = event.pattern_match.group(1).decode()
+    battle = battles.get(bid)
+    if not battle:
+        return await event.answer("❌ Battle not found.", alert=True)
+
+    user_id = event.sender_id
+    if user_id == battle["challenger"]:
+        loser = "challenger"
+        winner = "opponent"
+    else:
+        loser = "opponent"
+        winner = "challenger"
+
+    # Announce result
+    text = f"🏳 {battle[loser+'_name']} forfeited!\n\n🎉 {battle[winner+'_name']} wins the battle!"
+    try:
+        await bot.send_message(battle["challenger"], text)
+        await bot.send_message(battle["opponent"], text)
+    except Exception as e:
+        print(f"Failed to send forfeit result: {e}")
+
+    # Remove battle from memory
+    battles.pop(bid, None)
 print("Bot running...")
 bot.run_until_disconnected()
