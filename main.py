@@ -973,7 +973,7 @@ def calculate_damage(attacker, defender, move_key):
     text += f"{defender['name']} lost {damage} HP!"
 
     return damage, text
-async def send_battle_ui(bid):
+async def send_battle_ui(bid,side):
     battle = battles.get(bid)
     if not battle:
         return
