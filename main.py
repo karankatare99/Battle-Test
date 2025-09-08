@@ -759,6 +759,7 @@ def load_battle_pokemon(bid):
         "challenger": battle["battle_state"]["challenger"][0],
         "opponent": battle["battle_state"]["opponent"][0]
     }
+    print("batlllllleeeeeeee",battle)
 
     return True
 
