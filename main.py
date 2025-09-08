@@ -815,7 +815,36 @@ def create_battle(challenger_id, opponent_id, battle_type):
     }
     
     return bid
+async def send_move_menu(bid):
+    battle = battles[bid]
 
+    challenger_id = battle["challenger"]
+    opponent_id = battle["opponent"]
+
+    # Challenger move menu
+    msg_challenger = await bot.send_message(
+        challenger_id,
+        "Choose your move:",
+        buttons=[
+            [Button.inline("Thunderbolt", f"battle:move:Thunderbolt")],
+            [Button.inline("Quick Attack", f"battle:move:Quick Attack")],
+        ]
+    )
+
+    # Opponent move menu
+    msg_opponent = await bot.send_message(
+        opponent_id,
+        "Choose your move:",
+        buttons=[
+            [Button.inline("Tackle", f"battle:move:Tackle")],
+            [Button.inline("Growl", f"battle:move:Growl")],
+        ]
+    )
+
+    # Store these messages in the battle
+    battle["move_msg_challenger"] = msg_challenger
+    battle["move_msg_opponent"] = msg_opponent
+    
 # -------------------------------
 # Battle Commands
 # -------------------------------
