@@ -1012,7 +1012,7 @@ async def send_battle_ui(bid,side):
         [Button.inline(move, f"battle:move:{bid}:{move}")]
         for move in opponent["moves"]
     ]
-    o_buttons.append([Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")])
+    o_buttons.append([Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}"),Button.inline("🔄 Switch", f"battle:switch:{bid}:{side}")])
 
     # Send / edit
     try:
