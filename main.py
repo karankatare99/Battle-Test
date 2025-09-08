@@ -1210,8 +1210,13 @@ async def cb_forfeit(event):
         loser = "opponent"
         winner = "challenger"
 
-    # Announce result
-    text = f"🏳 {battle[loser+'_name']} forfeited!\n\n🎉 {battle[winner+'_name']} wins the battle!"
+    loser_entity = await bot.get_entity(battle[loser])
+    winner_entity = await bot.get_entity(battle[winner])
+
+    loser_name = loser_entity.first_name
+    winner_name = winner_entity.first_name
+
+    text = f"🏳 {loser_name} forfeited!\n\n🎉 {winner_name} wins the battle!"
     try:
         await bot.send_message(battle["challenger"], text)
         await bot.send_message(battle["opponent"], text)
