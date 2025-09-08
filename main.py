@@ -1085,8 +1085,8 @@ async def cb_move(event):
         move_opponent_key = move_opponent.lower().replace(" ", "-")
         
         # Calculate damage
-        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger)
-        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent)
+        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
+        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)
 
         # Reduce HP
         atk_opponent["hp"] = max(0, atk_opponent["hp"] - dmg_to_opponent)
