@@ -785,7 +785,7 @@ def load_battle_pokemon(bid):
         "challenger": battle["battle_state"]["challenger"][0],
         "opponent": battle["battle_state"]["opponent"][0]
     }
-    print("batlllllleeeeeeee",battle)
+    
 
     return True
 
@@ -821,8 +821,8 @@ async def send_battle_interface(user_id, battle):
         f"Opponent Pokémon: {active_opp['name']} {opp_hp_bar} {active_opp['hp']}/{active_opp['max_hp']}\n",
         buttons=buttons
     )
-    print("battles:::",battles)
-    print("battle_map:::",battle_map)
+    
+    
 
 def create_battle(challenger_id, opponent_id, battle_type):
     """Create a new battle entry."""
@@ -1075,6 +1075,7 @@ async def cb_move(event):
     if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
         # Active Pokémon
         atk_challenger = battle["active"]["challenger"]
+        print(battle["active"]["challenger"])
         atk_opponent = battle["active"]["opponent"]
 
         # Moves
