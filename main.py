@@ -1024,7 +1024,7 @@ async def send_battle_ui(bid,side):
         await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
     except Exception as e:
         print(f"UI opponent send/edit failed: {e}")
-async def resolve_turn(bid):
+async def resolve_turn(bid,side):
     battle = battles.get(bid)
     if not battle:
         return
