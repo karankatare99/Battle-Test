@@ -933,51 +933,61 @@ async def cb_decline(event):
     battle["state"] = "cancelled"
     await event.edit("❌ Battle cancelled by opponent.")
 
-@bot.on(events.CallbackQuery(pattern=b"battle:move:(.+)"))
+@bot.on(events.CallbackQuery(pattern=b"battle:move:(.+):(.+)"))
 async def cb_move(event):
-    user_id = event.sender_id
-    move = event.pattern_match.group(1).decode("utf-8")
+    bid = event.pattern_match.group(1).decode()
+    move = event.pattern_match.group(2).decode()
+    battle = battles.get(bid)
 
-    # Find battle
-    bid = battle_map.get(user_id)
-    if not bid:
-        await event.answer("You are not in a battle!", alert=True)
-        return
-    battle = battles[bid]
+    if not battle or battle["state"] != "active":
+        return await event.answer("❌ Battle not found or inactive.", alert=True)
 
-    # Challenger or opponent?
-    side = "challenger" if battle["challenger"] == user_id else "opponent"
+    # Identify player side
+    if event.sender_id == battle["challenger"]:
+        battle["pending_moves"]["challenger"] = move
+        try:
+            await battle["move_msg_challenger"].edit(
+                f"✅ You selected **{move}**.\n⏳ Waiting for opponent..."
+            )
+        except Exception as e:
+            print("Edit challenger msg failed:", e)
+    elif event.sender_id == battle["opponent"]:
+        battle["pending_moves"]["opponent"] = move
+        try:
+            await battle["move_msg_opponent"].edit(
+                f"✅ You selected **{move}**.\n⏳ Waiting for opponent..."
+            )
+        except Exception as e:
+            print("Edit opponent msg failed:", e)
+    else:
+        return await event.answer("You are not part of this battle.", alert=True)
 
-    # Prevent double select
-    if battle["pending_moves"][side] is not None:
-        await event.answer("You already chose your move!", alert=True)
-        return
+    # If both moves chosen
+    if (battle["pending_moves"]["challenger"] is not None and
+        battle["pending_moves"]["opponent"] is not None):
 
-    # Save move
-    battle["pending_moves"][side] = move
+        # Tell both players the moves
+        try:
+            await battle["move_msg_challenger"].edit(
+                f"📝 You used **{battle['pending_moves']['challenger']}**!\n"
+                f"Opponent used **{battle['pending_moves']['opponent']}**!"
+            )
+        except Exception as e:
+            print("Final challenger msg edit failed:", e)
 
-    # Case 1: Only one user chose
-    if not (battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]):
-        await event.edit(f"You chose **{move}**.\nWaiting for opponent to select...")
-        return
+        try:
+            await battle["move_msg_opponent"].edit(
+                f"📝 You used **{battle['pending_moves']['opponent']}**!\n"
+                f"Opponent used **{battle['pending_moves']['challenger']}**!"
+            )
+        except Exception as e:
+            print("Final opponent msg edit failed:", e)
 
-    # Case 2: Both chose → show summary to both
-    challenger_move = battle["pending_moves"]["challenger"]
-    opponent_move = battle["pending_moves"]["opponent"]
-
-    # Send to challenger
-    await bot.edit_message(
-        battle["challenger"],
-        battle["move_msg_challenger"].id,
-        f"You chose **{challenger_move}**\nOpponent chose **{opponent_move}**"
-    )
-
-    # Send to opponent
-    await bot.edit_message(
-        battle["opponent"],
-        battle["move_msg_opponent"].id,
-        f"You chose **{opponent_move}**\nOpponent chose **{challenger_move}**"
-    )
+        # Reset for next turn
+        battle["pending_moves"] = {
+            "challenger": None,
+            "opponent": None
+        }
     
 print("Bot running...")
 bot.run_until_disconnected()
