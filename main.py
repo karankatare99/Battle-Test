@@ -807,8 +807,13 @@ def create_battle(challenger_id, opponent_id, battle_type):
         "challenger": challenger_id,
         "opponent": opponent_id,
         "type": battle_type,
-        "state": "pending"
+        "state": "pending",
+        "pending_moves": {
+            "challenger": None,
+            "opponent": None
+        }
     }
+    
     return bid
 
 # -------------------------------
@@ -898,6 +903,52 @@ async def cb_decline(event):
 
     battle["state"] = "cancelled"
     await event.edit("❌ Battle cancelled by opponent.")
+
+@bot.on(events.CallbackQuery(pattern=b"battle:move:(.+)"))
+async def cb_move(event):
+    user_id = event.sender_id
+    move = event.pattern_match.group(1).decode("utf-8")
+
+    # Find battle
+    bid = battle_map.get(user_id)
+    if not bid:
+        await event.answer("You are not in a battle!", alert=True)
+        return
+    battle = battles[bid]
+
+    # Challenger or opponent?
+    side = "challenger" if battle["challenger"] == user_id else "opponent"
+
+    # Prevent double select
+    if battle["pending_moves"][side] is not None:
+        await event.answer("You already chose your move!", alert=True)
+        return
+
+    # Save move
+    battle["pending_moves"][side] = move
+
+    # Case 1: Only one user chose
+    if not (battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]):
+        await event.edit(f"You chose **{move}**.\nWaiting for opponent to select...")
+        return
+
+    # Case 2: Both chose → show summary to both
+    challenger_move = battle["pending_moves"]["challenger"]
+    opponent_move = battle["pending_moves"]["opponent"]
+
+    # Send to challenger
+    await bot.edit_message(
+        battle["challenger"],
+        battle["move_msg_challenger"].id,
+        f"You chose **{challenger_move}**\nOpponent chose **{opponent_move}**"
+    )
+
+    # Send to opponent
+    await bot.edit_message(
+        battle["opponent"],
+        battle["move_msg_opponent"].id,
+        f"You chose **{opponent_move}**\nOpponent chose **{challenger_move}**"
+    )
     
 print("Bot running...")
 bot.run_until_disconnected()
