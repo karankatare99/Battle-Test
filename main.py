@@ -1024,63 +1024,85 @@ async def send_battle_ui(bid,side):
         await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
     except Exception as e:
         print(f"UI opponent send/edit failed: {e}")
-async def resolve_turn(bid,side):
+
+async def resolve_turn(bid):
     battle = battles.get(bid)
     if not battle:
         return
-    
-    atk_challenger = battle["active"]["challenger"]
-    atk_opponent = battle["active"]["opponent"]
 
     move_challenger = battle["pending_moves"]["challenger"]
-    move_opponent = battle["pending_moves"]["opponent"]
+    move_opponent   = battle["pending_moves"]["opponent"]
 
-    # Normalize keys
-    move_challenger_key = move_challenger.lower().replace(" ", "-")
-    move_opponent_key = move_opponent.lower().replace(" ", "-")
+    # Active Pokémon
+    atk_challenger = battle["active"]["challenger"]
+    atk_opponent   = battle["active"]["opponent"]
 
-    # Speed order (priority ignored for now)
-    first, second = (
-        ("challenger", "opponent") 
-        if atk_challenger["spe"] >= atk_opponent["spe"] 
-        else ("opponent", "challenger")
-    )
+    # Text logs
+    text_challenger = ""
+    text_opponent   = ""
 
-    logs = []
+    # Case 1: both switch
+    if move_challenger.startswith("switch:") and move_opponent.startswith("switch:"):
+        new_challenger = move_challenger.split(":")[1]
+        new_opponent   = move_opponent.split(":")[1]
+        text_challenger = f"🔄 {battle['challenger_name']} switched to {new_challenger}!"
+        text_opponent   = f"🔄 {battle['opponent_name']} switched to {new_opponent}!"
 
-    # First move
-    atk1 = battle["active"][first]
-    def1 = battle["active"][second]
-    move1 = battle["pending_moves"][first].lower().replace(" ", "-")
-    dmg1, text1 = calculate_damage(atk1, def1, move1)
-    def1["hp"] = max(0, def1["hp"] - dmg1)
-    logs.append(text1)
+    # Case 2: challenger switches, opponent attacks
+    elif move_challenger.startswith("switch:"):
+        new_challenger = move_challenger.split(":")[1]
+        text_challenger = f"🔄 {battle['challenger_name']} switched to {new_challenger}!"
 
-    # If defender still alive → second move
-    if def1["hp"] > 0:
-        atk2 = battle["active"][second]
-        def2 = battle["active"][first]
-        move2 = battle["pending_moves"][second].lower().replace(" ", "-")
-        dmg2, text2 = calculate_damage(atk2, def2, move2)
-        def2["hp"] = max(0, def2["hp"] - dmg2)
-        logs.append(text2)
+        # Opponent still attacks
+        move_opponent_key = move_opponent.lower().replace(" ", "-")
+        dmg, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)
+        atk_challenger["hp"] = max(0, atk_challenger["hp"] - dmg)
 
-    # Reset
+    # Case 3: opponent switches, challenger attacks
+    elif move_opponent.startswith("switch:"):
+        new_opponent = move_opponent.split(":")[1]
+        text_opponent = f"🔄 {battle['opponent_name']} switched to {new_opponent}!"
+
+        # Challenger still attacks
+        move_challenger_key = move_challenger.lower().replace(" ", "-")
+        dmg, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
+        atk_opponent["hp"] = max(0, atk_opponent["hp"] - dmg)
+
+    # Case 4: both attack
+    else:
+        move_challenger_key = move_challenger.lower().replace(" ", "-")
+        move_opponent_key   = move_opponent.lower().replace(" ", "-")
+
+        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
+        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)
+
+        # Apply damage
+        atk_opponent["hp"]   = max(0, atk_opponent["hp"] - dmg_to_opponent)
+        atk_challenger["hp"] = max(0, atk_challenger["hp"] - dmg_to_challenger)
+
+    # Build battle logs
+    challenger_text = f"{text_challenger}\n{text_opponent}"
+    opponent_text   = f"{text_opponent}\n{text_challenger}"
+
+    # Edit previous messages if possible
+    if battle.get("move_msg_challenger"):
+        try:
+            await bot.edit_message(battle["challenger"], battle["move_msg_challenger"], challenger_text)
+        except Exception as e:
+            print(f"Final challenger msg edit failed: {e}")
+
+    if battle.get("move_msg_opponent"):
+        try:
+            await bot.edit_message(battle["opponent"], battle["move_msg_opponent"], opponent_text)
+        except Exception as e:
+            print(f"Final opponent msg edit failed: {e}")
+
+    # Reset for next turn
     battle["pending_moves"] = {"challenger": None, "opponent": None}
 
-    # Send battle log
-    log_text = "\n".join(logs)
-    try:
-        await bot.send_message(battle["challenger"], log_text)
-    except:
-        pass
-    try:
-        await bot.send_message(battle["opponent"], log_text)
-    except:
-        pass
-
-    # Refresh UI
-    await send_battle_ui(bid,side)
+    # Update UI again (show new HP, moves, etc.)
+    await send_battle_ui(bid, "challenger")
+    await send_battle_ui(bid, "opponent")
     
 # -------------------------------
 # Battle Commands
@@ -1226,57 +1248,60 @@ async def cb_forfeit(event):
     # Remove battle from memory
     battles.pop(bid, None)
 
+# Step 1: When user clicks "Switch" button, show them available Pokémon
 @bot.on(events.CallbackQuery(pattern=b"battle:switch:(.+):(.+)"))
 async def cb_switch(event):
     bid = event.pattern_match.group(1).decode()
     side = event.pattern_match.group(2).decode()
+
     battle = battles.get(bid)
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
 
-    # List the player's team
-    team = battle["battle_state"][side]
-
-    # Only show Pokémon that are NOT fainted and not already active
-    buttons = []
-    for idx, pkm in enumerate(team):
-        if pkm["hp"] > 0 and pkm != battle["active"][side]:
-            buttons.append([Button.inline(
-                f"{pkm['name']} ({pkm['hp']}/{pkm['max_hp']})",
-                f"battle:choose_switch:{bid}:{side}:{idx}"
+    # List available Pokémon for this side
+    options = []
+    for pkm in battle["battle_state"][side]:
+        if pkm["hp"] > 0 and pkm != battle["active"][side]:  # alive & not already active
+            options.append([Button.inline(
+                f"{pkm['name']} ({pkm['hp']}/{pkm['max_hp']} HP)",
+                f"battle:choose_switch:{bid}:{side}:{pkm['id']}"
             )])
 
-    if not buttons:
-        return await event.answer("⚠ No healthy Pokémon to switch.", alert=True)
+    if not options:
+        return await event.answer("❌ No other Pokémon available!", alert=True)
 
-    await event.edit("🔄 Choose a Pokémon to switch in:", buttons=buttons)
+    await event.respond("🔄 Choose a Pokémon to switch into:", buttons=options)
+    await event.answer()
 
+
+# Step 2: Handle chosen Pokémon
 @bot.on(events.CallbackQuery(pattern=b"battle:choose_switch:(.+):(.+):(.+)"))
 async def cb_choose_switch(event):
     bid = event.pattern_match.group(1).decode()
     side = event.pattern_match.group(2).decode()
-    idx = int(event.pattern_match.group(3).decode())
+    pkm_id = event.pattern_match.group(3).decode()
 
     battle = battles.get(bid)
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
 
-    # Switch the active Pokémon
-    new_pkm = battle["battle_state"][side][idx]
-    old_pkm = battle["active"][side]
-    battle["active"][side] = new_pkm
+    # Find Pokémon by ID
+    new_pkm = next((p for p in battle["battle_state"][side] if p["id"] == pkm_id), None)
+    if not new_pkm or new_pkm["hp"] <= 0:
+        return await event.answer("❌ Invalid choice.", alert=True)
 
-    # Announce the switch
-    text = f"🔄 {new_pkm['name']} was sent out!"
-    await bot.send_message(battle[side], text)
+    # Set the switch action for this side
+    battle["pending_moves"][side] = f"switch:{new_pkm['name']}"
+    battle["active"][side] = new_pkm  # immediately update active for UI consistency
 
-    # Update opponent too
-    opponent = "challenger" if side == "opponent" else "opponent"
-    await bot.send_message(battle[opponent], f"🔄 Opponent switched to {new_pkm['name']}!")
+    try:
+        await event.edit(f"✅ You chose to switch to {new_pkm['name']}. Waiting for opponent...")
+    except Exception as e:
+        print(f"Switch edit failed: {e}")
 
-    # TODO: After switching, send updated UI again
-    await send_battle_ui(bid, side)
-    await send_battle_ui(bid, opponent)
+    # If both players have chosen (move or switch), resolve the turn
+    if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
+        await resolve_turn(bid)
     
 print("Bot running...")
 bot.run_until_disconnected()
