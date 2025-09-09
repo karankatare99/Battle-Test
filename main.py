@@ -1025,84 +1025,71 @@ async def send_battle_ui(bid,side):
     except Exception as e:
         print(f"UI opponent send/edit failed: {e}")
 
-async def resolve_turn(bid):
-    battle = battles.get(bid)
-    if not battle:
+async def resolve_turn(bid, side):
+    battle = battles[bid]
+    actions = battle.get("actions", {})
+
+    # Both players acted?
+    if len(actions) < 2:
         return
 
-    move_challenger = battle["pending_moves"]["challenger"]
-    move_opponent   = battle["pending_moves"]["opponent"]
+    # Example structure:
+    # actions = { "p1": {"type": "move", "move": "Tackle"}, 
+    #             "p2": {"type": "switch", "poke": "Bulbasaur"} }
 
-    # Active Pokémon
-    atk_challenger = battle["active"]["challenger"]
-    atk_opponent   = battle["active"]["opponent"]
+    p1_action = actions.get("p1")
+    p2_action = actions.get("p2")
 
-    # Text logs
-    text_challenger = ""
-    text_opponent   = ""
+    # Handle forfeits first
+    if p1_action and p1_action["type"] == "forfeit":
+        await client.send_message(battle["p2"], "Opponent forfeited! You win 🎉")
+        battles.pop(bid, None)
+        return
 
-    # Case 1: both switch
-    if move_challenger.startswith("switch:") and move_opponent.startswith("switch:"):
-        new_challenger = move_challenger.split(":")[1]
-        new_opponent   = move_opponent.split(":")[1]
-        text_challenger = f"🔄 {battle['challenger_name']} switched to {new_challenger}!"
-        text_opponent   = f"🔄 {battle['opponent_name']} switched to {new_opponent}!"
+    if p2_action and p2_action["type"] == "forfeit":
+        await client.send_message(battle["p1"], "Opponent forfeited! You win 🎉")
+        battles.pop(bid, None)
+        return
 
-    # Case 2: challenger switches, opponent attacks
-    elif move_challenger.startswith("switch:"):
-        new_challenger = move_challenger.split(":")[1]
-        text_challenger = f"🔄 {battle['challenger_name']} switched to {new_challenger}!"
+    # Handle switches (switch ends the turn)
+    if p1_action and p1_action["type"] == "switch":
+        battle["active_p1"] = p1_action["poke"]
+        await client.send_message(battle["p1"], f"You switched to {p1_action['poke']}!")
+    if p2_action and p2_action["type"] == "switch":
+        battle["active_p2"] = p2_action["poke"]
+        await client.send_message(battle["p2"], f"You switched to {p2_action['poke']}!")
 
-        # Opponent still attacks
-        move_opponent_key = move_opponent.lower().replace(" ", "-")
-        dmg, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)
-        atk_challenger["hp"] = max(0, atk_challenger["hp"] - dmg)
+    # If both switched, no damage exchange
+    if (p1_action and p1_action["type"] == "switch") and (p2_action and p2_action["type"] == "switch"):
+        await send_battle_ui(bid, side)
+        battle["actions"] = {}
+        return
 
-    # Case 3: opponent switches, challenger attacks
-    elif move_opponent.startswith("switch:"):
-        new_opponent = move_opponent.split(":")[1]
-        text_opponent = f"🔄 {battle['opponent_name']} switched to {new_opponent}!"
+    # If one switched, the other still does their move
+    if p1_action and p1_action["type"] == "switch" and p2_action and p2_action["type"] == "move":
+        await process_move(bid, "p2", p2_action)
+        await send_battle_ui(bid, side)
+        battle["actions"] = {}
+        return
 
-        # Challenger still attacks
-        move_challenger_key = move_challenger.lower().replace(" ", "-")
-        dmg, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
-        atk_opponent["hp"] = max(0, atk_opponent["hp"] - dmg)
+    if p2_action and p2_action["type"] == "switch" and p1_action and p1_action["type"] == "move":
+        await process_move(bid, "p1", p1_action)
+        await send_battle_ui(bid, side)
+        battle["actions"] = {}
+        return
 
-    # Case 4: both attack
-    else:
-        move_challenger_key = move_challenger.lower().replace(" ", "-")
-        move_opponent_key   = move_opponent.lower().replace(" ", "-")
+    # If both used moves → apply speed order (for now assume random or p1 first)
+    if p1_action and p1_action["type"] == "move" and p2_action and p2_action["type"] == "move":
+        # TODO: check speed stats to decide order
+        await process_move(bid, "p1", p1_action)
+        await process_move(bid, "p2", p2_action)
 
-        dmg_to_opponent, text_challenger = calculate_damage(atk_challenger, atk_opponent, move_challenger_key)
-        dmg_to_challenger, text_opponent = calculate_damage(atk_opponent, atk_challenger, move_opponent_key)
+    # Reset actions
+    battle["actions"] = {}
 
-        # Apply damage
-        atk_opponent["hp"]   = max(0, atk_opponent["hp"] - dmg_to_opponent)
-        atk_challenger["hp"] = max(0, atk_challenger["hp"] - dmg_to_challenger)
-
-    # Build battle logs
-    challenger_text = f"{text_challenger}\n{text_opponent}"
-    opponent_text   = f"{text_opponent}\n{text_challenger}"
-
-    # Edit previous messages if possible
-    if battle.get("move_msg_challenger"):
-        try:
-            await bot.edit_message(battle["challenger"], battle["move_msg_challenger"], challenger_text)
-        except Exception as e:
-            print(f"Final challenger msg edit failed: {e}")
-
-    if battle.get("move_msg_opponent"):
-        try:
-            await bot.edit_message(battle["opponent"], battle["move_msg_opponent"], opponent_text)
-        except Exception as e:
-            print(f"Final opponent msg edit failed: {e}")
-
-    # Reset for next turn
-    battle["pending_moves"] = {"challenger": None, "opponent": None}
-
-    # Update UI again (show new HP, moves, etc.)
-    await send_battle_ui(bid, "challenger")
-    await send_battle_ui(bid, "opponent")
+    # Refresh UI for both sides
+    await send_battle_ui(bid, "p1")
+    await send_battle_ui(bid, "p2")
     
 # -------------------------------
 # Battle Commands
@@ -1301,7 +1288,7 @@ async def cb_choose_switch(event):
 
     # If both players have chosen (move or switch), resolve the turn
     if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
-        await resolve_turn(bid)
+        await resolve_turn(bid,side)
     
 print("Bot running...")
 bot.run_until_disconnected()
