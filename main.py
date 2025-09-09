@@ -1025,38 +1025,64 @@ async def send_battle_ui(bid,side):
     except Exception as e:
         print(f"UI opponent send/edit failed: {e}")
 
-async def resolve_turn(bid):
+async def process_action(battle, side, other_side, action):
+    """Process one action: move or switch."""
+    if action.startswith("switch:"):
+        # Extract Pokémon index
+        idx = int(action.split(":")[1])
+        old_pkm = battle["active"][side]
+        new_pkm = battle["battle_state"][side][idx]
+        battle["active"][side] = new_pkm
+
+        # Announce switch
+        await bot.send_message(battle[side], f"🔄 {new_pkm['name']} was switched in!")
+        await bot.send_message(battle[other_side], f"🔄 Opponent switched to {new_pkm['name']}!")
+
+    else:
+        # Regular move
+        attacker = battle["active"][side]
+        defender = battle["active"][other_side]
+        dmg, text = calculate_damage(attacker, defender, action)
+        defender["hp"] = max(0, defender["hp"] - dmg)
+        await bot.send_message(battle[side], text)
+        await bot.send_message(battle[other_side], text)
+
+
+async def resolve_turn(bid, triggering_side=None):
+    """Resolve a full turn: moves or switches from both sides."""
     battle = battles.get(bid)
     if not battle:
         return
 
-    # Determine actions
-    action_challenger = battle["pending_action"]["challenger"]
-    action_opponent = battle["pending_action"]["opponent"]
+    # Determine sides
+    challenger_action = battle.get("pending_action", {}).get("challenger")
+    opponent_action = battle.get("pending_action", {}).get("opponent")
 
-    # Ensure both actions chosen
-    if not action_challenger or not action_opponent:
-        return  # wait for both sides
+    # Ensure both sides have chosen an action
+    if not challenger_action or not opponent_action:
+        return
 
-    # Priority based on speed (or just challenger first for simplicity)
-    first_side, second_side = (
-        ("challenger", "opponent")
-        if battle["active"]["challenger"]["spe"] >= battle["active"]["opponent"]["spe"]
+    # Determine order by speed if both are moves (switches can go first or second depending on design)
+    atk_challenger = battle["active"]["challenger"]
+    atk_opponent = battle["active"]["opponent"]
+
+    first, second = (
+        ("challenger", "opponent") 
+        if atk_challenger["spe"] >= atk_opponent["spe"] 
         else ("opponent", "challenger")
     )
 
     # Process first action
-    await process_action(battle, first_side, second_side, action_challenger if first_side=="challenger" else action_opponent)
-
+    await process_action(battle, first, second, battle["pending_action"][first])
     # Process second action
-    await process_action(battle, second_side, first_side, action_challenger if second_side=="challenger" else action_opponent)
+    await process_action(battle, second, first, battle["pending_action"][second])
 
-    # Clear pending actions
+    # Clear pending actions for next turn
     battle["pending_action"] = {"challenger": None, "opponent": None}
 
-    # Refresh UI
-    await send_battle_ui(bid, battle["challenger"])
-    await send_battle_ui(bid, battle["opponent"])
+    # Refresh battle UI
+    await send_battle_ui(bid, "challenger")
+    await send_battle_ui(bid, "opponent")
     
 # -------------------------------
 # Battle Commands
