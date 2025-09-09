@@ -1009,7 +1009,7 @@ def calculate_damage(attacker, defender, move_key):
     attacker/defender = dicts with at least:
     {name, level, types, atk, def, spa, spd}
     """
-   move_kwy = move_key.lower().replace(" ", "-")
+    move_key = move_key.lower().replace(" ", "-")
     if move_key not in MOVES:
         return 0, f"{attacker['name']} used {move_key}!\nBut the move failed!"
 
