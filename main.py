@@ -1024,63 +1024,39 @@ async def send_battle_ui(bid,side):
         await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
     except Exception as e:
         print(f"UI opponent send/edit failed: {e}")
-async def resolve_turn(bid,side):
+
+async def resolve_turn(bid):
     battle = battles.get(bid)
     if not battle:
         return
-    
-    atk_challenger = battle["active"]["challenger"]
-    atk_opponent = battle["active"]["opponent"]
 
-    move_challenger = battle["pending_moves"]["challenger"]
-    move_opponent = battle["pending_moves"]["opponent"]
+    # Determine actions
+    action_challenger = battle["pending_action"]["challenger"]
+    action_opponent = battle["pending_action"]["opponent"]
 
-    # Normalize keys
-    move_challenger_key = move_challenger.lower().replace(" ", "-")
-    move_opponent_key = move_opponent.lower().replace(" ", "-")
+    # Ensure both actions chosen
+    if not action_challenger or not action_opponent:
+        return  # wait for both sides
 
-    # Speed order (priority ignored for now)
-    first, second = (
-        ("challenger", "opponent") 
-        if atk_challenger["spe"] >= atk_opponent["spe"] 
+    # Priority based on speed (or just challenger first for simplicity)
+    first_side, second_side = (
+        ("challenger", "opponent")
+        if battle["active"]["challenger"]["spe"] >= battle["active"]["opponent"]["spe"]
         else ("opponent", "challenger")
     )
 
-    logs = []
+    # Process first action
+    await process_action(battle, first_side, second_side, action_challenger if first_side=="challenger" else action_opponent)
 
-    # First move
-    atk1 = battle["active"][first]
-    def1 = battle["active"][second]
-    move1 = battle["pending_moves"][first].lower().replace(" ", "-")
-    dmg1, text1 = calculate_damage(atk1, def1, move1)
-    def1["hp"] = max(0, def1["hp"] - dmg1)
-    logs.append(text1)
+    # Process second action
+    await process_action(battle, second_side, first_side, action_challenger if second_side=="challenger" else action_opponent)
 
-    # If defender still alive → second move
-    if def1["hp"] > 0:
-        atk2 = battle["active"][second]
-        def2 = battle["active"][first]
-        move2 = battle["pending_moves"][second].lower().replace(" ", "-")
-        dmg2, text2 = calculate_damage(atk2, def2, move2)
-        def2["hp"] = max(0, def2["hp"] - dmg2)
-        logs.append(text2)
-
-    # Reset
-    battle["pending_moves"] = {"challenger": None, "opponent": None}
-
-    # Send battle log
-    log_text = "\n".join(logs)
-    try:
-        await bot.send_message(battle["challenger"], log_text)
-    except:
-        pass
-    try:
-        await bot.send_message(battle["opponent"], log_text)
-    except:
-        pass
+    # Clear pending actions
+    battle["pending_action"] = {"challenger": None, "opponent": None}
 
     # Refresh UI
-    await send_battle_ui(bid,side)
+    await send_battle_ui(bid, battle["challenger"])
+    await send_battle_ui(bid, battle["opponent"])
     
 # -------------------------------
 # Battle Commands
@@ -1261,22 +1237,9 @@ async def cb_choose_switch(event):
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
 
-    # Switch the active Pokémon
-    new_pkm = battle["battle_state"][side][idx]
-    old_pkm = battle["active"][side]
-    battle["active"][side] = new_pkm
-
-    # Announce the switch
-    text = f"🔄 {new_pkm['name']} was sent out!"
-    await bot.send_message(battle[side], text)
-
-    # Update opponent too
-    opponent = "challenger" if side == "opponent" else "opponent"
-    await bot.send_message(battle[opponent], f"🔄 Opponent switched to {new_pkm['name']}!")
-
-    # TODO: After switching, send updated UI again
-    await send_battle_ui(bid, side)
-    await send_battle_ui(bid, opponent)
+    # Instead of resolving immediately
+    battle["pending_action"][side] = f"switch:{idx}"
+    await event.answer("🔄 Switch registered! Waiting for opponent...")
     
 print("Bot running...")
 bot.run_until_disconnected()
