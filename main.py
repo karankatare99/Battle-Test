@@ -1024,72 +1024,63 @@ async def send_battle_ui(bid,side):
         await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
     except Exception as e:
         print(f"UI opponent send/edit failed: {e}")
-
-async def resolve_turn(bid, side):
-    battle = battles[bid]
-    actions = battle.get("actions", {})
-
-    # Both players acted?
-    if len(actions) < 2:
+async def resolve_turn(bid,side):
+    battle = battles.get(bid)
+    if not battle:
         return
+    
+    atk_challenger = battle["active"]["challenger"]
+    atk_opponent = battle["active"]["opponent"]
 
-    # Example structure:
-    # actions = { "p1": {"type": "move", "move": "Tackle"}, 
-    #             "p2": {"type": "switch", "poke": "Bulbasaur"} }
+    move_challenger = battle["pending_moves"]["challenger"]
+    move_opponent = battle["pending_moves"]["opponent"]
 
-    p1_action = actions.get("p1")
-    p2_action = actions.get("p2")
+    # Normalize keys
+    move_challenger_key = move_challenger.lower().replace(" ", "-")
+    move_opponent_key = move_opponent.lower().replace(" ", "-")
 
-    # Handle forfeits first
-    if p1_action and p1_action["type"] == "forfeit":
-        await client.send_message(battle["p2"], "Opponent forfeited! You win 🎉")
-        battles.pop(bid, None)
-        return
+    # Speed order (priority ignored for now)
+    first, second = (
+        ("challenger", "opponent") 
+        if atk_challenger["spe"] >= atk_opponent["spe"] 
+        else ("opponent", "challenger")
+    )
 
-    if p2_action and p2_action["type"] == "forfeit":
-        await client.send_message(battle["p1"], "Opponent forfeited! You win 🎉")
-        battles.pop(bid, None)
-        return
+    logs = []
 
-    # Handle switches (switch ends the turn)
-    if p1_action and p1_action["type"] == "switch":
-        battle["active_p1"] = p1_action["poke"]
-        await client.send_message(battle["p1"], f"You switched to {p1_action['poke']}!")
-    if p2_action and p2_action["type"] == "switch":
-        battle["active_p2"] = p2_action["poke"]
-        await client.send_message(battle["p2"], f"You switched to {p2_action['poke']}!")
+    # First move
+    atk1 = battle["active"][first]
+    def1 = battle["active"][second]
+    move1 = battle["pending_moves"][first].lower().replace(" ", "-")
+    dmg1, text1 = calculate_damage(atk1, def1, move1)
+    def1["hp"] = max(0, def1["hp"] - dmg1)
+    logs.append(text1)
 
-    # If both switched, no damage exchange
-    if (p1_action and p1_action["type"] == "switch") and (p2_action and p2_action["type"] == "switch"):
-        await send_battle_ui(bid, side)
-        battle["actions"] = {}
-        return
+    # If defender still alive → second move
+    if def1["hp"] > 0:
+        atk2 = battle["active"][second]
+        def2 = battle["active"][first]
+        move2 = battle["pending_moves"][second].lower().replace(" ", "-")
+        dmg2, text2 = calculate_damage(atk2, def2, move2)
+        def2["hp"] = max(0, def2["hp"] - dmg2)
+        logs.append(text2)
 
-    # If one switched, the other still does their move
-    if p1_action and p1_action["type"] == "switch" and p2_action and p2_action["type"] == "move":
-        await process_move(bid, "p2", p2_action)
-        await send_battle_ui(bid, side)
-        battle["actions"] = {}
-        return
+    # Reset
+    battle["pending_moves"] = {"challenger": None, "opponent": None}
 
-    if p2_action and p2_action["type"] == "switch" and p1_action and p1_action["type"] == "move":
-        await process_move(bid, "p1", p1_action)
-        await send_battle_ui(bid, side)
-        battle["actions"] = {}
-        return
+    # Send battle log
+    log_text = "\n".join(logs)
+    try:
+        await bot.send_message(battle["challenger"], log_text)
+    except:
+        pass
+    try:
+        await bot.send_message(battle["opponent"], log_text)
+    except:
+        pass
 
-    # If both used moves → apply speed order (for now assume random or p1 first)
-    if p1_action and p1_action["type"] == "move" and p2_action and p2_action["type"] == "move":
-        # TODO: check speed stats to decide order
-        await process_move(bid, "p1", p1_action)
-        await process_move(bid, "p2", p2_action)
-
-    # Reset actions
-    battle["actions"] = {}
-
-    # Refresh UI for both sides
-    await send_battle_ui(bid, "p1")
-    await send_battle_ui(bid, "p2")
+    # Refresh UI
+    await send_battle_ui(bid,side)
     
 # -------------------------------
 # Battle Commands
@@ -1235,60 +1226,57 @@ async def cb_forfeit(event):
     # Remove battle from memory
     battles.pop(bid, None)
 
-# Step 1: When user clicks "Switch" button, show them available Pokémon
 @bot.on(events.CallbackQuery(pattern=b"battle:switch:(.+):(.+)"))
 async def cb_switch(event):
     bid = event.pattern_match.group(1).decode()
     side = event.pattern_match.group(2).decode()
-
     battle = battles.get(bid)
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
 
-    # List available Pokémon for this side
-    options = []
-    for pkm in battle["battle_state"][side]:
-        if pkm["hp"] > 0 and pkm != battle["active"][side]:  # alive & not already active
-            options.append([Button.inline(
-                f"{pkm['name']} ({pkm['hp']}/{pkm['max_hp']} HP)",
-                f"battle:choose_switch:{bid}:{side}:{pkm['id']}"
+    # List the player's team
+    team = battle["battle_state"][side]
+
+    # Only show Pokémon that are NOT fainted and not already active
+    buttons = []
+    for idx, pkm in enumerate(team):
+        if pkm["hp"] > 0 and pkm != battle["active"][side]:
+            buttons.append([Button.inline(
+                f"{pkm['name']} ({pkm['hp']}/{pkm['max_hp']})",
+                f"battle:choose_switch:{bid}:{side}:{idx}"
             )])
 
-    if not options:
-        return await event.answer("❌ No other Pokémon available!", alert=True)
+    if not buttons:
+        return await event.answer("⚠ No healthy Pokémon to switch.", alert=True)
 
-    await event.respond("🔄 Choose a Pokémon to switch into:", buttons=options)
-    await event.answer()
+    await event.edit("🔄 Choose a Pokémon to switch in:", buttons=buttons)
 
-
-# Step 2: Handle chosen Pokémon
 @bot.on(events.CallbackQuery(pattern=b"battle:choose_switch:(.+):(.+):(.+)"))
 async def cb_choose_switch(event):
     bid = event.pattern_match.group(1).decode()
     side = event.pattern_match.group(2).decode()
-    pkm_id = event.pattern_match.group(3).decode()
+    idx = int(event.pattern_match.group(3).decode())
 
     battle = battles.get(bid)
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
 
-    # Find Pokémon by ID
-    new_pkm = next((p for p in battle["battle_state"][side] if p["id"] == pkm_id), None)
-    if not new_pkm or new_pkm["hp"] <= 0:
-        return await event.answer("❌ Invalid choice.", alert=True)
+    # Switch the active Pokémon
+    new_pkm = battle["battle_state"][side][idx]
+    old_pkm = battle["active"][side]
+    battle["active"][side] = new_pkm
 
-    # Set the switch action for this side
-    battle["pending_moves"][side] = f"switch:{new_pkm['name']}"
-    battle["active"][side] = new_pkm  # immediately update active for UI consistency
+    # Announce the switch
+    text = f"🔄 {new_pkm['name']} was sent out!"
+    await bot.send_message(battle[side], text)
 
-    try:
-        await event.edit(f"✅ You chose to switch to {new_pkm['name']}. Waiting for opponent...")
-    except Exception as e:
-        print(f"Switch edit failed: {e}")
+    # Update opponent too
+    opponent = "challenger" if side == "opponent" else "opponent"
+    await bot.send_message(battle[opponent], f"🔄 Opponent switched to {new_pkm['name']}!")
 
-    # If both players have chosen (move or switch), resolve the turn
-    if battle["pending_moves"]["challenger"] and battle["pending_moves"]["opponent"]:
-        await resolve_turn(bid,side)
+    # TODO: After switching, send updated UI again
+    await send_battle_ui(bid, side)
+    await send_battle_ui(bid, opponent)
     
 print("Bot running...")
 bot.run_until_disconnected()
