@@ -905,7 +905,6 @@ def get_hp_bar(current, max_hp, length=10):
     return "🟩" * filled + "⬜" * empty
 
 def create_battle(challenger_id, opponent_id, battle_type):
-    """Create a new battle entry."""
     bid = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
     battles[bid] = {
         "id": bid,
@@ -913,15 +912,10 @@ def create_battle(challenger_id, opponent_id, battle_type):
         "opponent": opponent_id,
         "type": battle_type,
         "state": "pending",
-        "pending_action": {
-            "challenger": None,
-            "opponent": None
-        },
-        "forced_switch": {  # NEW: Track if forced switch is needed
-            "challenger": False,
-            "opponent": False
-        },
-        "turn": 1
+        "pending_action": {"challenger": None, "opponent": None},
+        "forced_switch": {"challenger": False, "opponent": False},
+        "turn": 1,
+        "message_ids": {"challenger": None, "opponent": None}  # NEW: Track message IDs
     }
     return bid
 
@@ -1032,24 +1026,21 @@ def calculate_damage(attacker, defender, move_key):
     return damage, text
 
 async def send_battle_ui(bid):
-    """Send updated battle interface to both players."""
     battle = battles.get(bid)
     if not battle or "active" not in battle:
         return
-    
+
     challenger = battle["active"]["challenger"]
     opponent = battle["active"]["opponent"]
-    
-    # HP bar helper
+
     def hp_bar(current, max_hp, length=20):
         filled = int(length * current / max_hp) if max_hp > 0 else 0
         return "🟩" * filled + "⬜" * (length - filled)
-    
-    # Check for fainted Pokémon
+
     challenger_fainted = challenger["hp"] <= 0
     opponent_fainted = opponent["hp"] <= 0
-    
-    # Challenger view
+
+    # Build challenger UI
     c_text = (
         f"⚔️ Battle Turn {battle.get('turn', 1)}\n\n"
         f"Your {challenger['name']}: {challenger['hp']}/{challenger['max_hp']} HP\n"
@@ -1057,14 +1048,11 @@ async def send_battle_ui(bid):
         f"Opponent {opponent['name']}: {opponent['hp']}/{opponent['max_hp']} HP\n"
         f"{hp_bar(opponent['hp'], opponent['max_hp'])}"
     )
-    
-    # Build buttons for challenger
+
+    # Build challenger buttons
     c_buttons = []
-    
-    # Check if challenger needs forced switch
     if challenger_fainted or battle["forced_switch"]["challenger"]:
         c_text += "\n\n💀 Your Pokémon fainted! Choose a replacement:"
-        # Show replacement options
         team = battle["battle_state"]["challenger"]
         for idx, pkm in enumerate(team):
             if pkm["hp"] > 0 and pkm["id"] != challenger["id"]:
@@ -1074,17 +1062,15 @@ async def send_battle_ui(bid):
                 )])
         if not c_buttons:
             c_buttons = [[Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")]]
-    
     elif battle["state"] == "active":
-        # Normal battle interface
         for move in challenger.get("moves", []):
             c_buttons.append([Button.inline(move, f"battle:move:{bid}:{move}")])
         c_buttons.append([
             Button.inline("🔄 Switch", f"battle:switch:{bid}:challenger"),
             Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")
         ])
-    
-    # Opponent view
+
+    # Similar for opponent...
     o_text = (
         f"⚔️ Battle Turn {battle.get('turn', 1)}\n\n"
         f"Your {opponent['name']}: {opponent['hp']}/{opponent['max_hp']} HP\n"
@@ -1092,14 +1078,10 @@ async def send_battle_ui(bid):
         f"Opponent {challenger['name']}: {challenger['hp']}/{challenger['max_hp']} HP\n"
         f"{hp_bar(challenger['hp'], challenger['max_hp'])}"
     )
-    
-    # Build buttons for opponent
+
     o_buttons = []
-    
-    # Check if opponent needs forced switch
     if opponent_fainted or battle["forced_switch"]["opponent"]:
         o_text += "\n\n💀 Your Pokémon fainted! Choose a replacement:"
-        # Show replacement options
         team = battle["battle_state"]["opponent"]
         for idx, pkm in enumerate(team):
             if pkm["hp"] > 0 and pkm["id"] != opponent["id"]:
@@ -1109,23 +1091,30 @@ async def send_battle_ui(bid):
                 )])
         if not o_buttons:
             o_buttons = [[Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")]]
-    
     elif battle["state"] == "active":
-        # Normal battle interface
         for move in opponent.get("moves", []):
             o_buttons.append([Button.inline(move, f"battle:move:{bid}:{move}")])
         o_buttons.append([
             Button.inline("🔄 Switch", f"battle:switch:{bid}:opponent"),
             Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")
         ])
-    
-    # Send messages
-    try:
-        await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
-        await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
-    except Exception as e:
-        print(f"UI send failed: {e}")
 
+    # EDIT existing messages instead of sending new ones
+    try:
+        if battle["message_ids"]["challenger"]:
+            await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text, buttons=c_buttons)
+        else:
+            msg = await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
+            battle["message_ids"]["challenger"] = msg.id
+
+        if battle["message_ids"]["opponent"]:
+            await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text, buttons=o_buttons)
+        else:
+            msg = await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
+            battle["message_ids"]["opponent"] = msg.id
+    except Exception as e:
+        print(f"UI update failed: {e}")
+        
 async def process_action(battle, side, other_side, action):
     """Process one action: move or switch."""
     if action.startswith("switch:"):
@@ -1429,35 +1418,22 @@ async def cb_move(event):
     battle = battles.get(bid)
     if not battle:
         return await event.answer("❌ Battle not found.", alert=True)
-    
-    if battle["state"] != "active":
-        return await event.answer("❌ Battle is not active.", alert=True)
-    
+
     user_id = event.sender_id
     side = "challenger" if user_id == battle["challenger"] else "opponent"
-    
-    if user_id not in [battle["challenger"], battle["opponent"]]:
-        return await event.answer("❌ You are not in this battle.", alert=True)
-    
-    # Check if player needs forced switch first
+
     if battle["forced_switch"][side]:
         return await event.answer("❌ You must choose a replacement Pokémon first!", alert=True)
-    
-    # Check if Pokémon can use this move
+
     active_pokemon = battle["active"][side]
     if move_selected not in active_pokemon.get("moves", []):
         return await event.answer("❌ Your Pokémon doesn't know that move!", alert=True)
-    
-    # Save chosen move
+
     battle["pending_action"][side] = move_selected
-    
-    # Acknowledge choice
-    try:
-        await event.edit(f"✅ You selected {move_selected}. Waiting for opponent...")
-    except Exception as e:
-        await event.answer(f"✅ You selected {move_selected}. Waiting for opponent...")
-    
-    # If both actions chosen → resolve turn
+
+    # Use event.answer() instead of editing - shows popup notification
+    await event.answer(f"✅ You selected {move_selected}. Waiting for opponent...")
+
     if battle["pending_action"]["challenger"] and battle["pending_action"]["opponent"]:
         await resolve_turn(bid)
 
