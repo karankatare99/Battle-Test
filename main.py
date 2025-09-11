@@ -1170,7 +1170,7 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text)
 
         else:
-            if button == True:
+            if buttons == True:
                 msg = await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
                 battle["message_ids"]["opponent"] = msg.id
             
