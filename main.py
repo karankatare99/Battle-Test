@@ -1159,18 +1159,20 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
         if battle["message_ids"]["challenger"] and buttons == False:
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text)
 
-        '''else:
-            msg = await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
-            battle["message_ids"]["challenger"] = msg.id'''
+        else:
+            if buttons == True:
+                msg = await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
+                battle["message_ids"]["challenger"] = msg.id
         
         if battle["message_ids"]["opponent"] and buttons == True:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text, buttons=o_buttons)
         if battle["message_ids"]["opponent"] and buttons == False:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text)
 
-        '''else:
-            msg = await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
-            battle["message_ids"]["opponent"] = msg.id'''
+        else:
+            if button == True:
+                msg = await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
+                battle["message_ids"]["opponent"] = msg.id
             
     except Exception as e:
         print(f"UI update failed: {e}")
