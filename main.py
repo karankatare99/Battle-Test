@@ -1544,9 +1544,7 @@ async def cb_move(event):
     
     battle["pending_action"][side] = move_selected
     
-    # Use event.answer() instead of editing - shows popup notification
-    await event.answer(f"✅ You selected {move_selected}. Waiting for opponent...")
-    
+    await event.edit("Communicating....")    
     if battle["pending_action"]["challenger"] and battle["pending_action"]["opponent"]:
         await resolve_turn(bid)
 
