@@ -1156,7 +1156,7 @@ async def send_battle_ui(bid, battle_texts=None):
     try:
         if battle["message_ids"]["challenger"] and buttons == True:
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text, buttons=c_buttons)
-        if battle["message_ids"]["challenger"] and buttons = False:
+        if battle["message_ids"]["challenger"] and buttons == False:
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text)
 
         else:
@@ -1165,7 +1165,7 @@ async def send_battle_ui(bid, battle_texts=None):
         
         if battle["message_ids"]["opponent"] and buttons == True:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text, buttons=o_buttons)
-        if battle["message_ids"]["opponent"] and buttons = False:
+        if battle["message_ids"]["opponent"] and buttons == False:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text)
 
         else:
