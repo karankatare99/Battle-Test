@@ -1,8 +1,8 @@
 # Fixed Battle System Module
 
-This Python script includes the battle system refactored to edit existing messages rather than sending new ones.
+#This Python script includes the battle system refactored to edit existing messages rather than sending new ones.
 
-```python
+#python
 import random, json, math, uuid
 from math import ceil
 import string
