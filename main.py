@@ -1477,7 +1477,7 @@ async def cb_accept(event):
     await event.edit("✅ Battle accepted! Check your PMs to continue.")
     
     # Send battle interface to both players
-    await send_battle_ui(bid)
+    await send_battle_ui(bid, buttons = True)
 
 @bot.on(events.CallbackQuery(pattern=b"battle:decline:(.+)"))
 async def cb_decline(event):
@@ -1528,7 +1528,7 @@ async def cb_forced_switch(event):
     
     # Check if both sides are ready (no forced switches needed)
     if not battle["forced_switch"]["challenger"] and not battle["forced_switch"]["opponent"]:
-        await send_battle_ui(bid)
+        await send_battle_ui(bid, buttons = True)
 
 @bot.on(events.CallbackQuery(pattern=b"battle:move:(.+):(.+)"))
 async def cb_move(event):
