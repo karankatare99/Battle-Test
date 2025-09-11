@@ -1069,7 +1069,7 @@ def build_perspective_texts(battle, attacker_side, defender_side, base_text, att
     
     return challenger_text, opponent_text
 
-async def send_battle_ui(bid, battle_texts=None):
+async def send_battle_ui(bid, battle_texts=None, buttons = None):
     battle = battle_storage.get(bid)
     if not battle or "active" not in battle:
         return
