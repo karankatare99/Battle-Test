@@ -1110,13 +1110,14 @@ async def send_battle_ui(bid, battle_texts=None):
                 )])
         if not c_buttons:
             c_buttons = [[Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")]]
-    elif battle["state"] == "active":
+    elif battle["state"] == "active" and buttons = True:
         for move in challenger.get("moves", []):
             c_buttons.append([Button.inline(move, f"battle:move:{bid}:{move}")])
         c_buttons.append([
             Button.inline("🔄 Switch", f"battle:switch:{bid}:challenger"),
             Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")
         ])
+    
     
     # Similar for opponent...
     o_text = (
@@ -1143,7 +1144,7 @@ async def send_battle_ui(bid, battle_texts=None):
                 )])
         if not o_buttons:
             o_buttons = [[Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")]]
-    elif battle["state"] == "active":
+    elif battle["state"] == "active" and buttons = True:
         for move in opponent.get("moves", []):
             o_buttons.append([Button.inline(move, f"battle:move:{bid}:{move}")])
         o_buttons.append([
@@ -1153,14 +1154,20 @@ async def send_battle_ui(bid, battle_texts=None):
     
     # EDIT existing messages instead of sending new ones
     try:
-        if battle["message_ids"]["challenger"]:
+        if battle["message_ids"]["challenger"] and buttons = True:
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text, buttons=c_buttons)
+        if battle["message_ids"]["challenger"] and buttons = False:
+            await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text)
+
         else:
             msg = await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
             battle["message_ids"]["challenger"] = msg.id
         
-        if battle["message_ids"]["opponent"]:
+        if battle["message_ids"]["opponent"] and buttons = True:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text, buttons=o_buttons)
+        if battle["message_ids"]["opponent"] and buttons = False:
+            await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text)
+
         else:
             msg = await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
             battle["message_ids"]["opponent"] = msg.id
@@ -1184,7 +1191,7 @@ async def animate_battle_sequence(bid, actions_results):
             "challenger": text_challenger,
             "opponent": text_opponent
         }
-        await send_battle_ui(bid, battle_texts)
+        await send_battle_ui(bid, battle_texts, buttons = False)
         await asyncio.sleep(1.5)  # Animation delay
         
         # Apply HP changes if any
@@ -1194,7 +1201,7 @@ async def animate_battle_sequence(bid, actions_results):
                     battle["active"][side]["hp"] = max(0, battle["active"][side]["hp"] - damage)
         
         # Update UI with HP changes
-        await send_battle_ui(bid, battle_texts)
+        await send_battle_ui(bid, battle texts,  buttons = False)
         if i < len(actions_results) - 1:  # Not the last action
             await asyncio.sleep(1.0)
 
@@ -1338,7 +1345,7 @@ async def resolve_turn(bid):
         return
     
     # Refresh battle UI for next turn
-    await send_battle_ui(bid)
+    await send_battle_ui(bid,buttons = True)
 
 async def end_battle(bid, winner_side):
     """End the battle and declare winner."""
