@@ -1110,7 +1110,7 @@ async def send_battle_ui(bid, battle_texts=None):
                 )])
         if not c_buttons:
             c_buttons = [[Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")]]
-    elif battle["state"] == "active" and buttons = True:
+    elif battle["state"] == "active" and buttons == True:
         for move in challenger.get("moves", []):
             c_buttons.append([Button.inline(move, f"battle:move:{bid}:{move}")])
         c_buttons.append([
@@ -1144,7 +1144,7 @@ async def send_battle_ui(bid, battle_texts=None):
                 )])
         if not o_buttons:
             o_buttons = [[Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")]]
-    elif battle["state"] == "active" and buttons = True:
+    elif battle["state"] == "active" and buttons == True:
         for move in opponent.get("moves", []):
             o_buttons.append([Button.inline(move, f"battle:move:{bid}:{move}")])
         o_buttons.append([
@@ -1154,7 +1154,7 @@ async def send_battle_ui(bid, battle_texts=None):
     
     # EDIT existing messages instead of sending new ones
     try:
-        if battle["message_ids"]["challenger"] and buttons = True:
+        if battle["message_ids"]["challenger"] and buttons == True:
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text, buttons=c_buttons)
         if battle["message_ids"]["challenger"] and buttons = False:
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text)
@@ -1163,7 +1163,7 @@ async def send_battle_ui(bid, battle_texts=None):
             msg = await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
             battle["message_ids"]["challenger"] = msg.id
         
-        if battle["message_ids"]["opponent"] and buttons = True:
+        if battle["message_ids"]["opponent"] and buttons == True:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text, buttons=o_buttons)
         if battle["message_ids"]["opponent"] and buttons = False:
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text)
