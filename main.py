@@ -1201,7 +1201,7 @@ async def animate_battle_sequence(bid, actions_results):
                     battle["active"][side]["hp"] = max(0, battle["active"][side]["hp"] - damage)
         
         # Update UI with HP changes
-        await send_battle_ui(bid, battle texts,  buttons = False)
+        await send_battle_ui(bid, battle_texts,  buttons = False)
         if i < len(actions_results) - 1:  # Not the last action
             await asyncio.sleep(1.0)
 
