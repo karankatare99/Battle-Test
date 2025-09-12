@@ -904,13 +904,13 @@ def load_battle_pokemon(bid):
 def get_hp_bar(current, max_hp, length=10):
     """Generate a simple text HP bar."""
     if max_hp <= 0:
-        return "⬜" * length
+        return "▱" * length
     
     ratio = current / max_hp
     filled = ceil(ratio * length)
     empty = length - filled
     
-    return "🟩" * filled + "⬜" * empty
+    return "▰" * filled + "▱" * empty
 
 def create_battle(challenger_id, opponent_id, battle_type):
     bid = f"BATTLE-{uuid.uuid4().hex[:6].upper()}"
