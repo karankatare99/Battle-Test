@@ -1152,6 +1152,7 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
             Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")
         ])
     turn = {battle.get('turn', 1)}
+    print("turn",turn)
     # EDIT existing messages instead of sending new ones
     try:
         if battle["message_ids"]["challenger"] and buttons == True:
