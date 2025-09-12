@@ -1151,7 +1151,7 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
             Button.inline("🔄 Switch", f"battle:switch:{bid}:opponent"),
             Button.inline("🏳️ Forfeit", f"battle:forfeit:{bid}")
         ])
-    
+    turn = {battle.get('turn', 1)}
     # EDIT existing messages instead of sending new ones
     try:
         if battle["message_ids"]["challenger"] and buttons == True:
@@ -1160,7 +1160,7 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
             await bot.edit_message(battle["challenger"], battle["message_ids"]["challenger"], c_text)
 
         else:
-            if buttons == True:
+            if buttons == True and turn == 1:
                 msg = await bot.send_message(battle["challenger"], c_text, buttons=c_buttons)
                 battle["message_ids"]["challenger"] = msg.id
         
@@ -1170,7 +1170,7 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
             await bot.edit_message(battle["opponent"], battle["message_ids"]["opponent"], o_text)
 
         else:
-            if buttons == True:
+            if buttons == True and turn == 1:
                 msg = await bot.send_message(battle["opponent"], o_text, buttons=o_buttons)
                 battle["message_ids"]["opponent"] = msg.id
             
