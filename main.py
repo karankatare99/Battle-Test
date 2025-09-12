@@ -1079,7 +1079,7 @@ async def send_battle_ui(bid, battle_texts=None, buttons = None):
     
     def hp_bar(current, max_hp, length=20):
         filled = int(length * current / max_hp) if max_hp > 0 else 0
-        return "🟩" * filled + "⬜" * (length - filled)
+        return "▰" * filled + "▱" * (length - filled)
     
     challenger_fainted = challenger["hp"] <= 0
     opponent_fainted = opponent["hp"] <= 0
