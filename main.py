@@ -115,7 +115,7 @@ def parse_showdown_set(text):
                 pokemon["level"] = int(line.replace("Level:", "").strip())
             except:
                 pokemon["level"] = 100
-        elif line.startswith("Nature"):
+        elif "Nature" in line:
             pokemon["nature"] = line.replace("Nature", "").strip()
         elif line.startswith("EVs:"):
             ev_line = line.replace("EVs:", "").strip()
