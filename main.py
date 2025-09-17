@@ -121,10 +121,12 @@ def parse_showdown_set(text):
             ev_line = line.replace("EVs:", "").strip()
             evs_parsed, _ = parse_stats(ev_line, None)
             evs.update(evs_parsed)
+            print("recieved evs")
         elif line.startswith("IVs:"):
             iv_line = line.replace("IVs:", "").strip()
             _, ivs_parsed = parse_stats(None, iv_line)
             ivs.update(ivs_parsed)
+            print("recieved ivs")
         elif line.startswith("- "):
             pokemon["moves"].append(line.replace("- ", "").strip())
     
