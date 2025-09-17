@@ -73,18 +73,21 @@ def parse_stats(ev_str, iv_str):
 # ==== Helper: Parse Pokémon Showdown Set ====
 def parse_showdown_set(text):
     lines = text.strip().splitlines()
+
     pokemon = {}
-    evs = {s: 0 for s in ["hp","atk","def","spa","spd","spe"]}
-    ivs = {s: 31 for s in ["hp","atk","def","spa","spd","spe"]}
-    
+    evs = {s: 0 for s in ["hp", "atk", "def", "spa", "spd", "spe"]}
+    ivs = {s: 31 for s in ["hp", "atk", "def", "spa", "spd", "spe"]}
+
     first_line = lines[0]
     if "(M)" in first_line:
-        gender = "Male"; first_line = first_line.replace("(M)", "").strip()
+        gender = "Male"
+        first_line = first_line.replace("(M)", "").strip()
     elif "(F)" in first_line:
-        gender = "Female"; first_line = first_line.replace("(F)", "").strip()
+        gender = "Female"
+        first_line = first_line.replace("(F)", "").strip()
     else:
-        gender = random.choice(["Male","Female"])
-    
+        gender = random.choice(["Male", "Female"])
+
     if "@" in first_line:
         name_part, item = first_line.split("@")
         pokemon["name"] = name_part.strip()
@@ -92,7 +95,7 @@ def parse_showdown_set(text):
     else:
         pokemon["name"] = first_line.strip()
         pokemon["item"] = "None"
-    
+
     pokemon["gender"] = gender
     pokemon["level"] = 100
     pokemon["nature"] = "None"
@@ -101,7 +104,7 @@ def parse_showdown_set(text):
     pokemon["iv_stats"] = {}
     pokemon["ev_stats"] = {}
     pokemon["stats"] = {}
-    
+
     for line in lines[1:]:
         line = line.strip()
         if line.startswith("Ability:"):
@@ -115,9 +118,9 @@ def parse_showdown_set(text):
                 pokemon["level"] = int(line.replace("Level:", "").strip())
             except:
                 pokemon["level"] = 100
-       elif "Nature" in line:
+        elif "Nature" in line:
             pokemon["nature"] = line.replace("Nature", "").strip()
-       elif line.startswith("EVs:"):
+        elif line.startswith("EVs:"):
             ev_line = line.replace("EVs:", "").strip()
             evs_parsed, _ = parse_stats(ev_line, None)
             evs.update(evs_parsed)
@@ -127,14 +130,17 @@ def parse_showdown_set(text):
             ivs.update(ivs_parsed)
         elif line.startswith("- "):
             pokemon["moves"].append(line.replace("- ", "").strip())
-    
-    for stat in ["hp","atk","def","spa","spd","spe"]:
+
+    # Store EVs and IVs in dict
+    for stat in ["hp", "atk", "def", "spa", "spd", "spe"]:
         pokemon["ev_stats"][f"ev{stat}"] = evs[stat]
         pokemon["iv_stats"][f"iv{stat}"] = ivs[stat]
-    
+
     print(pokemon)
+
     add_final_stats(pokemon)
     pokemon["pokemon_id"] = generate_pokemon_id()
+
     return pokemon
 
 with open("kanto_data.json", "r") as f:
