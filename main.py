@@ -1310,8 +1310,8 @@ async def battle_stadium(event):
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
         "├ __**Select a mode below:**__\n"
-        "├ ▶ __**Ranked Battles**__ — __Battle other player and rank up!__\n"
-        "└ ▶ __**Casual Battles**__ — __Play casual matches with friends__\n"
+        "├ ⫸__**Ranked Battles**__⫷ — __Battle other player and rank up!__\n"
+        "└ ⫸__**Casual Battles**__⫷ — __Play casual matches with friends__\n"
     )
     
     buttons = [
