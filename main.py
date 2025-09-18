@@ -1309,7 +1309,7 @@ async def send_summary(event, poke):
 async def battle_stadium(event):
     if not event.is_private:
         return
-    await event.reply("__**Communicating....Please stand by!**__")
+    connect_msg=await event.reply("__**Communicating....Please stand by!**__")
     
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
@@ -1324,7 +1324,7 @@ async def battle_stadium(event):
             Button.inline("Casual Battles", data=b"mode:casual")
         ]
     ]
-    await event.edit(text, buttons=buttons)
+    await connect_msg.edit(text, buttons=buttons)
 
 @bot.on(events.CallbackQuery(pattern=b"^mode:(ranked|casual)$"))
 async def select_mode(event):
