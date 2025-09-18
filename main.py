@@ -1309,7 +1309,7 @@ async def send_summary(event, poke):
 async def battle_stadium(event):
     if not event.is_private:
         return
-    await event.reply(__**"Communicating....Please stand by!"**__)
+    await event.reply("__**Communicating....Please stand by!**__")
     
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
@@ -1328,7 +1328,7 @@ async def battle_stadium(event):
 
 @bot.on(events.CallbackQuery(pattern=b"^mode:(ranked|casual)$"))
 async def select_mode(event):
-    await event.edit(__**"Communicating....Please stand by!"**__)
+    await event.edit("__**Communicating....Please stand by!**__")
     mode = event.pattern_match.group(1).decode()  # ranked or casual
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
@@ -1345,7 +1345,7 @@ async def select_mode(event):
     await event.edit(text, buttons=buttons)
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles)$"))
 async def select_format(event):
-    await event.edit(__**"Communicating....Please stand by!"**__)
+    await event.edit("__**Communicating....Please stand by!**__")
     mode, fmt = (g.decode() for g in event.pattern_match.groups())
     await event.edit(f"You chose {mode.capitalize()} {fmt.capitalize()}!")    
 print("Bot running...")
