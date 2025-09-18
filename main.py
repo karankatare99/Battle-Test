@@ -1308,10 +1308,10 @@ async def send_summary(event, poke):
 @bot.on(events.NewMessage(pattern='/battle_stadium'))
 async def battle_stadium(event):
     text = (
-        "╭─「 **Battle Stadium**」\n"
-        "├ Select a mode below:\n"
-        "├ Ranked Battles — Battle other player and rank up!\n"
-        "└ Casual Battles — Play casual matches with friends\n"
+        "╭─「 __**Battle Stadium**__ 」\n"
+        "├ __**Select a mode below:**__\n"
+        "├ __**Ranked Battles — Battle other player and rank up!**__\n"
+        "└ __**Casual Battles — Play casual matches with friends**__\n"
     )
     
     buttons = [
