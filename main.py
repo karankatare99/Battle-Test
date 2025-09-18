@@ -1307,6 +1307,8 @@ async def send_summary(event, poke):
         await event.reply(text)
 @bot.on(events.NewMessage(pattern='/battle_stadium'))
 async def battle_stadium(event):
+    await event.reply(__**"Communicating....Please stand by!"**__)
+    
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
         "├ __**Select a mode below:**__\n"
@@ -1316,11 +1318,33 @@ async def battle_stadium(event):
     
     buttons = [
         [
-            Button.inline("Ranked Battles", data=b"bs_ranked"),
-            Button.inline("Casual Battles", data=b"bs_casual")
+            Button.inline("Ranked Battles", data=b"mode:ranked"),
+            Button.inline("Casual Battles", data=b"mode:casual")
         ]
     ]
-    await event.respond(text, buttons=buttons)
+    await event.edit(text, buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern=b"^mode:(ranked|casual)$"))
+async def select_mode(event):
+    await event.edit(__**"Communicating....Please stand by!"**__)
+    mode = event.pattern_match.group(1).decode()  # ranked or casual
+    text = (
+        "╭─「 __**Battle Stadium**__ 」\n"
+        "├ __**Select a format below:**__\n"
+        "├ ⫸__**Single Battles**__⫷ — __Battle using one Pokémon at a time__\n"
+        "└ ⫸__**Double Battles**__⫷ — __Battle using two Pokémons at a time__\n"
+    )    buttons = [
+        [
+            Button.inline("Single Battle", data=f"{mode}:singles".encode()),
+            Button.inline("Doubles Battle", data=f"{mode}:doubles".encode())
+        ]
+    ]
+    await event.edit(text, buttons=buttons)
+@bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles)$"))
+async def select_format(event):
+    await event.edit(__**"Communicating....Please stand by!"**__)
+    mode, fmt = (g.decode() for g in event.pattern_match.groups())
+    await event.edit(f"You chose {mode.capitalize()} {fmt.capitalize()}!")    
 print("Bot running...")
 
 bot.run_until_disconnected()
