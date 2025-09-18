@@ -1307,6 +1307,8 @@ async def send_summary(event, poke):
         await event.reply(text)
 @bot.on(events.NewMessage(pattern='/battle_stadium'))
 async def battle_stadium(event):
+    if not event.is_private:
+        return
     await event.reply(__**"Communicating....Please stand by!"**__)
     
     text = (
