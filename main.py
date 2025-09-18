@@ -1335,7 +1335,8 @@ async def select_mode(event):
         "├ __**Select a format below:**__\n"
         "├ ⫸__**Single Battles**__⫷ — __Battle using one Pokémon at a time__\n"
         "└ ⫸__**Double Battles**__⫷ — __Battle using two Pokémons at a time__\n"
-    )    buttons = [
+    )    
+    buttons = [
         [
             Button.inline("Single Battle", data=f"{mode}:singles".encode()),
             Button.inline("Doubles Battle", data=f"{mode}:doubles".encode())
