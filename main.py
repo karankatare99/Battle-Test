@@ -1305,7 +1305,22 @@ async def send_summary(event, poke):
     else:
 
         await event.reply(text)
-
+@bot.on(events.NewMessage(pattern='/battle_stadium'))
+async def battle_stadium(event):
+    text = (
+        "╭─「 **Battle Stadium**」\n"
+        "├ Select a mode below:\n"
+        "├ Ranked Battles — Battle other player and rank up!\n"
+        "└ Casual Battles — Play casual matches with friends\n"
+    )
+    
+    buttons = [
+        [
+            Button.inline("Ranked Battles", data=b"bs_ranked"),
+            Button.inline("Casual Battles", data=b"bs_casual")
+        ]
+    ]
+    await event.respond(text, buttons=buttons)
 print("Bot running...")
 
 bot.run_until_disconnected()
