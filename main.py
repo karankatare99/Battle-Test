@@ -50,6 +50,7 @@ owner = 6735548827
 battle_data={} 
 battle_state={} 
 invitecode=[] 
+textic = {} #waiting to collect input for invitecode
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1309,7 +1310,11 @@ async def send_summary(event, poke):
         await event.reply(text)
 @bot.on(events.NewMessage(pattern='/battle_stadium'))
 async def battle_stadium(event):
+    user_id =event.sender_id 
     if not event.is_private:
+        return
+    if battle_state[user_id]:
+        await event.reply("This action cant be done")
         return
     connect_msg=await event.reply("__**Communicating....Please stand by!**__")
     
@@ -1360,6 +1365,7 @@ async def select_format(event):
     battle_state[int(user_id)]["allowed_pokemon"] = [] 
     battle_state[int(user_id)]["active_pokemon"] = None
     battle_state[int(user_id)]["battle_started"] = False
+    battle_state[int(user_id)]["battle initiated"] = True
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
         "├ __**How do you wanna matchmake? **__\n"
