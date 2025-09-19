@@ -1366,7 +1366,7 @@ def db_battle_extractor(user_id,mode,format):
     user_team = user_data["team"] 
     user_dict[user_id]["team"]=user_team
     for i in user_team:
-        poke=pokemon_data.find_one({"_id":i}) 
+        poke=pokedata.find_one({"_id":i}) 
         poke["current_hp"]=poke["final_hp"]
         user_poke[i]=poke
     user_dict[user_id]["pokemon"]=user_poke
