@@ -1351,12 +1351,12 @@ async def select_format(event):
     mode, fmt = (g.decode() for g in event.pattern_match.groups())
     await event.edit("__**Preparing battle requirements...**__") 
     await battle_create(user_id, mode, fmt)
-    battle_state[user_id]["mode"] = mode
-    battle_state[user_id]["fmt"] = fmt
-    battle_state[user_id]["team"] = battle_data[user_id]["team"] 
-    battle_state[user_id]["allowed_pokemon"] = [] 
-    battle_state[user_id]["active_pokemon"] = None
-    battle_state[user_id]["battle_started"] = False
+    battle_state[int(user_id)]["mode"] = mode
+    battle_state[int(user_id)]["fmt"] = fmt
+    battle_state[int(user_id)]["team"] = battle_data[user_id]["team"] 
+    battle_state[int(user_id)]["allowed_pokemon"] = [] 
+    battle_state[int(user_id)]["active_pokemon"] = None
+    battle_state[int(user_id)]["battle_started"] = False
     text = (
         "╭─「 __**Battle Stadium**__ 」\n"
         "├ __**How do you wanna matchmake? **__\n"
