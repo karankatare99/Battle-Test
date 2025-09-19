@@ -49,7 +49,7 @@ matchmaking = db["matchmaking"]
 owner = 6735548827
 battle_data={} 
 battle_state={} 
-invitecode=[] 
+invitecode={}
 textic = {} #waiting to collect input for invitecode
 # State tracking so /add expects next msg
 
@@ -1409,7 +1409,9 @@ async def matchmaking(event):
         while True:
             code = random.randint(0,9999)
             if code not in invitecode:
-                invitecode.append(code)
+                invitecode[event.sender_id]["mode"]= mode
+                invitecode[event.sender_id]["fmt"]= fmt
+                invitecode[event.sender_id]["code"]= code
                 break
         text = (
         "╭─「 __**Battle Stadium**__ 」\n"
@@ -1427,11 +1429,12 @@ async def matchmaking(event):
 async def code_keyboard(event):
     mode, fmt, mm, ic= (g.decode() for g in event.pattern_match.groups())
     if ic =="enter_code":
+        del invitecode[event.sender_id] 
         text = (
         "╭─「 __**Battle Stadium**__ 」\n"
         "└ ⫸__**Enter Code**__⫷ — __Battle with an opposing trainer by entering invite code obtained from them! __\n"
         "└ __**Code**__⫸__**Enter Code**__⫷  __\n"
-    )  
+    )   
         await event.edit(text)
 
         textic[event.sender_id]={
@@ -1450,7 +1453,14 @@ async def get_invite_code(event):
 
         # remove them from waiting list so we don’t catch all their messages
         del textic[user_id]
-
+        if not code_entered in invitecode:
+            await event.reply("__**Invalid Invite Code**__") 
+        if code_entered in invitecode:
+            if invitecode[event.sender_id]["mode"] == mode and invitecode[event.sender_id]["fmt"]= fmt:
+                pass
+            else:
+                await event.reply("__**That invite code can't be entered!**__")
+                return
         # now you can do whatever with the code
         await event.reply(
             f"__You entered invite code:__ `{code_entered}`\n"
