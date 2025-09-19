@@ -1351,7 +1351,7 @@ async def select_format(event):
     await event.edit("__**Preparing battle requirements...**__") 
     await battle_create(user_id, mode, fmt)
 async def battle_create(user_id, mode, format):
-    user_dict=await db_battle_extractor(user_id,mode,format)
+    user_dict=db_battle_extractor(user_id,mode,format)
     battle_stadium[user_id]=user_dict
     print(battle_stadium)
 def db_battle_extractor(user_id,mode,format):
