@@ -1374,6 +1374,7 @@ async def select_format(event):
     await event.edit(text, buttons=buttons)
 async def battle_create(user_id, mode, format):
     user_dict=db_battle_extractor(user_id,mode,format)
+    global battle_data
     battle_data=user_dict
 def db_battle_extractor(user_id,mode,format):
     user_data=users.find_one({"user_id":int(user_id)})
