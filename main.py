@@ -1409,6 +1409,7 @@ async def matchmaking(event):
         while True:
             code = random.randint(0,9999)
             if code not in invitecode:
+                invitecode[event.sender_id]={} 
                 invitecode[event.sender_id]["mode"]= mode
                 invitecode[event.sender_id]["fmt"]= fmt
                 invitecode[event.sender_id]["code"]= code
