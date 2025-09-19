@@ -1467,10 +1467,11 @@ async def get_invite_code(event):
         if matched_user_id is None:
             await event.reply("__**Invalid Invite Code**__")
             return
+        del textic[user_id]
         if info["mode"] != mode or info["fmt"] != fmt:
             await event.reply("__**That invite code can't be entered!**__")
             return
-        del textic[user_id]
+        
         # now you can do whatever with the code
         await event.reply(
             f"__You entered invite code:__ `{code_entered}`\n"
