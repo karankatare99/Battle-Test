@@ -1347,7 +1347,19 @@ async def select_mode(event):
 async def select_format(event):
     await event.edit("__**Communicating....Please stand by!**__")
     mode, fmt = (g.decode() for g in event.pattern_match.groups())
-    await event.edit(f"You chose {mode.capitalize()} {fmt.capitalize()}!")    
+    await event.edit("__**Preparing battle requirements...**__") 
+async def battle_create(user_id):
+    
+def db_battle_extractor(user_id):
+    user_data=users.find_one(user_id)
+    user_dict={}
+    user_dict[user_id]={}
+    user_team = user_data["team"] 
+    user_dict[user_id]["team"]=user_team
+    for i in user_team:
+        poke=pokemon_data.find_one(i) 
+        user_poke={} 
+        user_dict[user_id]["pokemon"]=user_poke
 print("Bot running...")
 
 bot.run_until_disconnected()
