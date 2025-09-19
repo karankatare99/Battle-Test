@@ -1354,7 +1354,7 @@ async def select_format(event):
     battle_state[user_id] = {} 
     battle_state[int(user_id)]["mode"] = mode
     battle_state[int(user_id)]["fmt"] = fmt
-    battle_state[int(user_id)]["team"] = battle_data[user_id]["team"] 
+    battle_state[int(user_id)]["team"] = battle_data[int(user_id)]["team"] 
     battle_state[int(user_id)]["allowed_pokemon"] = [] 
     battle_state[int(user_id)]["active_pokemon"] = None
     battle_state[int(user_id)]["battle_started"] = False
