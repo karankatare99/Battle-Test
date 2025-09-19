@@ -49,6 +49,7 @@ matchmaking = db["matchmaking"]
 owner = 6735548827
 battle_data={} 
 battle_state={} 
+invitecode=[] 
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1394,6 +1395,29 @@ def db_battle_extractor(user_id,mode,format):
         user_poke[i]=poke
     user_dict[user_id]["pokemon"]=user_poke
     return user_dict
+
+@bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
+async def matchmaking(event):
+    mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
+    if mm == "invitecode":
+        while True:
+            code = random.randint(0,9999)
+            if code not in invitecode:
+                break
+        text = (
+        "╭─「 __**Battle Stadium**__ 」\n"
+        f"├ __**Invite Code ⫸{code}⫷**__\n"
+        "└ ⫸__**Enter Code**__⫷ — __Battle with an opposing trainer by entering invite code obtained from them! __\n"
+    )    
+        buttons = [
+        [
+            Button.inline("Enter Code", data=f"{mode}:{fmt}:{mm}:enter_code".encode())
+        ]
+    ]
+        await event.edit(text, buttons=buttons)
+
+
+
 print("Bot running...")
 
 bot.run_until_disconnected()
