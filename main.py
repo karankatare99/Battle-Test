@@ -1313,7 +1313,7 @@ async def battle_stadium(event):
     user_id =event.sender_id 
     if not event.is_private:
         return
-    if battle_state[user_id]:
+    if battle_state.get(user_id):
         await event.reply("This action cant be done")
         return
     connect_msg=await event.reply("__**Communicating....Please stand by!**__")
