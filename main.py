@@ -1431,7 +1431,31 @@ async def code_keyboard(event):
         "╭─「 __**Battle Stadium**__ 」\n"
         "└ ⫸__**Enter Code**__⫷ — __Battle with an opposing trainer by entering invite code obtained from them! __\n"
         "└ __**Code**__⫸__**Enter Code**__⫷  __\n"
-    )    
+    )  
+        textic[event.sender_id]={
+            "mode":mode, 
+            "fmt" :fmt
+        } 
+
+@bot.on(events.NewMessage)
+async def get_invite_code(event):
+    user_id = event.sender_id
+
+    if user_id in textic:
+        code_entered = event.raw_text.strip()  # what the user typed
+        mode = textic[user_id]["mode"]
+        fmt = textic[user_id]["fmt"]
+
+        # remove them from waiting list so we don’t catch all their messages
+        del textic[user_id]
+
+        # now you can do whatever with the code
+        await event.reply(
+            f"__You entered invite code:__ `{code_entered}`\n"
+            f"Mode: {mode}, Format: {fmt}"
+        )
+
+        
 print("Bot running...")
 
 bot.run_until_disconnected()
