@@ -1453,7 +1453,7 @@ async def get_invite_code(event):
         fmt = textic[user_id]["fmt"]
 
         # remove them from waiting list so we don’t catch all their messages
-        del textic[user_id]
+        
         try:
             entered_int = int(code_entered)
         except ValueError:
@@ -1470,7 +1470,7 @@ async def get_invite_code(event):
         if info["mode"] != mode or info["fmt"] != fmt:
             await event.reply("__**That invite code can't be entered!**__")
             return
-        
+        del textic[user_id]
         # now you can do whatever with the code
         await event.reply(
             f"__You entered invite code:__ `{code_entered}`\n"
