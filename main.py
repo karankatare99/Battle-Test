@@ -1432,6 +1432,8 @@ async def code_keyboard(event):
         "└ ⫸__**Enter Code**__⫷ — __Battle with an opposing trainer by entering invite code obtained from them! __\n"
         "└ __**Code**__⫸__**Enter Code**__⫷  __\n"
     )  
+        await event.edit(text)
+
         textic[event.sender_id]={
             "mode":mode, 
             "fmt" :fmt
