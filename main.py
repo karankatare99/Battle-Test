@@ -1456,7 +1456,7 @@ async def get_invite_code(event):
         if not code_entered in invitecode:
             await event.reply("__**Invalid Invite Code**__") 
         if code_entered in invitecode:
-            if invitecode[event.sender_id]["mode"] == mode and invitecode[event.sender_id]["fmt"]= fmt:
+            if invitecode[event.sender_id]["mode"] == mode and invitecode[event.sender_id]["fmt"]==fmt:
                 pass
             else:
                 await event.reply("__**That invite code can't be entered!**__")
