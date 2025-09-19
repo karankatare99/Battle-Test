@@ -1426,7 +1426,7 @@ async def matchmaking(event):
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
     mode, fmt, mm, ic= (g.decode() for g in event.pattern_match.groups())
-    if ic ==" enter_code":
+    if ic =="enter_code":
         text = (
         "╭─「 __**Battle Stadium**__ 」\n"
         "└ ⫸__**Enter Code**__⫷ — __Battle with an opposing trainer by entering invite code obtained from them! __\n"
