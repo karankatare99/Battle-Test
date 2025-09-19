@@ -48,6 +48,7 @@ matchmaking = db["matchmaking"]
 
 owner = 6735548827
 battle_data={} 
+battle_state={} 
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1350,19 +1351,38 @@ async def select_format(event):
     mode, fmt = (g.decode() for g in event.pattern_match.groups())
     await event.edit("__**Preparing battle requirements...**__") 
     await battle_create(user_id, mode, fmt)
+    battle_state[user_id]["mode"] = mode
+    battle_state[user_id]["fmt"] = fmt
+    battle_state[user_id]["team"] = battle_data[user_id]["team"] 
+    battle_state[user_id]["allowed_pokemon"] = [] 
+    battle_state[user_id]["active_pokemon"] = None
+    battle_state[user_id]["battle_started"] = False
+    text = (
+        "╭─「 __**Battle Stadium**__ 」\n"
+        "├ __**How do you wanna matchmake? **__\n"
+        "├ ⫸__**Search an opponent**__⫷ — __Search for an opposing trainer around the globe__\n"
+        "└ ⫸__**Invite Code**__⫷ — __Battle with an opposing trainer using invite code! __\n"
+    )    
+    buttons = [
+        [
+            Button.inline("Search an Opponent", data=f"{mode}:{fmt}:random".encode()),
+            Button.inline("Invite Code", data=f"{mode}:{fmt}:invitecode".encode())
+        ]
+    ]
+    await event.edit(text, buttons=buttons)
 async def battle_create(user_id, mode, format):
     user_dict=db_battle_extractor(user_id,mode,format)
     battle_data=user_dict
-    print(battle_data)
 def db_battle_extractor(user_id,mode,format):
     user_data=users.find_one({"user_id":int(user_id)})
     if user_data is None:
         raise ValueError(f"No user found with id {user_id}")
+        return 
     user_dict={}
     user_poke={} 
     user_dict[user_id]={}
     user_dict[user_id]["mode"]=mode
-    user_dict[user_id]["format"]=format
+    user_dict[user_id]["fmt"]=format
     user_team = user_data["team"] 
     user_dict[user_id]["team"]=user_team
     for i in user_team:
