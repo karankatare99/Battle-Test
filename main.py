@@ -47,7 +47,7 @@ battles_db = db["battles"]
 matchmaking = db["matchmaking"]
 
 owner = 6735548827
-battle_stadium={} 
+battle_data={} 
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1352,8 +1352,8 @@ async def select_format(event):
     await battle_create(user_id, mode, fmt)
 async def battle_create(user_id, mode, format):
     user_dict=db_battle_extractor(user_id,mode,format)
-    battle_stadium[user_id]=user_dict
-    print(battle_stadium)
+    battle_data[user_id]=user_dict
+    print(battle_data)
 def db_battle_extractor(user_id,mode,format):
     user_data=users.find_one({"user_id":int(user_id)})
     if user_data is None:
