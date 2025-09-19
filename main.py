@@ -1351,6 +1351,7 @@ async def select_format(event):
     mode, fmt = (g.decode() for g in event.pattern_match.groups())
     await event.edit("__**Preparing battle requirements...**__") 
     await battle_create(user_id, mode, fmt)
+    print(battle_data) 
     battle_state[user_id] = {} 
     battle_state[int(user_id)]["mode"] = mode
     battle_state[int(user_id)]["fmt"] = fmt
