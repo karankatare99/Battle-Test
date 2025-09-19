@@ -1355,7 +1355,7 @@ async def battle_create(user_id, mode, format):
     battle_stadium[user_id]=user_dict
     print(battle_stadium)
 def db_battle_extractor(user_id,mode,format):
-    user_data=users.find_one(user_id)
+    user_data=users.find_one("user_id":user_id)
     if user_data is None:
         raise ValueError(f"No user found with id {user_id}")
     user_dict={}
@@ -1366,7 +1366,7 @@ def db_battle_extractor(user_id,mode,format):
     user_team = user_data["team"] 
     user_dict[user_id]["team"]=user_team
     for i in user_team:
-        poke=pokemon_data.find_one(i) 
+        poke=pokemon_data.find_one("_id":i) 
         poke["current_hp"]=poke["final_hp"]
         user_poke[i]=poke
     user_dict[user_id]["pokemon"]=user_poke
