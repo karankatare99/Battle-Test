@@ -1403,6 +1403,7 @@ async def matchmaking(event):
         while True:
             code = random.randint(0,9999)
             if code not in invitecode:
+                invitecode.append(code)
                 break
         text = (
         "╭─「 __**Battle Stadium**__ 」\n"
@@ -1416,8 +1417,15 @@ async def matchmaking(event):
     ]
         await event.edit(text, buttons=buttons)
 
-
-
+@bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
+async def code_keyboard(event):
+    mode, fmt, mm, ic= (g.decode() for g in event.pattern_match.groups())
+    if ic ==" enter_code":
+        text = (
+        "╭─「 __**Battle Stadium**__ 」\n"
+        "└ ⫸__**Enter Code**__⫷ — __Battle with an opposing trainer by entering invite code obtained from them! __\n"
+        "└ __**Code**__⫸__**Enter Code**__⫷  __\n"
+    )    
 print("Bot running...")
 
 bot.run_until_disconnected()
