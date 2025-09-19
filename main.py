@@ -1356,6 +1356,8 @@ async def battle_create(user_id, mode, format):
     print(battle_stadium)
 def db_battle_extractor(user_id,mode,format):
     user_data=users.find_one(user_id)
+    if user_data is None:
+        raise ValueError(f"No user found with id {user_id}")
     user_dict={}
     user_poke={} 
     user_dict[user_id]={}
