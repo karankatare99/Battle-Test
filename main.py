@@ -1427,7 +1427,8 @@ async def search_for_opp_trainer(user_id,lobby):
                         del search_msg[uid]
             await asyncio.sleep(1)
             return
-        while len(lobby)>=2:
+            
+        if len(lobby)>=2:
             possible_opponents = [uid for uid in lobby if uid != user_id]
             if possible_opponents:
                 opponent_id = random.choice(possible_opponents)
@@ -1438,6 +1439,7 @@ async def search_for_opp_trainer(user_id,lobby):
                 del search_msgs[user_id]
                 del search_msgs[opponent_id]
                 return
+        await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
