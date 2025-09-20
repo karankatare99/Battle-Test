@@ -56,6 +56,7 @@ rs_lobby=[]
 rd_lobby=[]
 cs_lobby=[]
 cd_lobby=[]
+search_msg ={}
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1443,9 +1444,44 @@ async def matchmaking(event):
             lobby = cd_lobby
         else:
             await event.edit("Something went wrong!\nMatchmaking Cancelled")
-        if not user_id in lobby:
-        if len(rs_lobby) or len(rd_lobby) or len(cs_lobby) or len(cd_lobby) >= 2:
+        if user_id in lobby:
+            await event.edit("You are already in lobby\nSearching for an opposing trainer...")
+            return
+        if user_id not in lobby:
+            lobby.append(user_id)
+            msg=await event.edit("__Searching for an opposing trainer__")
+            search_msg[user_id]=msg
             
+async def search_for_opp_trainer(user_id,lobby):
+    timeout = 120
+    starttime= asyncio.get_event_loop().time()
+    while True:
+        if user_id not in lobby:
+            return
+        if currenttime-starttime>timeout:
+            await search_msg[user_id].edit("__Matchmaking timeout!__")
+        if len(lobby)>=2:
+            currenttime= asyncio.get_event_loop().time()
+            for uid in lobby[:]:
+                if currenttime-starttime>timeout:
+                    lobby.remove(uid)
+                    if uid in search_msg:
+                        await search_msg[uid].edit("__Matchmaking timeout!__")
+                        del search_msg[uid]
+            await asyncio.sleep(1)
+            return
+        while len(lobby)>=2:
+            possible_opponents = [uid for uid in lobby if uid != user_id]
+            if possible_opponents:
+                opponent_id = random.choice(possible_opponents)
+                lobby.remove(user_id)
+                lobby.remove(opponent_id)
+                await search_msgs[user_id].edit(f"Opponent found! User {opponent_id}")
+                await search_msgs[opponent_id].edit(f"Opponent found! User {user_id}")
+                del search_msgs[user_id]
+                del search_msgs[opponent_id]
+                return
+        
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
     mode, fmt, mm, ic= (g.decode() for g in event.pattern_match.groups())
