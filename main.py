@@ -1425,20 +1425,18 @@ async def search_for_opp_trainer(user_id,lobby):
                     if uid in search_msg:
                         await search_msg[uid].edit("__Matchmaking timeout!__")
                         del search_msg[uid]
-            
-            return
-            
-        if len(lobby)>=2:
-            possible_opponents = [uid for uid in lobby if uid != user_id]
-            if possible_opponents:
-                opponent_id = random.choice(possible_opponents)
-                lobby.remove(user_id)
-                lobby.remove(opponent_id)
-                await search_msgs[user_id].edit(f"Opponent found! User {opponent_id}")
-                await search_msgs[opponent_id].edit(f"Opponent found! User {user_id}")
-                del search_msgs[user_id]
-                del search_msgs[opponent_id]
-                return
+                        return
+            if len(lobby)>=2:
+                possible_opponents = [uid for uid in lobby if uid != user_id]
+                if possible_opponents:
+                    opponent_id = random.choice(possible_opponents)
+                    lobby.remove(user_id)
+                    lobby.remove(opponent_id)
+                    await search_msgs[user_id].edit(f"Opponent found! User {opponent_id}")
+                    await search_msgs[opponent_id].edit(f"Opponent found! User {user_id}")
+                    del search_msgs[user_id]
+                    del search_msgs[opponent_id]
+                    return
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
