@@ -1407,7 +1407,35 @@ def db_battle_extractor(user_id,mode,format):
         user_poke[i]=poke
     user_dict[user_id]["pokemon"]=user_poke
     return user_dict
-
+async def search_for_opp_trainer(user_id,lobby):
+    timeout = 120
+    starttime= asyncio.get_event_loop().time()
+    while True:
+        if user_id not in lobby:
+            return
+        if currenttime-starttime>timeout:
+            await search_msg[user_id].edit("__Matchmaking timeout!__")
+        if len(lobby)>=2:
+            currenttime= asyncio.get_event_loop().time()
+            for uid in lobby[:]:
+                if currenttime-starttime>timeout:
+                    lobby.remove(uid)
+                    if uid in search_msg:
+                        await search_msg[uid].edit("__Matchmaking timeout!__")
+                        del search_msg[uid]
+            await asyncio.sleep(1)
+            return
+        while len(lobby)>=2:
+            possible_opponents = [uid for uid in lobby if uid != user_id]
+            if possible_opponents:
+                opponent_id = random.choice(possible_opponents)
+                lobby.remove(user_id)
+                lobby.remove(opponent_id)
+                await search_msgs[user_id].edit(f"Opponent found! User {opponent_id}")
+                await search_msgs[opponent_id].edit(f"Opponent found! User {user_id}")
+                del search_msgs[user_id]
+                del search_msgs[opponent_id]
+                return
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
@@ -1452,35 +1480,6 @@ async def matchmaking(event):
             msg=await event.edit("__Searching for an opposing trainer__")
             search_msg[user_id]=msg
 asyncio.create_task(search_for_opp_trainer(user_id,lobby))         
-async def search_for_opp_trainer(user_id,lobby):
-    timeout = 120
-    starttime= asyncio.get_event_loop().time()
-    while True:
-        if user_id not in lobby:
-            return
-        if currenttime-starttime>timeout:
-            await search_msg[user_id].edit("__Matchmaking timeout!__")
-        if len(lobby)>=2:
-            currenttime= asyncio.get_event_loop().time()
-            for uid in lobby[:]:
-                if currenttime-starttime>timeout:
-                    lobby.remove(uid)
-                    if uid in search_msg:
-                        await search_msg[uid].edit("__Matchmaking timeout!__")
-                        del search_msg[uid]
-            await asyncio.sleep(1)
-            return
-        while len(lobby)>=2:
-            possible_opponents = [uid for uid in lobby if uid != user_id]
-            if possible_opponents:
-                opponent_id = random.choice(possible_opponents)
-                lobby.remove(user_id)
-                lobby.remove(opponent_id)
-                await search_msgs[user_id].edit(f"Opponent found! User {opponent_id}")
-                await search_msgs[opponent_id].edit(f"Opponent found! User {user_id}")
-                del search_msgs[user_id]
-                del search_msgs[opponent_id]
-                return
         
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
