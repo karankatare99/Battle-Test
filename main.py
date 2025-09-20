@@ -50,7 +50,12 @@ owner = 6735548827
 battle_data={} 
 battle_state={} 
 invitecode={}
-textic = {} #waiting to collect input for invitecode
+textic = {}#waiting to collect input for invitecode
+room = {}
+rs_lobby=[]
+rd_lobby=[]
+cs_lobby=[]
+cd_lobby=[]
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1425,7 +1430,22 @@ async def matchmaking(event):
         ]
     ]
         await event.edit(text, buttons=buttons)
-
+    if mm == "random":
+        
+        user_id = event.sender_id
+        if mode == "ranked" and fmt == "singles":
+            lobby = rs_lobby
+        elif mode == "ranked" and fmt == "doubles":
+            lobby = rd_lobby
+        elif mode == "casual" and fmt == "singles":
+            lobby = cs_lobby
+        elif mode == "casual" and fmt == "doubles":
+            lobby = cd_lobby
+        else:
+            await event.edit("Something went wrong!\nMatchmaking Cancelled")
+        if not user_id in lobby:
+        if len(rs_lobby) or len(rd_lobby) or len(cs_lobby) or len(cd_lobby) >= 2:
+            
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
     mode, fmt, mm, ic= (g.decode() for g in event.pattern_match.groups())
@@ -1474,9 +1494,10 @@ async def get_invite_code(event):
         
         # now you can do whatever with the code
         await event.reply(
-            f"__You entered invite code:__ `{code_entered}`\n"
-            f"Mode: {mode}, Format: {fmt}"
+            "__An opposing trainer has been found!__"
         )
+        await asyncio.sleep(1)
+        await event.edit("__A battle against {} is about to start.)
 
         
 print("Bot running...")
