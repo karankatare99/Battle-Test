@@ -1432,10 +1432,10 @@ async def search_for_opp_trainer(user_id,lobby):
                     opponent_id = random.choice(possible_opponents)
                     lobby.remove(user_id)
                     lobby.remove(opponent_id)
-                    await search_msgs[user_id].edit(f"Opponent found! User {opponent_id}")
-                    await search_msgs[opponent_id].edit(f"Opponent found! User {user_id}")
-                    del search_msgs[user_id]
-                    del search_msgs[opponent_id]
+                    await search_msg[user_id].edit(f"Opponent found! User {opponent_id}")
+                    await search_msg[opponent_id].edit(f"Opponent found! User {user_id}")
+                    del search_msg[user_id]
+                    del search_msg[opponent_id]
                     return
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
