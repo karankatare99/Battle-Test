@@ -1425,7 +1425,7 @@ async def search_for_opp_trainer(user_id,lobby):
                     if uid in search_msg:
                         await search_msg[uid].edit("__Matchmaking timeout!__")
                         del search_msg[uid]
-            await asyncio.sleep(1)
+            
             return
             
         if len(lobby)>=2:
