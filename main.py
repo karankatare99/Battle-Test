@@ -1451,7 +1451,7 @@ async def matchmaking(event):
             lobby.append(user_id)
             msg=await event.edit("__Searching for an opposing trainer__")
             search_msg[user_id]=msg
-            
+asyncio.create_task(search_for_opp_trainer(user_id,lobby))         
 async def search_for_opp_trainer(user_id,lobby):
     timeout = 120
     starttime= asyncio.get_event_loop().time()
