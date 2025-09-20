@@ -1413,6 +1413,8 @@ async def search_for_opp_trainer(user_id,lobby):
     while True:
         if user_id not in lobby:
             return
+        currenttime= asyncio.get_event_loop().time()
+        
         if currenttime-starttime>timeout:
             await search_msg[user_id].edit("__Matchmaking timeout!__")
         if len(lobby)>=2:
