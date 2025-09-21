@@ -1574,34 +1574,12 @@ async def code_keyboard(event):
             "mode":mode, 
             "fmt" :fmt
         } 
-@bot.on(events.CallbackQuery(pattern=r".+:.:.:select:.+"))
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):select:(.+)"))
 async def select_pokemon(event):
-    data = event.data.decode()
-    try:
-        user_id_str, mode, fmt, _, poke = data.split(":", 4)
-    except ValueError:
-        await event.answer("Invalid button data.")
-        return
-
+    user_id_str, mode, fmt, poke = event.pattern_match.groups()
     user_id_clicked = int(user_id_str)
-    limit = 3 if mode == "ranked" else 6
-
-    if user_id_clicked not in selected_team:
-        selected_team[user_id_clicked] = []
-
-    if poke in selected_team[user_id_clicked]:
-        selected_team[user_id_clicked].remove(poke)
-        text = f"{poke} deselected!"
-    else:
-        if len(selected_team[user_id_clicked]) < limit:
-            selected_team[user_id_clicked].append(poke)
-            text = f"{poke} selected!"
-        else:
-            text = f"You can only pick {limit} Pokémon."
-
-    await event.answer(text, alert=False)  # silent popup
-    # optionally update message text to reflect selection
-    # await event.edit(...)
+    await event.answer(poke,alert=True)
+    # now poke contains full Pokémon name, even with colons
 
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
