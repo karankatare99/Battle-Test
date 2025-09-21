@@ -1455,8 +1455,8 @@ async def team_preview(p1,p2):
         "├「__**Your Team**__」\n\n"
         f"{p1p_text}"
     )
-    buttons_p1 = build_team_buttons(p1p,p1)
-    buttons_p2 = build_team_buttons(p2p,p2)
+    buttons_p1 = await build_team_buttons(p1p,p1)
+    buttons_p2 = await build_team_buttons(p2p,p2)
     textp2 = (
         "╭─「 __**Team Preview**__ 」\n\n"
         "├「__**Your Team**__」\n\n"
