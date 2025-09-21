@@ -1608,7 +1608,8 @@ async def select_pokemon(event):
             return
         # safe to add
         current_team.append(poke)
-        await event.answer(f"Added {poke.split('_')[0]}")@bot.on(events.NewMessage)
+        await event.answer(f"Added {poke.split('_')[0]}")
+@bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
 
