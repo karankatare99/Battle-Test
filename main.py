@@ -1591,10 +1591,10 @@ async def select_pokemon(event):
         return
     if poke in select_team[user_id]["pokes"]:
         select_team[user_id]["pokes"].remove(poke)
-        await event.answer(f"Removed {poke.split("_")[0]}")
+        await event.answer(f"Removed {poke.split('_')[0]}")
         return
     select_team[user_id]["pokes"].append(poke)
-    await event.answer(f"added {poke.split("_")[0]}")
+    await event.answer(f"added {poke.split('_')[0]}")
     
     # now poke contains full Pokémon name, even with colons
 
