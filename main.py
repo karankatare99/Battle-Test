@@ -1426,8 +1426,7 @@ async def build_team_buttons(team,id):
         for j in range(2):
             if i + j < len(team):
                 poke_data = team[i + j]
-                team = team.split("_")[0]
-                poke = team[i+j]
+                poke = poke_data.split("_")[0]
                 row.append(Button.inline(poke, f"{id}:{mode}:{fmt}:select:{poke_data}"))
         buttons.append(row)
 
