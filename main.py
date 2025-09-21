@@ -1530,11 +1530,11 @@ async def get_invite_code(event):
             return
         
         # now you can do whatever with the code
-        await event.reply(
+        ic_msg=await event.reply(
             "__An opposing trainer has been found!__"
         )
         await asyncio.sleep(1)
-        await event.edit("__A battle against {} is about to start.")
+        await ic_msg.edit("__A battle against {} is about to start.")
 
         
 print("Bot running...")
