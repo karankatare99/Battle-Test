@@ -1582,7 +1582,7 @@ async def select_pokemon(event):
     user_id_str, mode, fmt, poke = event.pattern_match.groups()
     user_id = int(user_id_str)
 
-    limit = 3 if mode == "ranked" else 6
+    limit = 0 if mode == "ranked" else 0
 
     # init storage once
     if user_id not in select_team:
