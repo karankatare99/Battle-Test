@@ -1580,8 +1580,22 @@ async def code_keyboard(event):
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):select:(.+)"))
 async def select_pokemon(event):
     user_id_str, mode, fmt, poke = event.pattern_match.groups()
-    user_id_clicked = int(user_id_str)
-    await event.answer(poke,alert=True)
+    user_id= int(user_id_str)
+    p1_msg = room[p1]["start_msg"]
+    p2_msg = room[p2]["start_msg"]
+    limit = 3 if mode == "ranked" else 6
+    select_team[user_id]={}
+    select_team[user_id]["pokes"]=[]
+    if len(select_team[user_id]["pokes"])>=limit:
+        await event.answer(f"Maximum no of Pokémon can be selected : {limit}")
+        return
+    if poke in select_team[user_id]["pokes"]:
+        select_team[user_id]["pokes"].remove(poke)
+        await event.answer(f"Removed {poke.split("_")[0]}")
+        return
+    select_team[user_id]["pokes"].append(poke)
+    await event.answer(f"added {poke.split("_")[0]}")
+    
     # now poke contains full Pokémon name, even with colons
 
 @bot.on(events.NewMessage)
