@@ -1538,7 +1538,6 @@ async def get_invite_code(event):
         await asyncio.sleep(1)
         await ic_msg.edit("__A battle against {} is about to start.")
 
-asyncio.create_task(search_for_opp_trainer(lobby))         
 
 print("Bot running...")
 
