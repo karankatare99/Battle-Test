@@ -1584,10 +1584,14 @@ async def select_pokemon(event):
 
     if mode == "ranked" and fmt == "singles":
         limit = 3
-    if mode == "ranked" and fmt == "doubles":
+    elif mode == "ranked" and fmt == "doubles":
         limit = 4
-    else:
+    elif mode == "casual" and fmt == "doubles":
         limit = 6
+    elif mode == "casual" and fmt == "singles":
+        limit = 6
+    else:
+        limit = 0
     # init storage once
     if user_id not in select_team:
         select_team[user_id] = {"pokes": []}
