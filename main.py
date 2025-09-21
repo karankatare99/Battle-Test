@@ -1584,27 +1584,26 @@ async def select_pokemon(event):
 
     limit = 3 if mode == "ranked" else 6
 
-    # make sure we don't overwrite existing selections on every click
+    # Only create storage once per user
     if user_id not in select_team:
         select_team[user_id] = {"pokes": []}
 
-    # ensure poke is str, not bytes
+    # poke should be string, but just in case:
     if isinstance(poke, bytes):
         poke = poke.decode()
 
-    # enforce limit
-    if len(select_team[user_id]["pokes"]) >= limit:
-        await event.answer(f"Maximum number of Pokémon can be selected: {limit}", alert=True)
-        return
-
-    # toggle selection
+    # Toggle logic with proper limit enforcement:
     if poke in select_team[user_id]["pokes"]:
+        # already selected -> remove
         select_team[user_id]["pokes"].remove(poke)
         await event.answer(f"Removed {poke.split('_')[0]}")
     else:
+        # only add if under limit
+        if len(select_team[user_id]["pokes"]) >= limit:
+            await event.answer(f"Maximum number of Pokémon can be selected: {limit}", alert=True)
+            return
         select_team[user_id]["pokes"].append(poke)
-        await event.answer(f"Added {poke.split('_')[0]}")
-@bot.on(events.NewMessage)
+        await event.answer(f"Added {poke.split('_')[0]}")@bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
 
