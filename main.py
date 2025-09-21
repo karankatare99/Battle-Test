@@ -1438,10 +1438,17 @@ async def search_for_opp_trainer(lobby):
             team_color = random.choice(["red", "blue"])
             room[p1] = {"team_colour": team_color}
             room[p2] = {"team_colour": "blue" if team_color == "red" else "red"}
-            asyncio.create_task(generate_room_id())
-            await search_msg[p1].edit(f"Opponent found! User {p2} {room[p2]['team_colour']}")
-            await search_msg[p2].edit(f"Opponent found! User {p1} {room[p1]['team_colour']}")
-    
+            roomid=asyncio.create_task(generate_room_id())
+            room[p1]["roomid"] = roomid
+            room[p2]["roomid"] = roomid
+            room[p1]["battle_msg"] = "" 
+            room[p2]["battle_msg"] = ""
+            await search_msg[p1].edit("__An opposing trainer has been found!__") 
+            await search_msg[p2].edit("__An opposing trainer has been found!__") 
+            await asyncio.sleep(1)
+            await search_msg[p1].edit(f"A battle against {p2} is about to start")
+            await search_msg[p2].edit(f"A battle against {p1} is about to start")
+            await asyncio.sleep(1)
             del search_msg[p1]
             del search_msg[p2]
 
