@@ -1581,6 +1581,8 @@ async def code_keyboard(event):
 async def select_pokemon(event):
     user_id_str, mode, fmt, poke = event.pattern_match.groups()
     user_id = int(user_id_str)
+    mode = mode.decode()
+    fmt = fmt.decode()
     print(mode,fmt)
     if mode == "ranked" and fmt == "singles":
         limit = 3
