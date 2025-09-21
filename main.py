@@ -1414,6 +1414,12 @@ async def generate_room_id():
         if room_id not in roomids:
             return room_id
         await asyncio.sleep(1)
+async def team_preview(p1,p2):
+    p1_msg = room[p1]["start_msg"]
+    p2_msg = room[p2]["start_msg"]
+    await p1_msg.edit("__**Communicating...Please stand by**__")
+    await p2_msg.edit("__**Communicating...Please stand by**__")
+    
 async def search_for_opp_trainer(lobby):
     timeout = 120
     starttime = asyncio.get_event_loop().time()
@@ -1455,14 +1461,9 @@ async def search_for_opp_trainer(lobby):
             await asyncio.sleep(1)
             del search_msg[p1]
             del search_msg[p2]
-            return p1,p2
+            await team_preview(p1,p2)
         await asyncio.sleep(1)
 
-async def team_preview(p1,p2):
-    p1_msg = room[p1]["start_msg"]
-    p2_msg = room[p2]["start_msg"]
-    await p1_msg.edit("__**Communicating...Please stand by**__")
-    await p2_msg.edit("__**Communicating...Please stand by**__")
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
@@ -1506,11 +1507,11 @@ async def matchmaking(event):
             lobby.append(user_id)
             msg=await event.edit("__Searching for an opposing trainer__")
             search_msg[user_id]=msg
-        p1,p2=await search_for_opp_trainer(lobby)
-        task = asyncio.create_task(search_for_opp_trainer(lobby))     
-        p1,p2=await task
-        await event.respond(f"{p1}{p2}")
-        await team_preview(p1,p2)
+        
+        asyncio.create_task(search_for_opp_trainer(lobby))     
+        
+        
+        
                 
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
