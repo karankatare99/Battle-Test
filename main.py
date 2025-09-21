@@ -1593,7 +1593,7 @@ async def select_pokemon(event):
         poke = poke.decode()
 
     # enforce limit
-    if len(select_team[user_id]["pokes"]) >= limit and poke not in select_team[user_id]["pokes"]:
+    if len(select_team[user_id]["pokes"]) >= limit:
         await event.answer(f"Maximum number of Pokémon can be selected: {limit}", alert=True)
         return
 
