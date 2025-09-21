@@ -1425,8 +1425,10 @@ async def build_team_buttons(team,id):
         row = []
         for j in range(2):
             if i + j < len(team):
-                poke = team[i + j]
-                row.append(Button.inline(poke, f"{id}:{mode}:{fmt}:select:{poke}"))
+                poke_data = team[i + j]
+                team = team.split("_")[0]
+                poke = team[i+j]
+                row.append(Button.inline(poke, f"{id}:{mode}:{fmt}:select:{poke_data}"))
         buttons.append(row)
 
     # Add Done + View Opponent buttons at the bottom
@@ -1455,8 +1457,10 @@ async def team_preview(p1,p2):
         "├「__**Your Team**__」\n\n"
         f"{p1p_text}"
     )
-    buttons_p1 = await build_team_buttons(p1p,p1)
-    buttons_p2 = await build_team_buttons(p2p,p2)
+    p1team= battle_state[p1]["team"]
+    p2team= battle_state[p2]["team"]
+    buttons_p1 = await build_team_buttons(p1team,p1)
+    buttons_p2 = await build_team_buttons(p2team,p2)
     textp2 = (
         "╭─「 __**Team Preview**__ 」\n\n"
         "├「__**Your Team**__」\n\n"
