@@ -1482,6 +1482,8 @@ async def matchmaking(event):
             lobby.append(user_id)
             msg=await event.edit("__Searching for an opposing trainer__")
             search_msg[user_id]=msg
+    asyncio.create_task(search_for_opp_trainer(lobby))         
+
                 
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
