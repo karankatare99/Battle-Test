@@ -1603,7 +1603,8 @@ async def select_pokemon(event):
             await event.answer(f"Maximum number of Pokémon can be selected: {limit}", alert=True)
             return
         select_team[user_id]["pokes"].append(poke)
-        await event.answer(f"Added {poke.split('_')[0]}")@bot.on(events.NewMessage)
+        await event.answer(f"Added {poke.split('_')[0]}")
+@bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
 
