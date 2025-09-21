@@ -1433,11 +1433,12 @@ async def search_for_opp_trainer(user_id,lobby):
                     lobby.remove(user_id)
                     lobby.remove(opponent_id)
                     team_col_list=["red","blue"]
-                    team_color=random.choice(team_col_list)
-                    room[user_id]={}
-                    room[user_id]["team_colour"]=team_color
-                    room[opponent_id]={}
-                    room[opponent_id]["team_colour"]="blue" if team_color == "red" else "blue"
+                    if not room.get(user_id):
+                        team_color=random.choice(team_col_list)
+                        room[user_id]={}
+                        room[user_id]["team_colour"]=team_color
+                        room[opponent_id]={}
+                        room[opponent_id]["team_colour"]="blue" if team_color == "red" else "blue"
                     await search_msg[user_id].edit(f"Opponent found! User {opponent_id} {room[opponent_id]['team_colour']}")
                     await search_msg[opponent_id].edit(f"Opponent found! User {user_id} {room[opponent_id]['team_colour']}")
                     del search_msg[user_id]
