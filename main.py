@@ -1407,43 +1407,37 @@ def db_battle_extractor(user_id,mode,format):
         user_poke[i]=poke
     user_dict[user_id]["pokemon"]=user_poke
     return user_dict
-async def search_for_opp_trainer(user_id,lobby):
+async def search_for_opp_trainer(lobby):
     timeout = 120
-    starttime= asyncio.get_event_loop().time()
+    starttime = asyncio.get_event_loop().time()
+
     while True:
-        if user_id not in lobby:
-            return
-        currenttime= asyncio.get_event_loop().time()
-        
-        if currenttime-starttime>timeout:
-            await search_msg[user_id].edit("__Matchmaking timeout!__")
-        if len(lobby)>=2:
-            currenttime= asyncio.get_event_loop().time()
-            for uid in lobby[:]:
-                if currenttime-starttime>timeout:
-                    lobby.remove(uid)
-                    if uid in search_msg:
-                        await search_msg[uid].edit("__Matchmaking timeout!__")
-                        del search_msg[uid]
-                        return
-            if len(lobby)>=2:
-                possible_opponents = [uid for uid in lobby if uid != user_id]
-                if possible_opponents:
-                    opponent_id = random.choice(possible_opponents)
-                    lobby.remove(user_id)
-                    lobby.remove(opponent_id)
-                    team_col_list=["red","blue"]
-                    if not room.get(user_id):
-                        team_color=random.choice(team_col_list)
-                        room[user_id]={}
-                        room[user_id]["team_colour"]=team_color
-                        room[opponent_id]={}
-                        room[opponent_id]["team_colour"]="blue" if team_color == "red" else "blue"
-                    await search_msg[user_id].edit(f"Opponent found! User {opponent_id} {room[opponent_id]['team_colour']}")
-                    await search_msg[opponent_id].edit(f"Opponent found! User {user_id} {room[opponent_id]['team_colour']}")
-                    del search_msg[user_id]
-                    del search_msg[opponent_id]
-                    return
+        currenttime = asyncio.get_event_loop().time()
+
+        # Handle timeout for each user
+        for uid in lobby[:]:
+            if currenttime - starttime > timeout:
+                lobby.remove(uid)
+                if uid in search_msg:
+                    await search_msg[uid].edit("__Matchmaking timeout!__")
+                    del search_msg[uid]
+
+        # If enough players, match two randomly
+        if len(lobby) >= 2:
+            p1, p2 = random.sample(lobby, 2)  # pick two distinct users
+            lobby.remove(p1)
+            lobby.remove(p2)
+
+            team_color = random.choice(["red", "blue"])
+            room[p1] = {"team_colour": team_color}
+            room[p2] = {"team_colour": "blue" if team_color == "red" else "red"}
+
+            await search_msg[p1].edit(f"Opponent found! User {p2} {room[p2]['team_colour']}")
+            await search_msg[p2].edit(f"Opponent found! User {p1} {room[p1]['team_colour']}")
+
+            del search_msg[p1]
+            del search_msg[p2]
+
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
@@ -1488,8 +1482,7 @@ async def matchmaking(event):
             lobby.append(user_id)
             msg=await event.edit("__Searching for an opposing trainer__")
             search_msg[user_id]=msg
-        asyncio.create_task(search_for_opp_trainer(user_id,lobby))         
-        
+                
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode):(enter_code)$"))
 async def code_keyboard(event):
     mode, fmt, mm, ic= (g.decode() for g in event.pattern_match.groups())
@@ -1543,7 +1536,8 @@ async def get_invite_code(event):
         await asyncio.sleep(1)
         await ic_msg.edit("__A battle against {} is about to start.")
 
-        
+asyncio.create_task(search_for_opp_trainer(lobby))         
+
 print("Bot running...")
 
 bot.run_until_disconnected()
