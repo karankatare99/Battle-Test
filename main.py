@@ -1438,8 +1438,8 @@ async def search_for_opp_trainer(user_id,lobby):
                     room[user_id]["team_colour"]=team_color
                     room[opponent_id]={}
                     room[opponent_id]["team_colour"]="blue" if team_color == "red" else "blue"
-                    await search_msg[user_id].edit(f"Opponent found! User {opponent_id} {room[opponent_id]["team_colour"]}")
-                    await search_msg[opponent_id].edit(f"Opponent found! User {user_id} {room[opponent_id]["team_colour"]}")
+                    await search_msg[user_id].edit(f"Opponent found! User {opponent_id} {room[opponent_id]['team_colour']}")
+                    await search_msg[opponent_id].edit(f"Opponent found! User {user_id} {room[opponent_id]['team_colour']}")
                     del search_msg[user_id]
                     del search_msg[opponent_id]
                     return
