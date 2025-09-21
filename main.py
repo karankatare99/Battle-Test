@@ -1579,6 +1579,7 @@ async def select_pokemon(event):
     data = event.data.decode()  # e.g., "6735548827:ranked:singles:select:Pikachu"
     user_id_str, mode, fmt, _, poke = data.split(":")
     user_id_clicked = int(user_id_str)
+    limit = 3 if mode == "ranked" else 6
 
     # Now you know:
     # - user_id_clicked: the player who pressed the button
