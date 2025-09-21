@@ -58,6 +58,7 @@ rd_lobby=[]
 cs_lobby=[]
 cd_lobby=[]
 search_msg ={}
+select_team={}
 # State tracking so /add expects next msg
 
 awaiting_pokemon = set()
@@ -1414,6 +1415,26 @@ async def generate_room_id():
         if room_id not in roomids:
             return room_id
         await asyncio.sleep(1)
+async def build_team_buttons(team,id):
+    """Return a two-column inline keyboard with Done + View Opponent buttons."""
+    buttons = []
+    mode = battle_state[id]["mode"]
+    fmt = battle_state[id]["fmt"]
+    # Two buttons per row for Pokémon selection
+    for i in range(0, len(team), 2):
+        row = []
+        for j in range(2):
+            if i + j < len(team):
+                poke = team[i + j]
+                row.append(Button.inline(poke, f"{id}:{mode}:{fmt}:select:{poke}"))
+        buttons.append(row)
+
+    # Add Done + View Opponent buttons at the bottom
+    buttons.append([
+        Button.inline("Done", b"tp_done"),
+        Button.inline("View Opponent Team", b"tp_view_opp")
+    ])
+    return buttons
 async def team_preview(p1,p2):
     p1_msg = room[p1]["start_msg"]
     p2_msg = room[p2]["start_msg"]
@@ -1434,13 +1455,15 @@ async def team_preview(p1,p2):
         "├「__**Your Team**__」\n\n"
         f"{p1p_text}"
     )
+    buttons_p1 = build_team_buttons(p1p,p1)
+    buttons_p2 = build_team_buttons(p2p,p2)
     textp2 = (
         "╭─「 __**Team Preview**__ 」\n\n"
         "├「__**Your Team**__」\n\n"
         f"{p2p_text}"
     )
-    await p1_msg.edit(textp1)
-    await p2_msg.edit(textp2)
+    await p1_msg.edit(textp1,buttons=buttons_p1)
+    await p2_msg.edit(textp2,buttons=buttons_p2)
         
 async def search_for_opp_trainer(lobby):
     timeout = 120
@@ -1551,7 +1574,31 @@ async def code_keyboard(event):
             "mode":mode, 
             "fmt" :fmt
         } 
+@bot.on(events.CallbackQuery(pattern=b".+:.:.:select:.+"))
+async def select_pokemon(event):
+    data = event.data.decode()  # e.g., "6735548827:ranked:singles:select:Pikachu"
+    user_id_str, mode, fmt, _, poke = data.split(":")
+    user_id_clicked = int(user_id_str)
 
+    # Now you know:
+    # - user_id_clicked: the player who pressed the button
+    # - mode: battle mode
+    # - fmt: format
+    # - poke: the Pokémon selected
+
+    if user_id_clicked not in selected_team:
+        selected_team[user_id_clicked] = []
+
+    if poke in selected_team[user_id_clicked]:
+        selected_team[user_id_clicked].remove(poke)
+        await event.answer(f"{poke} deselected!")
+    else:
+        if len(selected_team[user_id_clicked]) < limit:
+            selected_team[user_id_clicked].append(poke)
+            await event.answer(f"{poke} selected!")
+        else:
+            await event.answer(f"You can only pick {limit} Pokémon.")    
+    
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
