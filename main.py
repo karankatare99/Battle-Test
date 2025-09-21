@@ -1580,23 +1580,30 @@ async def code_keyboard(event):
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):select:(.+)"))
 async def select_pokemon(event):
     user_id_str, mode, fmt, poke = event.pattern_match.groups()
-    user_id= int(user_id_str)
-    #p1_msg = room[p1]["start_msg"]
+    user_id = int(user_id_str)
+
     limit = 3 if mode == "ranked" else 6
-    select_team[user_id]={}
-    select_team[user_id]["pokes"]=[]
-    if len(select_team[user_id]["pokes"])>=limit:
-        await event.answer(f"Maximum no of Pokémon can be selected : {limit}")
+
+    # make sure we don't overwrite existing selections on every click
+    if user_id not in select_team:
+        select_team[user_id] = {"pokes": []}
+
+    # ensure poke is str, not bytes
+    if isinstance(poke, bytes):
+        poke = poke.decode()
+
+    # enforce limit
+    if len(select_team[user_id]["pokes"]) >= limit and poke not in select_team[user_id]["pokes"]:
+        await event.answer(f"Maximum number of Pokémon can be selected: {limit}", alert=True)
         return
+
+    # toggle selection
     if poke in select_team[user_id]["pokes"]:
         select_team[user_id]["pokes"].remove(poke)
         await event.answer(f"Removed {poke.split('_')[0]}")
-        return
-    select_team[user_id]["pokes"].append(poke)
-    await event.answer(f"added {poke.split('_')[0]}")
-    
-    # now poke contains full Pokémon name, even with colons
-
+    else:
+        select_team[user_id]["pokes"].append(poke)
+        await event.answer(f"Added {poke.split('_')[0]}")
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
