@@ -1581,8 +1581,7 @@ async def code_keyboard(event):
 async def select_pokemon(event):
     user_id_str, mode, fmt, poke = event.pattern_match.groups()
     user_id= int(user_id_str)
-    p1_msg = room[p1]["start_msg"]
-    p2_msg = room[p2]["start_msg"]
+    #p1_msg = room[p1]["start_msg"]
     limit = 3 if mode == "ranked" else 6
     select_team[user_id]={}
     select_team[user_id]["pokes"]=[]
