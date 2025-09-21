@@ -1419,7 +1419,29 @@ async def team_preview(p1,p2):
     p2_msg = room[p2]["start_msg"]
     await p1_msg.edit("__**Communicating...Please stand by**__")
     await p2_msg.edit("__**Communicating...Please stand by**__")
-    
+    p1p=[]
+    p2p=[]
+    for i in battle_state[int(p1)]["team"]:
+        element=i.split("_")[0]
+        p1p.append(element)
+    for i in battle_state[int(p2)]["team"]:
+        element=i.split("_")[0]
+        p2p.append(element)
+    p1p_text = "\n".join(f"⫸ {poke} ⫷" for idx, poke in enumerate(p1p))
+    p2p_text = "\n".join(f"⫸ {poke} ⫷" for idx, poke in enumerate(p2p))
+    textp1 = (
+        "╭─「 __**Team Preview**__ 」\n\n"
+        "├「__**Your Team**__」\n\n"
+        f"{p1p_text}"
+    )
+    textp2 = (
+        "╭─「 __**Team Preview**__ 」\n\n"
+        "├「__**Your Team**__」\n\n"
+        f"{p2p_text}"
+    )
+    await p1_msg.edit(textp1)
+    await p2_msg.edit(textp2)
+        
 async def search_for_opp_trainer(lobby):
     timeout = 120
     starttime = asyncio.get_event_loop().time()
