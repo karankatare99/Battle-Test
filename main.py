@@ -1574,32 +1574,35 @@ async def code_keyboard(event):
             "mode":mode, 
             "fmt" :fmt
         } 
-@bot.on(events.CallbackQuery(pattern=b".+:.:.:select:.+"))
+@bot.on(events.CallbackQuery(pattern=r".+:.:.:select:.+"))
 async def select_pokemon(event):
-    data = event.data.decode()  # e.g., "6735548827:ranked:singles:select:Pikachu"
-    user_id_str, mode, fmt, _, poke = data.split(":")
+    data = event.data.decode()
+    try:
+        user_id_str, mode, fmt, _, poke = data.split(":", 4)
+    except ValueError:
+        await event.answer("Invalid button data.")
+        return
+
     user_id_clicked = int(user_id_str)
     limit = 3 if mode == "ranked" else 6
-
-    # Now you know:
-    # - user_id_clicked: the player who pressed the button
-    # - mode: battle mode
-    # - fmt: format
-    # - poke: the Pokémon selected
 
     if user_id_clicked not in selected_team:
         selected_team[user_id_clicked] = []
 
     if poke in selected_team[user_id_clicked]:
         selected_team[user_id_clicked].remove(poke)
-        await event.answer(f"{poke} deselected!")
+        text = f"{poke} deselected!"
     else:
         if len(selected_team[user_id_clicked]) < limit:
             selected_team[user_id_clicked].append(poke)
-            await event.answer(f"{poke} selected!")
+            text = f"{poke} selected!"
         else:
-            await event.answer(f"You can only pick {limit} Pokémon.")    
-    
+            text = f"You can only pick {limit} Pokémon."
+
+    await event.answer(text, alert=False)  # silent popup
+    # optionally update message text to reflect selection
+    # await event.edit(...)
+
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
