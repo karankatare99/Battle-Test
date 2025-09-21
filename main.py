@@ -52,6 +52,7 @@ battle_state={}
 invitecode={}
 textic = {}#waiting to collect input for invitecode
 room = {}
+roomids=[] 
 rs_lobby=[]
 rd_lobby=[]
 cs_lobby=[]
@@ -1407,6 +1408,12 @@ def db_battle_extractor(user_id,mode,format):
         user_poke[i]=poke
     user_dict[user_id]["pokemon"]=user_poke
     return user_dict
+async def generate_room_id():
+    while True:
+        room_id = random.randint(0,999999)
+        if room_id not in roomids:
+            return room_id
+        await asyncio.sleep(1)
 async def search_for_opp_trainer(lobby):
     timeout = 120
     starttime = asyncio.get_event_loop().time()
@@ -1431,10 +1438,10 @@ async def search_for_opp_trainer(lobby):
             team_color = random.choice(["red", "blue"])
             room[p1] = {"team_colour": team_color}
             room[p2] = {"team_colour": "blue" if team_color == "red" else "red"}
-
+            asyncio.create_task(generate_room_id())
             await search_msg[p1].edit(f"Opponent found! User {p2} {room[p2]['team_colour']}")
             await search_msg[p2].edit(f"Opponent found! User {p1} {room[p1]['team_colour']}")
-
+    
             del search_msg[p1]
             del search_msg[p2]
 
