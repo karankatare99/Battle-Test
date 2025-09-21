@@ -1427,8 +1427,8 @@ async def team_preview(p1,p2):
     for i in battle_state[int(p2)]["team"]:
         element=i.split("_")[0]
         p2p.append(element)
-    p1p_text = "\n".join(f"⫸ {poke} ⫷" for idx, poke in enumerate(p1p))
-    p2p_text = "\n".join(f"⫸ {poke} ⫷" for idx, poke in enumerate(p2p))
+    p1p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(p1p))
+    p2p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(p2p))
     textp1 = (
         "╭─「 __**Team Preview**__ 」\n\n"
         "├「__**Your Team**__」\n\n"
