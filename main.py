@@ -1619,14 +1619,20 @@ async def select_pokemon(event):
         # safe to add
         current_team.append(poke)
         await event.answer(f"Added {poke.split('_')[0]}")
-@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):done"))
+async def standing_by_fn(event,user_id):
+    while True:
+        opp_id=room[user_id]["opponent"]
+        if battle_state[opp_id]["team_finalize"] is True:
+            await event.edit("Battle about to begin!")
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
 async def done_callback(event):
     user_id_str, mode, fmt, done = event.pattern_match.groups()
     user_id = int(user_id_str)
     battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
     battle_state[int(user_id)]["active_pokemon"]=select_team[user_id]["pokes"][0] 
+    battle_state[int(user_id)]["team_finalize"] = True
     del select_team[user_id]
-    await event.edit("_Standing by___" )
+    asyncio.create_task(standing_by_fn(event,user_id))
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
