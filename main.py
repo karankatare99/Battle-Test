@@ -1432,8 +1432,8 @@ async def build_team_buttons(team,id):
 
     # Add Done + View Opponent buttons at the bottom
     buttons.append([
-        Button.inline("Done", b"tp_done"),
-        Button.inline("View Opponent Team", b"tp_view_opp")
+        Button.inline("Done", f"{id}:{mode}:{fmt}:done")),
+        Button.inline("View Opponent Team", f"{id}:{mode}:{fmt}:opp_team"))
     ])
     return buttons
 async def team_preview(p1,p2):
@@ -1619,6 +1619,14 @@ async def select_pokemon(event):
         # safe to add
         current_team.append(poke)
         await event.answer(f"Added {poke.split('_')[0]}")
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):done"))
+async def done_callback(event):
+    user_id_str, mode, fmt, done = event.pattern_match.groups()
+    user_id = int(user_id_str)
+    battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
+    battle_state[int(user_id)]["active_pokemon"]=select_team[user_id]["pokes"][0] 
+    del select_team[user_id]
+    await event.edit("_Standing by___" )
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
