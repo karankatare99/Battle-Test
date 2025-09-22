@@ -1672,6 +1672,7 @@ async def opp_team_preview(event):
 
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(back)"))
 async def back_callback(event):
+    await event.answer("got it")
     user_id_str, mode, fmt, back = event.pattern_match.groups()
     user_id = int(user_id_str)
     p1p = [i.split("_")[0] for i in battle_state[int(user_id)]["team"]]
