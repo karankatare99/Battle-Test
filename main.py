@@ -1511,7 +1511,13 @@ async def search_for_opp_trainer(lobby):
             del search_msg[p2]
             await team_preview(p1,p2)
         await asyncio.sleep(1)
-
+async def first_battle_ui(mode,fmt,user_id):
+    if fmt=="singles":
+        user_text=room[user_id]["start_msg"]
+        await user_text.edit("singles battle") 
+    elif fmt=="doubles":
+        user_text=room[user_id]["start_msg"]
+        await user_text.edit("doubles battle") 
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
@@ -1624,7 +1630,10 @@ async def standing_by_fn(event,user_id):
     while True:
         opp_id=room[user_id]["opponent"]
         if battle_state[opp_id].get("team_finalize"):
-            await event.edit("Battle about to begin!")
+            user_text=await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)")
+            await asyncio.sleep(1)
+            room[user_id]["start_msg"]=user_text
+            await first_battle_ui(mode, fmt, user_id) 
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
 async def done_callback(event):
