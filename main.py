@@ -1630,6 +1630,21 @@ async def standing_by_fn(event,user_id):
 async def done_callback(event):
     user_id_str, mode, fmt, done = event.pattern_match.groups()
     user_id = int(user_id_str)
+    mode = mode.decode()
+    fmt = fmt.decode()
+    if mode == "ranked" and fmt == "singles":
+        limit = 3
+    elif mode == "ranked" and fmt == "doubles":
+        limit = 4
+    elif mode == "casual" and fmt == "doubles":
+        limit = 6
+    elif mode == "casual" and fmt == "singles":
+        limit = 6
+    else:
+        limit = 0
+    if len(select_team[user_id]["pokes"]<limit):
+        await event.answer(f"Selected no of Pokémon : {len(select_team[user_id]["pokes"]}")
+        return
     battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
     battle_state[int(user_id)]["active_pokemon"]=select_team[user_id]["pokes"][0] 
     battle_state[int(user_id)]["team_finalize"] = True
@@ -1660,7 +1675,7 @@ async def opp_team_preview(event):
         ]
     ]
     await event.edit(text=text,buttons=buttons)
-@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(opp_team)"))
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(back)"))
 async def back_callback(event):
     user_id_str, mode, fmt, back = event.pattern_match.groups()
     user_id = int(user_id_str)
