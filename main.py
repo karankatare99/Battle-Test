@@ -1622,7 +1622,7 @@ async def select_pokemon(event):
 async def standing_by_fn(event,user_id):
     while True:
         opp_id=room[user_id]["opponent"]
-        if battle_state[opp_id]["team_finalize"] is True:
+        if battle_state[opp_id].get("team_finalize"):
             await event.edit("Battle about to begin!")
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
 async def done_callback(event):
