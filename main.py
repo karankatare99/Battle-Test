@@ -1530,11 +1530,14 @@ async def first_battle_ui(mode,fmt,user_id):
         p2_text=room[p2_id]["start_msg"]
         p1_poke=battle_state[p1_id]["active_pokemon"]
         p2_poke=battle_state[p2_id]["active_pokemon"]
+        
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
             print("uhsdubusdhusbdubsddbu", battle_state)
         else:
             print("battle_data not yet ready for", user_id)
+        print(room_userids) 
+        print(rooms) 
         p1_poke_hpbar = hp_bar(battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke]["stats"]["hp"]) 
         p2_poke_hpbar = hp_bar(battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke]["stats"]["hp"])
         p1hppercent=battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]/battle_data[p1_id]["pokemon"][p1_poke]["stats"]["hp"]
