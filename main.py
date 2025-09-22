@@ -1642,7 +1642,7 @@ async def done_callback(event):
         limit = 6
     else:
         limit = 0
-    if not select_team[user_id]:
+    if not select_team.get(user_id):
         await event.answer(f"Selected no of Pokémon : 0/6")
         return
     if len(select_team[user_id]['pokes'])<limit :
