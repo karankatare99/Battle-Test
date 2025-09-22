@@ -1432,8 +1432,8 @@ async def build_team_buttons(team,id):
 
     # Add Done + View Opponent buttons at the bottom
     buttons.append([
-        Button.inline("Done", f"{id}:{mode}:{fmt}:done")),
-        Button.inline("View Opponent Team", f"{id}:{mode}:{fmt}:opp_team"))
+        Button.inline("Done", f"{id}:{mode}:{fmt}:done"),
+        Button.inline("View Opponent Team", f"{id}:{mode}:{fmt}:opp_team")
     ])
     return buttons
 async def team_preview(p1,p2):
