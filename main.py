@@ -1511,9 +1511,20 @@ async def search_for_opp_trainer(lobby):
             del search_msg[p2]
             await team_preview(p1,p2)
         await asyncio.sleep(1)
+async def hp_bar(current_hp, max_hp, bars = 10 ):
+    ratio=current_hp/max_hp
+    filled= int(bars*ratio) 
+    empty = bars - filled
+    return ''.join(['▰'] * filled + ['▱'] * empty)
 async def first_battle_ui(mode,fmt,user_id):
     if fmt=="singles":
         user_text=room[user_id]["start_msg"]
+        user_id = user_id["active_pokemon"]
+        opp_id = room[user_id]["opponent"] 
+        user_poke1=battle_state[user_id]["active_pokemon"]
+        opp_poke1=battle_state[opp_id]["active_pokemon"]
+        print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"]) 
+        #user_poke1_hp = hp_bar(battle_data[user_id]["pokemon"][]) 
         await user_text.edit("singles battle") 
     elif fmt=="doubles":
         user_text=room[user_id]["start_msg"]
@@ -1636,6 +1647,7 @@ async def standing_by_fn(event,user_id):
             mode = battle_state[int(user_id)]["mode"]
             fmt = battle_state[int(user_id)]["fmt"]
             await first_battle_ui(mode, fmt, user_id) 
+            break
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
 async def done_callback(event):
