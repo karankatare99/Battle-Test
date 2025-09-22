@@ -1674,7 +1674,7 @@ async def opp_team_preview(event):
 async def back_callback(event):
     await event.answer("got it")
     mode, fmt, back = event.pattern_match.groups()
-    user_id = intevent.sender_id)
+    user_id = int(event.sender_id)
     p1p = [i.split("_")[0] for i in battle_state[int(user_id)]["team"]]
     p1p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for poke in p1p)
     
