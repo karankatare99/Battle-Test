@@ -1674,9 +1674,8 @@ async def standing_by_fn(event,user_id):
     while True:
         opp_id=room[user_id]["opponent"]
         if battle_state[opp_id].get("team_finalize"):
-            user_text=await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)")
+            await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)")
             await asyncio.sleep(1)
-            room[user_id]["start_msg"]=user_text
             mode = battle_state[int(user_id)]["mode"]
             fmt = battle_state[int(user_id)]["fmt"]
             await first_battle_ui(mode, fmt, user_id) 
