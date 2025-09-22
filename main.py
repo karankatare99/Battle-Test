@@ -1536,8 +1536,8 @@ async def first_battle_ui(mode,fmt,user_id):
             print("uhsdubusdhusbdubsddbu", battle_state)
         else:
             print("battle_data not yet ready for", user_id)
-        print(room_userids) 
-        print(rooms) 
+        print("roomuserids", room_userids) 
+        print("room", room) 
         p1_poke_hpbar = hp_bar(battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke]["stats"]["hp"]) 
         p2_poke_hpbar = hp_bar(battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke]["stats"]["hp"])
         p1hppercent=battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]/battle_data[p1_id]["pokemon"][p1_poke]["stats"]["hp"]
