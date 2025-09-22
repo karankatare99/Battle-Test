@@ -1390,7 +1390,9 @@ async def select_format(event):
 async def battle_create(user_id, mode, format):
     user_dict=db_battle_extractor(user_id,mode,format)
     global battle_data
-    battle_data=user_dict
+    if not isinstance(battle_data, dict):
+        battle_data={} 
+    battle_data.update(user_dict) 
 def db_battle_extractor(user_id,mode,format):
     user_data=users.find_one({"user_id":int(user_id)})
     if user_data is None:
