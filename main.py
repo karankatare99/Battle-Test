@@ -1543,13 +1543,13 @@ async def first_battle_ui(mode,fmt,user_id):
             f"「{p2_poke.split('_')[0].capitalize()}(Lv.100)」\n"
             f"{p2_poke_hpbar} {p2hppercent}% \n"
             f"「{p1_poke.split('_')[0].capitalize()}(Lv.100)」\n"
-            f"{p1_poke_hpbar} {battle_data[p1]["pokemon"][p1_poke]["current_hp"]}/{battle_data[p1]["pokemon"][p1_poke]["stats"]["hp"]}"
+            f"{p1_poke_hpbar} {battle_data[p1]['pokemon' ][p1_poke]['current_hp']}/{battle_data[p1]['pokemon'][p1_poke]['stats']['hp']}"
         ) 
         p2_text= (
             f"「{p1_poke.split('_')[0].capitalize()}(Lv.100)」\n"
             f"{p1_poke_hpbar} {p1hppercent}% \n"
             f"「{p2_poke.split('_')[0].capitalize()}(Lv.100)」\n"
-            f"{p2_poke_hpbar} {battle_data[p2]["pokemon"][p2_poke]["current_hp"]}/{battle_data[p2]["pokemon"][p2_poke]["stats"]["hp"]}"
+            f"{p2_poke_hpbar} {battle_data[p2]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2]['pokemon'][p2_poke]['stats']['hp']}"
         ) 
         await p1_text.edit(text=p1_text)
         await p2_text.edit(text=p2_text)
