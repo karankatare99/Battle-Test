@@ -1620,10 +1620,12 @@ async def select_pokemon(event):
         current_team.append(poke)
         await event.answer(f"Added {poke.split('_')[0]}")
 async def standing_by_fn(event,user_id):
+    await event.edit("__Standingby...__")
     while True:
         opp_id=room[user_id]["opponent"]
         if battle_state[opp_id].get("team_finalize"):
             await event.edit("Battle about to begin!")
+        await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
 async def done_callback(event):
     user_id_str, mode, fmt, done = event.pattern_match.groups()
