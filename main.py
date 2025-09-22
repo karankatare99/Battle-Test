@@ -1523,7 +1523,10 @@ async def first_battle_ui(mode,fmt,user_id):
         opp_id = room[user_id]["opponent"] 
         user_poke1=battle_state[user_id]["active_pokemon"]
         opp_poke1=battle_state[opp_id]["active_pokemon"]
-        print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"]) 
+        if uid in battle_data:
+            print("uhsdubusdhusbdubsddbu", battle_data[uid]["pokemon"])
+        else:
+            print("battle_data not yet ready for", uid)
         #user_poke1_hp = hp_bar(battle_data[user_id]["pokemon"][]) 
         await user_text.edit("singles battle") 
     elif fmt=="doubles":
