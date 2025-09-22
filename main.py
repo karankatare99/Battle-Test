@@ -1676,7 +1676,7 @@ async def back_callback(event):
         f"{p1p_text}"
     )
     p1team= battle_state[user_id]["team"]
-    buttons_p1 = await build_team_buttons(p1team,p1)
+    buttons_p1 = await build_team_buttons(p1team,user_id)
     await event.edit(text=textp1,buttons=buttons_p1)
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
