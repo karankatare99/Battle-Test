@@ -1525,6 +1525,7 @@ async def first_battle_ui(mode,fmt,user_id):
         opp_poke1=battle_state[opp_id]["active_pokemon"]
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
+            print("uhsdubusdhusbdubsddbu", battle_state)
         else:
             print("battle_data not yet ready for", user_id)
         #user_poke1_hp = hp_bar(battle_data[user_id]["pokemon"][]) 
