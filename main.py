@@ -1526,30 +1526,30 @@ async def first_battle_ui(mode,fmt,user_id):
         roomid=room[user_id]["roomid"]
         p1_id = room_userids[roomid]["p1"] 
         p2_id = room_userids[roomid]["p2"] 
-        p1_text=room[p1]["start_msg"]
-        p2_text=room[p2]["start_msg"]
-        p1_poke=battle_state[p1]["active_pokemon"]
-        p2_poke=battle_state[p2]["active_pokemon"]
+        p1_text=room[p1_id]["start_msg"]
+        p2_text=room[p2_id]["start_msg"]
+        p1_poke=battle_state[p1_id]["active_pokemon"]
+        p2_poke=battle_state[p2_id]["active_pokemon"]
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
             print("uhsdubusdhusbdubsddbu", battle_state)
         else:
             print("battle_data not yet ready for", user_id)
-        p1_poke_hpbar = hp_bar(battle_data[p1]["pokemon"][p1_poke]["current_hp"], battle_data[p1]["pokemon"][p1_poke]["stats"]["hp"]) 
-        p2_poke_hpbar = hp_bar(battle_data[p2]["pokemon"][p2_poke]["current_hp"], battle_data[p2]["pokemon"][p2_poke]["stats"]["hp"])
-        p1hppercent=battle_data[p1]["pokemon"][p1_poke]["current_hp"]/battle_data[p1]["pokemon"][p1_poke]["stats"]["hp"]
-        p2hppercent=battle_data[p2]["pokemon"][p2_poke]["current_hp"]/battle_data[p2]["pokemon"][p2_poke]["stats"]["hp"]
+        p1_poke_hpbar = hp_bar(battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke]["stats"]["hp"]) 
+        p2_poke_hpbar = hp_bar(battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke]["stats"]["hp"])
+        p1hppercent=battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]/battle_data[p1_id]["pokemon"][p1_poke]["stats"]["hp"]
+        p2hppercent=battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]/battle_data[p2_id]["pokemon"][p2_poke]["stats"]["hp"]
         p1_text= (
             f"「{p2_poke.split('_')[0].capitalize()}(Lv.100)」\n"
             f"{p2_poke_hpbar} {p2hppercent}% \n"
             f"「{p1_poke.split('_')[0].capitalize()}(Lv.100)」\n"
-            f"{p1_poke_hpbar} {battle_data[p1]['pokemon' ][p1_poke]['current_hp']}/{battle_data[p1]['pokemon'][p1_poke]['stats']['hp']}"
+            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon' ][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['stats']['hp']}"
         ) 
         p2_text= (
             f"「{p1_poke.split('_')[0].capitalize()}(Lv.100)」\n"
             f"{p1_poke_hpbar} {p1hppercent}% \n"
             f"「{p2_poke.split('_')[0].capitalize()}(Lv.100)」\n"
-            f"{p2_poke_hpbar} {battle_data[p2]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2]['pokemon'][p2_poke]['stats']['hp']}"
+            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['stats']['hp']}"
         ) 
         await p1_text.edit(text=p1_text)
         await p2_text.edit(text=p2_text)
