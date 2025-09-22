@@ -1670,7 +1670,7 @@ async def opp_team_preview(event):
     buttons = [[Button.inline("Back", data=f"{mode}:{fmt}:back_tp")]]
     await event.edit(text=text, buttons=buttons)
 
-@bot.on(events.CallbackQuery()
+@bot.on(events.CallbackQuery()) 
 async def back_callback(event):
     if event.data.decode().split(":")[2]=="back_tp":
         await event.answer("got it")
