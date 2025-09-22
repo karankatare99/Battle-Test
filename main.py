@@ -1667,10 +1667,10 @@ async def opp_team_preview(event):
         "├「__**Opposing Team**__」\n\n"
         f"{opp_text}"
     )
-    buttons = [[Button.inline("Back", data=f"{user_id}:{mode}:{fmt}:back")]]
+    buttons = [[Button.inline("Back", data=f"{user_id}:{mode}:{fmt}:back_tp")]]
     await event.edit(text=text, buttons=buttons)
 
-@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(back)"))
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(back_tp)"))
 async def back_callback(event):
     await event.answer("got it")
     user_id_str, mode, fmt, back = event.pattern_match.groups()
