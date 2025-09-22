@@ -1675,7 +1675,7 @@ async def back_callback(event):
         "├「__**Your Team**__」\n\n"
         f"{p1p_text}"
     )
-    p1team= battle_state[p1]["team"]
+    p1team= battle_state[user_id]["team"]
     buttons_p1 = await build_team_buttons(p1team,p1)
     await event.edit(text=textp1,buttons=buttons_p1)
 @bot.on(events.NewMessage)
