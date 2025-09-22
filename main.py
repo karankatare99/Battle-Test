@@ -1556,8 +1556,8 @@ async def first_battle_ui(mode,fmt,user_id):
             f"「{p2_poke.split('_')[0].capitalize()}(Lv.100)」\n"
             f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['stats']['hp']}"
         ) 
-        await p1_text.edit(text=p1_text)
-        await p2_text.edit(text=p2_text)
+        await p1_textmsg.edit(text=p1_text)
+        await p2_textmsg.edit(text=p2_text)
         
     elif fmt=="doubles":
         user_text=room[user_id]["start_msg"]
