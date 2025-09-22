@@ -1528,8 +1528,8 @@ async def first_battle_ui(mode,fmt,user_id):
         roomid=room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"]) 
         p2_id = int(room_userids[roomid]["p2"]) 
-        p1_text=room[p1_id]["start_msg"]
-        p2_text=room[p2_id]["start_msg"]
+        p1_textmsg=room[p1_id]["start_msg"]
+        p2_textmsg=room[p2_id]["start_msg"]
         p1_poke=battle_state[p1_id]["active_pokemon"]
         p2_poke=battle_state[p2_id]["active_pokemon"]
         
