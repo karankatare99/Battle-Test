@@ -1662,8 +1662,10 @@ async def opp_team_preview(event):
     await event.edit(text=text,buttons=buttons)
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(opp_team)"))
 async def back_callback(event):
+    user_id_str, mode, fmt, back = event.pattern_match.groups()
+    user_id = int(user_id_str)
     p1p=[]
-    for i in battle_state[int(p1)]["team"]:
+    for i in battle_state[int(user_id)]["team"]:
         element=i.split("_")[0]
         p1p.append(element)
     p1p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(p1p))
