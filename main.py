@@ -1660,6 +1660,22 @@ async def opp_team_preview(event):
         ]
     ]
     await event.edit(text=text,buttons=buttons)
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(opp_team)"))
+async def back_callback(event):
+    p1p=[]
+    for i in battle_state[int(p1)]["team"]:
+        element=i.split("_")[0]
+        p1p.append(element)
+    p1p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(p1p))
+    
+    textp1 = (
+        "╭─「 __**Team Preview**__ 」\n\n"
+        "├「__**Your Team**__」\n\n"
+        f"{p1p_text}"
+    )
+    p1team= battle_state[p1]["team"]
+    buttons_p1 = await build_team_buttons(p1team,p1)
+    await event.edit(text=textp1,buttons=buttons_p1)
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
