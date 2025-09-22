@@ -1657,45 +1657,34 @@ async def done_callback(event):
 async def opp_team_preview(event):
     user_id_str, mode, fmt, done = event.pattern_match.groups()
     user_id = int(user_id_str)
-    opp_id=room[user_id]["opponent"]
-    user_team=battle_state[int(user_id)]["team"]
-    opp_team=battle_state[int(opp_id)]["team"]
-    opp_team_list=[]
-    for i in opp_team:
-        element=i.split("_")[0]
-        opp_team_list.append(element)
+    opp_id = room[user_id]["opponent"]
+    opp_team = battle_state[int(opp_id)]["team"]
+    opp_team_list = [i.split("_")[0] for i in opp_team]
     
-    opp_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(opp_team_list))
+    opp_text = "\n".join(f"__**⫸ {poke} ⫷**__" for poke in opp_team_list)
     text = (
         "╭─「 __**Team Preview**__ 」\n\n"
         "├「__**Opposing Team**__」\n\n"
         f"{opp_text}"
     )
-    buttons = [
-        [
-            Button.inline("Back", data=f"{user_id}:{mode}:{fmt}:back")
-            
-        ]
-    ]
-    await event.edit(text=text,buttons=buttons)
+    buttons = [[Button.inline("Back", data=f"{user_id}:{mode}:{fmt}:back")]]
+    await event.edit(text=text, buttons=buttons)
+
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(back)"))
 async def back_callback(event):
     user_id_str, mode, fmt, back = event.pattern_match.groups()
     user_id = int(user_id_str)
-    p1p=[]
-    for i in battle_state[int(user_id)]["team"]:
-        element=i.split("_")[0]
-        p1p.append(element)
-    p1p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(p1p))
+    p1p = [i.split("_")[0] for i in battle_state[int(user_id)]["team"]]
+    p1p_text = "\n".join(f"__**⫸ {poke} ⫷**__" for poke in p1p)
     
     textp1 = (
         "╭─「 __**Team Preview**__ 」\n\n"
         "├「__**Your Team**__」\n\n"
         f"{p1p_text}"
     )
-    p1team= battle_state[user_id]["team"]
-    buttons_p1 = await build_team_buttons(p1team,user_id)
-    await event.edit(text=textp1,buttons=buttons_p1)
+    p1team = battle_state[user_id]["team"]
+    buttons_p1 = await build_team_buttons(p1team, user_id)
+    await event.edit(text=textp1, buttons=buttons_p1)
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
