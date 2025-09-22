@@ -1673,7 +1673,7 @@ async def opp_team_preview(event):
     )
     buttons = [
         [
-            Button.inline("Back", data=f"{id}:{mode}:{fmt}:back")
+            Button.inline("Back", data=f"{user_id}:{mode}:{fmt}:back")
             
         ]
     ]
