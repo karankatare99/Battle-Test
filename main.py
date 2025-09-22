@@ -1642,8 +1642,11 @@ async def done_callback(event):
         limit = 6
     else:
         limit = 0
-    if len(select_team[user_id]['pokes'])<limit:
-        await event.answer(f"Selected no of Pokémon : {len(select_team[user_id]['pokes'])}")
+    if not select_team[user_id]:
+        await event.answer(f"Selected no of Pokémon : 0/6")
+        return
+    if len(select_team[user_id]['pokes'])<limit :
+        await event.answer(f"Selected no of Pokémon : {len(select_team[user_id]['pokes'])}/6")
         return
     battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
     battle_state[int(user_id)]["active_pokemon"]=select_team[user_id]["pokes"][0] 
