@@ -1633,8 +1633,8 @@ async def standing_by_fn(event,user_id):
             user_text=await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)")
             await asyncio.sleep(1)
             room[user_id]["start_msg"]=user_text
-            battle_state[int(user_id)]["mode"] = mode
-            battle_state[int(user_id)]["fmt"] = fmt
+            battle_state[int(user_id)]["mode"]
+            battle_state[int(user_id)]["fmt"]
             await first_battle_ui(mode, fmt, user_id) 
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
