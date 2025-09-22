@@ -1659,7 +1659,7 @@ async def opp_team_preview(event):
             
         ]
     ]
-    await event.edit(text,buttons)
+    await event.edit(text=text,buttons=buttons)
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
