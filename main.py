@@ -1635,6 +1635,31 @@ async def done_callback(event):
     battle_state[int(user_id)]["team_finalize"] = True
     del select_team[user_id]
     asyncio.create_task(standing_by_fn(event,user_id))
+@bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(opp_team)"))
+async def opp_team_preview(event):
+    user_id_str, mode, fmt, done = event.pattern_match.groups()
+    user_id = int(user_id_str)
+    opp_id=room[user_id]["opponent"]
+    user_team=battle_state[int(user_id)]["team"]
+    opp_team=battle_state[int(opp_id)]["team"]
+    opp_team_list=[]
+    for i in opp_team:
+        element=i.split("_")[0]
+        opp_team_list.append(element)
+    
+    opp_text = "\n".join(f"__**⫸ {poke} ⫷**__" for idx, poke in enumerate(opp_team_list))
+    text = (
+        "╭─「 __**Team Preview**__ 」\n\n"
+        "├「__**Opposing Team**__」\n\n"
+        f"{opp_text}"
+    )
+    buttons = [
+        [
+            Button.inline("Back", data=f"{id}:{mode}:{fmt}:back")
+            
+        ]
+    ]
+    await event.edit(text,buttons)
 @bot.on(events.NewMessage)
 async def get_invite_code(event):
     user_id = event.sender_id
