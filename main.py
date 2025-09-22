@@ -1524,8 +1524,8 @@ async def hp_bar(current_hp, max_hp, bars = 10 ):
 async def first_battle_ui(mode,fmt,user_id):
     if fmt=="singles":
         roomid=room[user_id]["roomid"]
-        p1_id = room_userids[roomid]["p1"] 
-        p2_id = room_userids[roomid]["p2"] 
+        p1_id = int(room_userids[roomid]["p1"]) 
+        p2_id = int(room_userids[roomid]["p2"]) 
         p1_text=room[p1_id]["start_msg"]
         p2_text=room[p2_id]["start_msg"]
         p1_poke=battle_state[p1_id]["active_pokemon"]
