@@ -1523,6 +1523,16 @@ async def hp_bar(current_hp, max_hp, bars = 10 ):
     filled= int(bars*ratio) 
     empty = bars - filled
     return ''.join(['▰'] * filled + ['▱'] * empty)
+async def button_generator(moves,user_id):
+    buttons=[] 
+    for i in range(0,len(moves),2):
+        move_buttons=[buttons.inline(m,f"{user_id}:move:{m}") for m in moves[i:i+2]] 
+        buttons.append(move_buttons)
+    buttons.append([
+        Button.inline("Pokémon", f"{user_id}:pokemon_switch"), 
+        Button.inline("Run", f"{user_id}:run")
+   ] )
+    return buttons 
 async def first_battle_ui(mode,fmt,user_id):
     if fmt=="singles":
         roomid=room[user_id]["roomid"]
@@ -1531,8 +1541,11 @@ async def first_battle_ui(mode,fmt,user_id):
         p1_textmsg=room[p1_id]["start_msg"]
         p2_textmsg=room[p2_id]["start_msg"]
         p1_poke=battle_state[p1_id]["active_pokemon"][0]
+        p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
+        p1_poke_buttons= await button_generator(p1_poke_moves,p1_id) 
         p2_poke=battle_state[p2_id]["active_pokemon"][0]
-        
+        p2_poke_moves = battle_data[p1_id]["pokemon"][p2_poke]["moves"]
+        p2_poke_buttons= await button_generator(p2_poke_moves,p2_id) 
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
             print("uhsdubusdhusbdubsddbu", battle_state)
@@ -1556,8 +1569,8 @@ async def first_battle_ui(mode,fmt,user_id):
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['stats']['hp']}"
         ) 
-        await p1_textmsg.edit(text=p1_text)
-        await p2_textmsg.edit(text=p2_text)
+        await p1_textmsg.edit(text=p1_text, buttons = p1_poke_buttons)
+        await p2_textmsg.edit(text=p2_text, buttons = p2_poke_buttons)
         
     elif fmt=="doubles":
         roomid=room[user_id]["roomid"]
@@ -1566,9 +1579,13 @@ async def first_battle_ui(mode,fmt,user_id):
         p1_textmsg=room[p1_id]["start_msg"]
         p2_textmsg=room[p2_id]["start_msg"]
         p1_poke1=battle_state[p1_id]["active_pokemon"][0]
+        p1_poke1_moves = battle_data[p1_id]["pokemon"][p1_poke1]["moves"]
         p1_poke2=battle_state[p1_id]["active_pokemon"][1]
+        p1_poke12_moves = battle_data[p1_id]["pokemon"][p1_poke2]["moves"]
         p2_poke1=battle_state[p2_id]["active_pokemon"][0]
+        p2_poke1_moves = battle_data[p2_id]["pokemon"][p2_poke1]["moves"]
         p2_poke2=battle_state[p2_id]["active_pokemon"][0]
+        p2_poke2_moves = battle_data[p2_id]["pokemon"][p2_poke2]["moves"]
         p1_poke1_hpbar = await hp_bar(battle_data[p1_id]["pokemon"][p1_poke1]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke1]["stats"]["hp"])
         p1_poke2_hpbar = await hp_bar(battle_data[p1_id]["pokemon"][p1_poke2]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke2]["stats"]["hp"])
         p2_poke1_hpbar = await hp_bar(battle_data[p2_id]["pokemon"][p2_poke1]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke1]["stats"]["hp"])
