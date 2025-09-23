@@ -1746,7 +1746,7 @@ async def done_callback(event):
         battle_state[user_id]["active_pokemon"] = [select_team[user_id]["pokes"][0]] 
     elif fmt == "doubles":
         battle_state[user_id]["active_pokemon"] = select_team[user_id]["pokes"][:2]
-        battle_state[int(user_id)]["active_pokemon"].append()
+    print("hghgyvhvuvuvububjbuhuhihihugyvycygy", battle_state) 
     battle_state[int(user_id)]["team_finalize"] = True
     del select_team[user_id]
     asyncio.create_task(standing_by_fn(event,user_id))
