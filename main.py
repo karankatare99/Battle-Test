@@ -1742,13 +1742,11 @@ async def done_callback(event):
         await event.answer(f"Selected no of Pokémon : {len(select_team[user_id]['pokes'])}/6")
         return
     battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
-    battle_state[int(user_id)]["active_pokemon"]=select_team[user_id]["pokes"][0] 
     if fmt == "singles":
-        battle_state[int(user_id)]["active_pokemon"].append(select_team[user_id]["pokes"][0])
+        battle_state[user_id]["active_pokemon"] = [select_team[user_id]["pokes"][0]
     elif fmt == "doubles":
-        battle_state[int(user_id)]["active_pokemon"].append(select_team[user_id]["pokes"][0])
-        battle_state[int(user_id)]["active_pokemon"].append(select_team[user_id]["pokes"][1])
-    battle_state[int(user_id)]["active_pokemon"].append()
+        battle_state[user_id]["active_pokemon"] = select_team[user_id]["pokes"][:2]
+        battle_state[int(user_id)]["active_pokemon"].append()
     battle_state[int(user_id)]["team_finalize"] = True
     del select_team[user_id]
     asyncio.create_task(standing_by_fn(event,user_id))
