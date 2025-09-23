@@ -1743,7 +1743,7 @@ async def done_callback(event):
         return
     battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
     if fmt == "singles":
-        battle_state[user_id]["active_pokemon"] = [select_team[user_id]["pokes"][0]
+        battle_state[user_id]["active_pokemon"] = [select_team[user_id]["pokes"][0]] 
     elif fmt == "doubles":
         battle_state[user_id]["active_pokemon"] = select_team[user_id]["pokes"][:2]
         battle_state[int(user_id)]["active_pokemon"].append()
