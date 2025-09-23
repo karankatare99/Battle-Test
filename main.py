@@ -1579,24 +1579,24 @@ async def first_battle_ui(mode,fmt,user_id):
         p2hppercent2=battle_data[p2_id]["pokemon"][p2_poke2]["current_hp"]/battle_data[p2_id]["pokemon"][p2_poke2]["stats"]["hp"]*100
         p1_text= (
             f"__**「{p2_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar1} {p2hppercent1}% \n"
+            f"{p2_poke1_hpbar} {p2hppercent1}% \n"
             f"__**「{p2_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar2} {p2hppercent2}% \n"
+            f"{p2_poke2_hpbar} {p2hppercent2}% \n"
             f"__**「{p1_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar1} {battle_data[p1_id]['pokemon' ][p1_poke1]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke1]['stats']['hp']}\n"
+            f"{p1_poke1_hpbar} {battle_data[p1_id]['pokemon' ][p1_poke1]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke1]['stats']['hp']}\n"
             f"__**「{p1_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar2} {battle_data[p1_id]['pokemon' ][p1_poke2]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke2]['stats']['hp']}"
+            f"{p1_poke2_hpbar} {battle_data[p1_id]['pokemon' ][p1_poke2]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke2]['stats']['hp']}"
 
         ) 
         p2_text= (
             f"__**「{p1_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar1} {p1hppercent1}% \n"
+            f"{p1_poke1_hpbar} {p1hppercent1}% \n"
             f"__**「{p1_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar2} {p1hppercent2}% \n"
+            f"{p1_poke2_hpbar} {p1hppercent2}% \n"
             f"__**「{p2_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar1} {battle_data[p2_id]['pokemon'][p2_poke1]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke1]['stats']['hp']}\n"
+            f"{p2_poke1_hpbar} {battle_data[p2_id]['pokemon'][p2_poke1]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke1]['stats']['hp']}\n"
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar2} {battle_data[p2_id]['pokemon'][p2_poke2]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke2]['stats']['hp']}"
+            f"{p2_poke2_hpbar} {battle_data[p2_id]['pokemon'][p2_poke2]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke2]['stats']['hp']}"
 
         ) 
         await user_text.edit("doubles battle") 
