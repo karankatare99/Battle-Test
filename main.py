@@ -1595,7 +1595,7 @@ async def first_battle_ui(mode,fmt,user_id):
             f"{p1_poke2_hpbar} {p1hppercent2}% \n"
             f"__**「{p2_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p2_poke1_hpbar} {battle_data[p2_id]['pokemon'][p2_poke1]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke1]['stats']['hp']}\n"
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"__**「{p2_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p2_poke2_hpbar} {battle_data[p2_id]['pokemon'][p2_poke2]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke2]['stats']['hp']}"
 
         ) 
