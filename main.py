@@ -1530,8 +1530,8 @@ async def first_battle_ui(mode,fmt,user_id):
         p2_id = int(room_userids[roomid]["p2"]) 
         p1_textmsg=room[p1_id]["start_msg"]
         p2_textmsg=room[p2_id]["start_msg"]
-        p1_poke=battle_state[p1_id]["active_pokemon"]
-        p2_poke=battle_state[p2_id]["active_pokemon"]
+        p1_poke=battle_state[p1_id]["active_pokemon"][0]
+        p2_poke=battle_state[p2_id]["active_pokemon"][0]
         
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
@@ -1560,7 +1560,45 @@ async def first_battle_ui(mode,fmt,user_id):
         await p2_textmsg.edit(text=p2_text)
         
     elif fmt=="doubles":
-        user_text=room[user_id]["start_msg"]
+        roomid=room[user_id]["roomid"]
+        p1_id = int(room_userids[roomid]["p1"]) 
+        p2_id = int(room_userids[roomid]["p2"]) 
+        p1_textmsg=room[p1_id]["start_msg"]
+        p2_textmsg=room[p2_id]["start_msg"]
+        p1_poke1=battle_state[p1_id]["active_pokemon"][0]
+        p1_poke2=battle_state[p1_id]["active_pokemon"][1]
+        p2_poke1=battle_state[p2_id]["active_pokemon"][0]
+        p2_poke2=battle_state[p2_id]["active_pokemon"][0]
+        p1_poke1_hpbar = await hp_bar(battle_data[p1_id]["pokemon"][p1_poke1]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke1]["stats"]["hp"])
+        p1_poke2_hpbar = await hp_bar(battle_data[p1_id]["pokemon"][p1_poke2]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke2]["stats"]["hp"])
+        p2_poke1_hpbar = await hp_bar(battle_data[p2_id]["pokemon"][p2_poke1]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke1]["stats"]["hp"])
+        p2_poke2_hpbar = await hp_bar(battle_data[p2_id]["pokemon"][p2_poke2]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke2]["stats"]["hp"])
+        p1hppercent1=battle_data[p1_id]["pokemon"][p1_poke1]["current_hp"]/battle_data[p1_id]["pokemon"][p1_poke1]["stats"]["hp"]*100
+        p1hppercent2=battle_data[p1_id]["pokemon"][p1_poke2]["current_hp"]/battle_data[p1_id]["pokemon"][p1_poke2]["stats"]["hp"]*100
+        p2hppercent1=battle_data[p2_id]["pokemon"][p2_poke1]["current_hp"]/battle_data[p2_id]["pokemon"][p2_poke1]["stats"]["hp"]*100
+        p2hppercent2=battle_data[p2_id]["pokemon"][p2_poke2]["current_hp"]/battle_data[p2_id]["pokemon"][p2_poke2]["stats"]["hp"]*100
+        p1_text= (
+            f"__**「{p2_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar1} {p2hppercent1}% \n"
+            f"__**「{p2_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar2} {p2hppercent2}% \n"
+            f"__**「{p1_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar1} {battle_data[p1_id]['pokemon' ][p1_poke1]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke1]['stats']['hp']}\n"
+            f"__**「{p1_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar2} {battle_data[p1_id]['pokemon' ][p1_poke2]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke2]['stats']['hp']}"
+
+        ) 
+        p2_text= (
+            f"__**「{p1_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar1} {p1hppercent1}% \n"
+            f"__**「{p1_poke2.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar2} {p1hppercent2}% \n"
+            f"__**「{p2_poke1.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar1} {battle_data[p2_id]['pokemon'][p2_poke1]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke1]['stats']['hp']}\n"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar2} {battle_data[p2_id]['pokemon'][p2_poke2]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke2]['stats']['hp']}"
+
+        ) 
         await user_text.edit("doubles battle") 
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
@@ -1705,6 +1743,12 @@ async def done_callback(event):
         return
     battle_state[int(user_id)]["allowed_pokemon"]=select_team[user_id]["pokes"]
     battle_state[int(user_id)]["active_pokemon"]=select_team[user_id]["pokes"][0] 
+    if fmt == "singles":
+        battle_state[int(user_id)]["active_pokemon"].append(select_team[user_id]["pokes"][0])
+    elif fmt == "doubles":
+        battle_state[int(user_id)]["active_pokemon"].append(select_team[user_id]["pokes"][0])
+        battle_state[int(user_id)]["active_pokemon"].append(select_team[user_id]["pokes"][1])
+    battle_state[int(user_id)]["active_pokemon"].append()
     battle_state[int(user_id)]["team_finalize"] = True
     del select_team[user_id]
     asyncio.create_task(standing_by_fn(event,user_id))
