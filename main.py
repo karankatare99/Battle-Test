@@ -1544,7 +1544,7 @@ async def first_battle_ui(mode,fmt,user_id, event):
         p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
         p1_poke_buttons= await button_generator(p1_poke_moves,p1_id) 
         p2_poke=battle_state[p2_id]["active_pokemon"][0]
-        p2_poke_moves = battle_data[p1_id]["pokemon"][p2_poke]["moves"]
+        p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
         p2_poke_buttons= await button_generator(p2_poke_moves,p2_id) 
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
