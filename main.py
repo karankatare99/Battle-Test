@@ -1599,7 +1599,9 @@ async def first_battle_ui(mode,fmt,user_id):
             f"{p2_poke2_hpbar} {battle_data[p2_id]['pokemon'][p2_poke2]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke2]['stats']['hp']}"
 
         ) 
-        await user_text.edit("doubles battle") 
+        await p1_textmsg.edit(text=p1_text)
+        await p2_textmsg.edit(text=p2_text)
+        
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
