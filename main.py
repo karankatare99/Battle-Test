@@ -1526,7 +1526,7 @@ async def hp_bar(current_hp, max_hp, bars = 10 ):
 async def button_generator(moves,user_id):
     buttons=[] 
     for i in range(0,len(moves),2):
-        move_buttons=[Buttons.inline(m,f"{user_id}:move:{m}") for m in moves[i:i+2]] 
+        move_buttons=[Button.inline(m,f"{user_id}:move:{m}") for m in moves[i:i+2]] 
         buttons.append(move_buttons)
     buttons.append([
         Button.inline("Pokémon", f"{user_id}:pokemon_switch"), 
