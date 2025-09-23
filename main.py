@@ -1533,7 +1533,7 @@ async def button_generator(moves,user_id):
         Button.inline("Run", f"{user_id}:run")
    ] )
     return buttons 
-async def first_battle_ui(mode,fmt,user_id):
+async def first_battle_ui(mode,fmt,user_id, event):
     if fmt=="singles":
         roomid=room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"]) 
@@ -1735,7 +1735,7 @@ async def standing_by_fn(event,user_id):
             await asyncio.sleep(1)
             mode = battle_state[int(user_id)]["mode"]
             fmt = battle_state[int(user_id)]["fmt"]
-            await first_battle_ui(mode, fmt, user_id) 
+            await first_battle_ui(mode, fmt, user_id, event) 
             break
         await asyncio.sleep(1)
 @bot.on(events.CallbackQuery(pattern=r"(\d+):(ranked|casual):(singles|doubles):(done)"))
