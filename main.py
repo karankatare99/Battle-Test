@@ -1728,11 +1728,16 @@ async def type_modifier(move_type,opp_type1,opp_type2):
     type_effect_modiifier = type1_modifier*type2_modifier
     return type_effect_modifier
 async def accuracy_checker(accuracy):
-    
+    if accuracy == "-":
+      return True
+    else:
+      chance = random.randint(1,100)
+      return True if accuracy >= chance else False
 async def damage_calc_fn(level,power,attack,defense):
     damage = (((((2 * level) / 5) + 2) * power * (attack / defense)) / 50 + 2) * modifier
-async def move_handler():
-    
+async def move_handler(user_id,fmt,move):
+    if fmt == "singles":
+      
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
