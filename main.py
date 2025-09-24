@@ -1523,10 +1523,10 @@ async def hp_bar(current_hp, max_hp, bars = 10 ):
     filled= int(bars*ratio) 
     empty = bars - filled
     return ''.join(['▰'] * filled + ['▱'] * empty)
-async def button_generator(moves,user_id):
+async def button_generator(moves,user_id,poke):
     buttons=[] 
     for i in range(0,len(moves),2):
-        move_buttons=[Button.inline(m,f"{user_id}:move:{m}") for m in moves[i:i+2]] 
+        move_buttons=[Button.inline(m,f"{user_id}:{poke}:move:{m}") for m in moves[i:i+2]] 
         buttons.append(move_buttons)
     buttons.append([
         Button.inline("Pokémon", f"{user_id}:pokemon_switch"), 
@@ -1542,10 +1542,10 @@ async def first_battle_ui(mode,fmt,user_id, event):
         p2_textmsg=room[p2_id]["start_msg"]
         p1_poke=battle_state[p1_id]["active_pokemon"][0]
         p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
-        p1_poke_buttons= await button_generator(p1_poke_moves,p1_id) 
+        p1_poke_buttons= await button_generator(p1_poke_moves,p1_id, p2_poke) 
         p2_poke=battle_state[p2_id]["active_pokemon"][0]
         p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
-        p2_poke_buttons= await button_generator(p2_poke_moves,p2_id) 
+        p2_poke_buttons= await button_generator(p2_poke_moves,p2_id, p1_poke) 
         if user_id in battle_data:
             print("uhsdubusdhusbdubsddbu", battle_data[user_id]["pokemon"])
             print("uhsdubusdhusbdubsddbu", battle_state)
@@ -1563,12 +1563,14 @@ async def first_battle_ui(mode,fmt,user_id, event):
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon' ][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['stats']['hp']}"
         ) 
+        battle_state[p1_id]["player_text"]=p1_text
         p2_text= (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p1_poke_hpbar} {p1hppercent}% \n"
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['stats']['hp']}"
         ) 
+        battle_state[p2_id]["player_text"]=p2_text
         await p1_textmsg.edit(text=p1_text, buttons = p1_poke_buttons)
         await p2_textmsg.edit(text=p2_text, buttons = p2_poke_buttons)
         
@@ -1619,6 +1621,7 @@ async def first_battle_ui(mode,fmt,user_id, event):
         await p1_textmsg.edit(text=p1_text)
         await p2_textmsg.edit(text=p2_text)
         
+async def         
 @bot.on(events.CallbackQuery(pattern=b"^(ranked|casual):(singles|doubles):(random|invitecode)$"))
 async def matchmaking(event):
     mode, fmt, mm= (g.decode() for g in event.pattern_match.groups())
@@ -1786,6 +1789,17 @@ async def opp_team_preview(event):
     buttons = [[Button.inline("Back", data=f"{mode}:{fmt}:back_tp")]]
     await event.edit(text=text, buttons=buttons)
 
+@bot.on(events.CallbackQuery(pattern=r"(\d+):([^:]+):move:(.+)"))
+async def move_callback(event):
+    user_id_str, opp_name, move_name = event.pattern_match.groups()
+    user_id = int(user_id_str)
+    fmt = battle_state[user_id]["fmt"]
+    if fmt == "singles":
+        user_text = battle_state[user_id][]
+        user_poke=battle_state[p1_id]["active_pokemon"]
+        battle_state[user_id]["active_pokemon_data"][user_poke]={"move":move_name,"target":opp_poke,"text":[],"priority":0} #here lower the number higher the priority
+        await event.edit(f"__**Communicating**__\n\n{user_text}")
+    
 @bot.on(events.CallbackQuery()) 
 async def back_callback(event):
     if event.data.decode().split(":")[2]=="back_tp":
