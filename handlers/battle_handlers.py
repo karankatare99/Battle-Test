@@ -354,6 +354,7 @@ def register_battle_handlers(bot):
         room_id=room[user_id]["roomid"]
         await event.edit(f"◌ communicating...\n\n{battle_text}")
         await asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
+        print("came to back")
         #await move_handler(user_id, fmt, move, poke, event)
 
     @bot.on(events.CallbackQuery(pattern=b"^(\\d+):pokemon_switch$"))
@@ -640,10 +641,16 @@ async def first_battle_ui(mode, fmt, user_id, event):
         
         try:
             await p1_textmsg.edit(text=p1_text, buttons=p1_poke_buttons)
-            await p2_textmsg.edit(text=p2_text, buttons=p2_poke_buttons)
-            print(f"DEBUG: Battle UI updated successfully")
+        except MessageNotModifiedError:
+            print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
         except Exception as e:
-            print(f"DEBUG: Error updating battle UI: {e}")
+            print(f"DEBUG: Error updating p1 battle UI: {e}")
+        try:
+            await p2_textmsg.edit(text=p2_text, buttons=p2_poke_buttons)
+        except MessageNotModifiedError:
+            print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
+        except Exception as e:
+            print(f"DEBUG: Error updating p2 battle UI: {e}")
     
     elif fmt == "doubles":
         roomid = room[user_id]["roomid"]
