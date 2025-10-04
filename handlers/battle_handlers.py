@@ -808,7 +808,7 @@ async def move_handler(user_id, fmt, move, poke, event):
             print(f"DEBUG: {move} dealt {damage} damage to {opponent_active}")
             
             # Update battle UI for both players
-            await first_battle_ui(battle_state[user_id]["mode"], fmt, user_id, None)
+            #await first_battle_ui(battle_state[user_id]["mode"], fmt, user_id, None)
             
             # Check if Pokemon fainted
             if defender_pokemon["current_hp"] <= 0:
@@ -835,14 +835,13 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             p2_speed = battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["spe"]
             if p1_speed>p2_speed:
                 await move_handler(p1, fmt, move, poke, event)
-                if battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["hp"] == 0:
-                    return
-                await move_handler(p2, fmt, move, poke, event)
+                if battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["hp"] != 0:
+                    await move_handler(p2, fmt, move, poke, event)
             elif p2_speed>p1_speed:
                 await move_handler(p2, fmt, move, poke, event)
-                if battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["hp"] == 0:
-                    return
-                await move_handler(p1, fmt, move, poke, event)
+                if battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["hp"] != 0:
+                    await move_handler(p1, fmt, move, poke, event)
+            await first_battle_ui(battle_state[user_id]["mode"], fmt, user_id, None)
                 
             return
         await asyncio.sleep(1)
