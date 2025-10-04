@@ -344,6 +344,7 @@ def register_battle_handlers(bot):
         user_id = int(user_id_str.decode())
         poke = poke.decode()
         move = move.decode()
+        print("came to back0")
         battle_text=battle_state[user_id]["player_text"]
         # Handle move execution here
         fmt = battle_state[user_id]["fmt"]
@@ -352,7 +353,8 @@ def register_battle_handlers(bot):
         new_turn=battle_state[user_id]["turn"]+1
         selected_move[user_id]["turn"]=new_turn
         room_id=room[user_id]["roomid"]
-        await event.edit(f"◌ communicating...\n\n{battle_text}")
+        text_data = room[user_id]["start_msg"]
+        await text_data.edit(f"◌ communicating...\n\n{battle_text}")
         await asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
         print("came to back")
         #await move_handler(user_id, fmt, move, poke, event)
