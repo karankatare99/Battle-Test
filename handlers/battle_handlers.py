@@ -351,8 +351,9 @@ def register_battle_handlers(bot):
         selected_move[user_id]["move"]=move
         new_turn=battle_state[user_id]["turn"]+1
         selected_move[user_id]["turn"]=new_turn
+        room_id=room[user_id]["roomid"]
         await event.edit(f"◌ communicating...\n\n{battle_text}")
-        await asyncio.create_task(awaiting_move_action(user_id, fmt, move, poke, event))
+        await asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
         #await move_handler(user_id, fmt, move, poke, event)
 
     @bot.on(events.CallbackQuery(pattern=b"^(\\d+):pokemon_switch$"))
@@ -825,7 +826,13 @@ async def move_handler(user_id, fmt, move, poke, event):
         await event.answer("Doubles battle moves not implemented yet")
         return True
 
-
+async def awaiting_move_action(room_id, fmt, move, poke, event):
+    while True:
+        p1=room_userids[roomid]["p1"] 
+        p2=room_userids[roomid]["p2"] 
+        if selected_move[p1]["turn"]==battle_state[p1]["turn"] and selected_move[p2]["turn"]==battle_state[p2]["turn"]:
+            return
+        await asyncio.sleep(1)
 async def standing_by_fn(event, user_id):
     await event.edit("__Standingby...__")
     print(f"DEBUG: Standing by for user {user_id}")
