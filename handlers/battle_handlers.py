@@ -352,6 +352,7 @@ def register_battle_handlers(bot):
         new_turn=battle_state[user_id]["turn"]+1
         selected_move[user_id]["turn"]=new_turn
         await event.edit(f"◌ communicating...\n\n{battle_text}")
+        await asyncio.create_task(awaiting_move_action(user_id, fmt, move, poke, event))
         #await move_handler(user_id, fmt, move, poke, event)
 
     @bot.on(events.CallbackQuery(pattern=b"^(\\d+):pokemon_switch$"))
