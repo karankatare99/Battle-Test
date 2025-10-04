@@ -826,29 +826,47 @@ async def move_handler(user_id, fmt, move, poke, event):
         await event.answer("Doubles battle moves not implemented yet")
         return True
 
+from telethon.errors import MessageNotModifiedError
+
 async def awaiting_move_action(room_id, fmt, move, poke, event):
-    while True:
+    last_text = None  # remember the last message text
     
-        p1=room_userids[room_id]["p1"] 
-        p2=room_userids[room_id]["p2"] 
+    while True:
+        p1 = room_userids[room_id]["p1"] 
+        p2 = room_userids[room_id]["p2"] 
+        
         if selected_move.get(p1) and selected_move.get(p2):
-            if selected_move[p1]["turn"]==battle_state[p1]["turn"] and selected_move[p2]["turn"]==battle_state[p2]["turn"]:
+            if (
+                selected_move[p1]["turn"] == battle_state[p1]["turn"]
+                and selected_move[p2]["turn"] == battle_state[p2]["turn"]
+            ):
                 p1_speed = battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["spe"]
                 p2_speed = battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["spe"]
-                if p1_speed>p2_speed:
-                    #await move_handler(p1, fmt, move, poke, event)
+
+                if p1_speed > p2_speed:
+                    # await move_handler(p1, fmt, move, poke, event)
                     if battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["hp"] != 0:
-                        #await move_handler(p2, fmt, move, poke, event)
+                        # await move_handler(p2, fmt, move, poke, event)
                         pass
-                elif p2_speed>p1_speed:
-                    #await move_handler(p2, fmt, move, poke, event)
+                elif p2_speed > p1_speed:
+                    # await move_handler(p2, fmt, move, poke, event)
                     if battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["hp"] != 0:
-                        #await move_handler(p1, fmt, move, poke, event)
+                        # await move_handler(p1, fmt, move, poke, event)
                         pass
-                #await first_battle_ui(battle_state[p1]["mode"], fmt, p1, None)
-                await event.edit("6")
+
+                # avoid MessageNotModifiedError here
+                new_text = "6"
+                if new_text != last_text:
+                    try:
+                        await event.edit(new_text)
+                        last_text = new_text
+                    except MessageNotModifiedError:
+                        pass
+                    except Exception as e:
+                        print(f"DEBUG: awaiting_move_action edit error: {e}")
                 
-            return
+                return  # exit loop once both selected and turn processed
+        
         await asyncio.sleep(1)
 async def standing_by_fn(event, user_id):
     await event.edit("__Standingby...__")
