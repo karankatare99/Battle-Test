@@ -842,7 +842,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                     await move_handler(p2, fmt, move, poke, event)
                     if battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["hp"] != 0:
                         await move_handler(p1, fmt, move, poke, event)
-                await first_battle_ui(battle_state[user_id]["mode"], fmt, user_id, None)
+                await first_battle_ui(battle_state[p1]["mode"], fmt, p1, None)
                 
             return
         await asyncio.sleep(1)
