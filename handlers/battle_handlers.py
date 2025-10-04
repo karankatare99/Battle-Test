@@ -10,6 +10,7 @@ battle_state = {}
 invitecode = {}
 textic = {}
 room = {}
+selected_move={}
 roomids = []
 rs_lobby = []
 rd_lobby = []
