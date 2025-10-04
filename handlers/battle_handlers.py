@@ -828,6 +828,7 @@ async def move_handler(user_id, fmt, move, poke, event):
 
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     while True:
+        await event.edit("66")
         p1=room_userids[room_id]["p1"] 
         p2=room_userids[room_id]["p2"] 
         if selected_move.get(p1) and selected_move.get(p2):
