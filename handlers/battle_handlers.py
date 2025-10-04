@@ -828,8 +828,8 @@ async def move_handler(user_id, fmt, move, poke, event):
 
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     while True:
-        p1=room_userids[roomid]["p1"] 
-        p2=room_userids[roomid]["p2"] 
+        p1=room_userids[room_id]["p1"] 
+        p2=room_userids[room_id]["p2"] 
         if selected_move[p1]["turn"]==battle_state[p1]["turn"] and selected_move[p2]["turn"]==battle_state[p2]["turn"]:
             p1_speed = battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["spe"]
             p2_speed = battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["spe"]
