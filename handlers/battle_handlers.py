@@ -828,7 +828,7 @@ async def move_handler(user_id, fmt, move, poke, event):
 
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     while True:
-        await event.edit("66")
+    
         p1=room_userids[room_id]["p1"] 
         p2=room_userids[room_id]["p2"] 
         if selected_move.get(p1) and selected_move.get(p2):
@@ -836,13 +836,15 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                 p1_speed = battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["spe"]
                 p2_speed = battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["spe"]
                 if p1_speed>p2_speed:
-                    await move_handler(p1, fmt, move, poke, event)
+                    #await move_handler(p1, fmt, move, poke, event)
                     if battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["hp"] != 0:
-                        await move_handler(p2, fmt, move, poke, event)
+                        #await move_handler(p2, fmt, move, poke, event)
+                        pass
                 elif p2_speed>p1_speed:
-                    await move_handler(p2, fmt, move, poke, event)
+                    #await move_handler(p2, fmt, move, poke, event)
                     if battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["hp"] != 0:
-                        await move_handler(p1, fmt, move, poke, event)
+                        #await move_handler(p1, fmt, move, poke, event)
+                        pass
                 #await first_battle_ui(battle_state[p1]["mode"], fmt, p1, None)
                 await event.edit("6")
                 
