@@ -343,10 +343,15 @@ def register_battle_handlers(bot):
         user_id = int(user_id_str.decode())
         poke = poke.decode()
         move = move.decode()
-        
+        battle_text=battle_state[user_id]["player_text"]
         # Handle move execution here
         fmt = battle_state[user_id]["fmt"]
-        await move_handler(user_id, fmt, move, poke, event)
+        selected_move[user_id]={}
+        selected_move[user_id]["move"]=move
+        new_turn=battle_state[user_id]["turn"]+1
+        selected_move[user_id]["turn"]=new_turn
+        await event.edit(f"◌ communicating...\n\n{battle_text}")
+        #await move_handler(user_id, fmt, move, poke, event)
 
     @bot.on(events.CallbackQuery(pattern=b"^(\\d+):pokemon_switch$"))
     async def handle_pokemon_switch(event):
@@ -618,6 +623,7 @@ async def first_battle_ui(mode, fmt, user_id, event):
         )
         
         battle_state[p1_id]["player_text"] = p1_text
+        battle_state[p1_id]["turn"] = 1
         
         p2_text = (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
@@ -627,6 +633,7 @@ async def first_battle_ui(mode, fmt, user_id, event):
         )
         
         battle_state[p2_id]["player_text"] = p2_text
+        battle_state[p2_id]["turn"] = 1
         
         try:
             await p1_textmsg.edit(text=p1_text, buttons=p1_poke_buttons)
