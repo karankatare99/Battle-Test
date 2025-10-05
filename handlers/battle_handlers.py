@@ -818,6 +818,14 @@ async def move_handler(user_id, fmt, move, poke, event):
             defender_type1 = defender_pokemon.get("type1", "normal")
             defender_type2 = defender_pokemon.get("type2")
             type_eff = await type_modifier(move_type, defender_type1, defender_type2)
+
+            self_pokemon = attacker_pokemon.split("_")[0]
+            opp_pokemon = defender_pokemon.split("_")[0]
+
+            if p1_id not in movetext:
+                movetext[p1_id]={}
+            if p2_id not in movetext:
+                movetext[p2_id]={}
             
             # Calculate damage
             damage = await damage_calc_fn(100, power, attack_stat, defense_stat, type_eff)
@@ -825,12 +833,14 @@ async def move_handler(user_id, fmt, move, poke, event):
             # Apply damage
             old_hp = defender_pokemon["current_hp"]
             defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
-            
+            movetext1=f"{self_pokemon} used {move}"
+            movetext2=f"Its {type_eff}!"
+            movetext[user_id]["text_sequence"]=[]
             print(f"DEBUG: {move} dealt {damage} damage to {opponent_active}")
             
             # Update battle UI for both players
             #await first_battle_ui(battle_state[user_id]["mode"], fmt, user_id, None)
-            
+            await battle_ui(battle_state[user_id]["mode"], fmt, user_id, event)
             # Check if Pokemon fainted
             if defender_pokemon["current_hp"] <= 0:
                 await event.answer(f"{opponent_active.split('_')[0]} fainted!")
@@ -846,7 +856,70 @@ async def move_handler(user_id, fmt, move, poke, event):
     elif fmt == "doubles":
         await event.answer("Doubles battle moves not implemented yet")
         return True
-
+async def battle_ui(mode,fmt,user_id,event):
+    if fmt == "singles":
+        roomid = room[user_id]["roomid"]
+        p1_id = int(room_userids[roomid]["p1"])
+        p2_id = int(room_userids[roomid]["p2"])
+        
+        p1_textmsg = room[p1_id]["start_msg"]
+        p2_textmsg = room[p2_id]["start_msg"]
+        
+        p1_poke = battle_state[p1_id]["active_pokemon"][0]
+        p2_poke = battle_state[p2_id]["active_pokemon"][0]
+        
+        p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
+        p1_poke_buttons = await button_generator(p1_poke_moves, p1_id, p1_poke)
+        
+        p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
+        p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
+        
+        print(f"DEBUG: Battle data ready for {user_id}")
+        
+        p1_poke_hpbar = await hp_bar(
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
+            battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
+        )
+        p2_poke_hpbar = await hp_bar(
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], 
+            battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
+        )
+        
+        p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
+        p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        
+        p1_text = (
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
+        )
+        
+        battle_state[p1_id]["player_text"] = p1_text
+        battle_state[p1_id]["turn"] =+1
+        
+        p2_text = (
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+        )
+        
+        battle_state[p2_id]["player_text"] = p2_text
+        battle_state[p2_id]["turn"] =+1
+        
+        try:
+            await p1_textmsg.edit(text=p1_text, buttons=p1_poke_buttons)
+        except MessageNotModifiedError:
+            print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
+        except Exception as e:
+            print(f"DEBUG: Error updating p1 battle UI: {e}")
+        try:
+            await p2_textmsg.edit(text=p2_text, buttons=p2_poke_buttons)
+        except MessageNotModifiedError:
+            print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
+        except Exception as e:
+            print(f"DEBUG: Error updating p2 battle UI: {e}")
 from telethon.errors import MessageNotModifiedError
 
 
@@ -897,24 +970,13 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         print(f"DEBUG: Executing move {mv} for user {uid}")
         await move_handler(uid, fmt, mv, battle_state[uid]["active_pokemon"][0], room_id)
 
-    # Increment turn
-    battle_state[p1_id]["turn"] += 1
-    battle_state[p2_id]["turn"] += 1
+    
 
-    # Clear selected_move for next turn
-    selected_move[p1_id] = {}
-    selected_move[p2_id] = {}
+
 
     print(f"DEBUG: Turn {battle_state[p1_id]['turn'] - 1} resolved for room {room_id}")
 
-    # Update battle UI for both players
-    for uid in [p1_id, p2_id]:
-        text_data = room[uid]["start_msg"]
-        battle_text = battle_state[uid]["player_text"]
-        try:
-            await text_data.edit(f"◌ Battle Update\n\n{battle_text}")
-        except MessageNotModifiedError:
-            pass
+    
 from telethon.errors.rpcerrorlist import MessageNotModifiedError
 import asyncio
 
