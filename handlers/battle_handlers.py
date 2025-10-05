@@ -854,9 +854,9 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
     Works for singles and doubles.
     """
     # Identify players
-    room_data = room.get(event.sender_id) or {}
-    p1_id = int(room_data.get("p1"))
-    p2_id = int(room_data.get("p2"))
+    
+    p1_id = int(room_userids[roomid]["p1"])
+    p2_id = int(room_userids[roomid]["p2"])
 
     # Ensure both players have entries in selected_move
     for uid in [p1_id, p2_id]:
