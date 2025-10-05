@@ -353,8 +353,10 @@ def register_battle_handlers(bot):
     # Record selected move and increment turn
         if user_id not in selected_move:
             selected_move[user_id] = {}
-        selected_move[user_id]["move"] = move
-        selected_move[user_id]["turn"] = battle_state[user_id]["turn"] + 1
+        selected_move[user_id] = {
+    "move": move,
+    "turn": battle_state[user_id]["turn"]
+}
     
     # Edit the message to indicate the player is communicating
         room_id = room[user_id]["roomid"]
