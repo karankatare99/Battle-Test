@@ -847,8 +847,6 @@ async def move_handler(user_id, fmt, move, poke, event):
 
 from telethon.errors import MessageNotModifiedError
 
-async def awaiting_move_action(room_id, fmt, move, poke, event):
-import asyncio
 
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     """
