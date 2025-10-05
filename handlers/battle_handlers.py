@@ -19,7 +19,7 @@ cd_lobby = []
 searchmsg = {}
 selectteam = {}
 room_userids = {}
-
+movetext = {}
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -902,8 +902,7 @@ async def battle_ui(mode,fmt,user_id,event):
             f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
         
-        battle_state[p1_id]["player_text"] = p1_text
-        battle_state[p1_id]["turn"] =+1
+        
         
         p2_text = (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
@@ -912,21 +911,61 @@ async def battle_ui(mode,fmt,user_id,event):
             f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         
+        for i in movetext[p1]["text_sequence"]:
+            if i == movetext[p1]["text_sequence"][0]:
+                try:
+                    text = f"{i}\n\n{p1_textmsg}"
+                    await p1_textmsg.edit(text=text)
+                except MessageNotModifiedError:
+                    print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
+                except Exception as e:
+                    print(f"DEBUG: Error updating p1 battle UI: {e}")
+            if i == movetext[p1]["text_sequence"][-1]:
+                try:
+                    text = f"{i}\n\n{p1_textmsg}"
+                    await p1_textmsg.edit(text=text,buttons=p1_poke_buttons)
+                except MessageNotModifiedError:
+                    print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
+                except Exception as e:
+                    print(f"DEBUG: Error updating p1 battle UI: {e}")
+            else:
+                try:
+                    text = f"{i}\n\n{p1_text}"
+                    await p1_textmsg.edit(text=text,buttons=p1_poke_buttons)
+                except MessageNotModifiedError:
+                    print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
+                except Exception as e:
+                    print(f"DEBUG: Error updating p1 battle UI: {e}")
+        for i in movetext[p2]["text_sequence"]:
+            if i == movetext[p2]["text_sequence"][0]:
+                try:
+                    text = f"{i}\n\n{p2_textmsg}"
+                    await p2_textmsg.edit(text=text)
+                except MessageNotModifiedError:
+                    print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
+                except Exception as e:
+                    print(f"DEBUG: Error updating p2 battle UI: {e}")
+            if i == movetext[p2]["text_sequence"][-1]:
+                try:
+                    text = f"{i}\n\n{p2_textmsg}"
+                    await p2_textmsg.edit(text=text,buttons=p2_poke_buttons)
+                except MessageNotModifiedError:
+                    print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
+                except Exception as e:
+                    print(f"DEBUG: Error updating p2 battle UI: {e}")
+            else:
+                try:
+                    text = f"{i}\n\n{p2_text}"
+                    await p2_textmsg.edit(text=text,buttons=p2_poke_buttons)
+                except MessageNotModifiedError:
+                    print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
+                except Exception as e:
+                    print(f"DEBUG: Error updating p1 battle UI: {e}")
+        
+        battle_state[p1_id]["player_text"] = p1_text
+        battle_state[p1_id]["turn"] =+1
         battle_state[p2_id]["player_text"] = p2_text
         battle_state[p2_id]["turn"] =+1
-        
-        try:
-            await p1_textmsg.edit(text=p1_text, buttons=p1_poke_buttons)
-        except MessageNotModifiedError:
-            print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
-        except Exception as e:
-            print(f"DEBUG: Error updating p1 battle UI: {e}")
-        try:
-            await p2_textmsg.edit(text=p2_text, buttons=p2_poke_buttons)
-        except MessageNotModifiedError:
-            print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
-        except Exception as e:
-            print(f"DEBUG: Error updating p2 battle UI: {e}")
 from telethon.errors import MessageNotModifiedError
 
 
