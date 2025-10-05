@@ -867,14 +867,16 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
     # Wait until both players have selected a move for the current turn
     while True:
-        p1_ready = True if selected_move[p1_id]["turn"]== battle_state[p1_id]["turn"] else False
-        p2_ready = True if selected_move[p2_id]["turn"]== battle_state[p2_id]["turn"] else False
+        p1_turn = selected_move.get(p1_id, {}).get("turn")
+        p2_turn = selected_move.get(p2_id, {}).get("turn")
+        p1_ready = (p1_turn == battle_state[p1_id]["turn"])
+        p2_ready = (p2_turn == battle_state[p2_id]["turn"])
 
-        if p1_ready is True and p2_ready is True:
+        if p1_ready and p2_ready:
             print(f"DEBUG: Both players have selected moves for turn {battle_state[p1_id]['turn']}")
             break
         await asyncio.sleep(0.5)  # avoid busy waiting
-
+    print("got out")
     # Get moves
     p1_move = selected_move[p1_id]["move"]
     p2_move = selected_move[p2_id]["move"]
