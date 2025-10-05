@@ -848,45 +848,71 @@ async def move_handler(user_id, fmt, move, poke, event):
 from telethon.errors import MessageNotModifiedError
 
 async def awaiting_move_action(room_id, fmt, move, poke, event):
-    last_text = None  # remember the last message text
-    
+import asyncio
+
+async def awaiting_move_action(room_id, fmt, move, poke, event):
+    """
+    Wait for both players to select their moves, then resolve the turn.
+    Works for singles and doubles.
+    """
+    # Identify players
+    room_data = room.get(event.sender_id) or {}
+    p1_id = int(room_data.get("p1"))
+    p2_id = int(room_data.get("p2"))
+
+    # Ensure both players have entries in selected_move
+    for uid in [p1_id, p2_id]:
+        if uid not in selected_move:
+            selected_move[uid] = {}
+
+    print(f"DEBUG: awaiting_move_action triggered for room {room_id}, fmt={fmt}")
+
+    # Wait until both players have selected a move for the current turn
     while True:
-        p1 = room_userids[room_id]["p1"] 
-        p2 = room_userids[room_id]["p2"] 
-        
-        if selected_move.get(p1) and selected_move.get(p2):
-            if (
-                selected_move[p1]["turn"] == battle_state[p1]["turn"]
-                and selected_move[p2]["turn"] == battle_state[p2]["turn"]
-            ):
-                p1_speed = battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["spe"]
-                p2_speed = battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["spe"]
+        p1_ready = selected_move.get(p1_id, {}).get("turn") == battle_state[p1_id]["turn"]
+        p2_ready = selected_move.get(p2_id, {}).get("turn") == battle_state[p2_id]["turn"]
 
-                if p1_speed > p2_speed:
-                    # await move_handler(p1, fmt, move, poke, event)
-                    if battle_data[p2]["pokemon"][battle_state[p2]["active_pokemon"]]["stats"]["hp"] != 0:
-                        # await move_handler(p2, fmt, move, poke, event)
-                        pass
-                elif p2_speed > p1_speed:
-                    # await move_handler(p2, fmt, move, poke, event)
-                    if battle_data[p1]["pokemon"][battle_state[p1]["active_pokemon"]]["stats"]["hp"] != 0:
-                        # await move_handler(p1, fmt, move, poke, event)
-                        pass
+        if p1_ready and p2_ready:
+            print(f"DEBUG: Both players have selected moves for turn {battle_state[p1_id]['turn']}")
+            break
+        await asyncio.sleep(0.5)  # avoid busy waiting
 
-                # avoid MessageNotModifiedError here
-                new_text = "6"
-                if new_text != last_text:
-                    try:
-                        await event.edit(new_text)
-                        last_text = new_text
-                    except MessageNotModifiedError:
-                        pass
-                    except Exception as e:
-                        print(f"DEBUG: awaiting_move_action edit error: {e}")
-                
-                return  # exit loop once both selected and turn processed
-        
-        await asyncio.sleep(1)
+    # Get moves
+    p1_move = selected_move[p1_id]["move"]
+    p2_move = selected_move[p2_id]["move"]
+
+    # Optionally: sort by speed stats for turn order
+    p1_speed = battle_state[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]
+    p2_speed = battle_state[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]["stats"]["spe"]
+
+    if p1_speed >= p2_speed:
+        turn_order = [(p1_id, p1_move), (p2_id, p2_move)]
+    else:
+        turn_order = [(p2_id, p2_move), (p1_id, p1_move)]
+
+    # Resolve each move
+    for uid, mv in turn_order:
+        print(f"DEBUG: Executing move {mv} for user {uid}")
+        await move_handler(uid, fmt, mv, battle_state[uid]["active_pokemon"][0], room_id)
+
+    # Increment turn
+    battle_state[p1_id]["turn"] += 1
+    battle_state[p2_id]["turn"] += 1
+
+    # Clear selected_move for next turn
+    selected_move[p1_id] = {}
+    selected_move[p2_id] = {}
+
+    print(f"DEBUG: Turn {battle_state[p1_id]['turn'] - 1} resolved for room {room_id}")
+
+    # Update battle UI for both players
+    for uid in [p1_id, p2_id]:
+        text_data = room[uid]["start_msg"]
+        battle_text = battle_state[uid]["player_text"]
+        try:
+            await text_data.edit(f"◌ Battle Update\n\n{battle_text}")
+        except MessageNotModifiedError:
+            pass
 from telethon.errors.rpcerrorlist import MessageNotModifiedError
 import asyncio
 
