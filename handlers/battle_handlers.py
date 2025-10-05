@@ -885,7 +885,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
     # Optionally: sort by speed stats for turn order
     p1_speed = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]
-    p2_speed = battle_dara[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]["stats"]["spe"]
+    p2_speed = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]["stats"]["spe"]
 
     if p1_speed >= p2_speed:
         turn_order = [(p1_id, p1_move), (p2_id, p2_move)]
