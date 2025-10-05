@@ -819,8 +819,8 @@ async def move_handler(user_id, fmt, move, poke, event):
             defender_type2 = defender_pokemon.get("type2")
             type_eff = await type_modifier(move_type, defender_type1, defender_type2)
 
-            self_pokemon = attacker_pokemon.split("_")[0]
-            opp_pokemon = defender_pokemon.split("_")[0]
+            self_pokemon = poke.split("_")[0]
+            opp_pokemon = opponent_active.split("_")[0]
 
             if p1_id not in movetext:
                 movetext[p1_id]={}
@@ -1014,7 +1014,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
     # Resolve each move
     for uid, mv in turn_order:
         print(f"DEBUG: Executing move {mv} for user {uid}")
-        await move_handler(uid, fmt, mv, battle_state[uid]["active_pokemon"][0], room_id)
+        await move_handler(uid, fmt, mv, battle_state[uid]["active_pokemon"][0], event)
 
     
 
