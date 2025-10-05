@@ -877,44 +877,62 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                 return  # exit loop once both selected and turn processed
         
         await asyncio.sleep(1)
+from telethon.errors.rpcerrorlist import MessageNotModifiedError
+import asyncio
+
 async def standing_by_fn(event, user_id):
-    await event.edit("__Standingby...__")
+    # Initial standing by message
+    try:
+        await event.edit("__Standingby...__")
+    except MessageNotModifiedError:
+        pass
+
     print(f"DEBUG: Standing by for user {user_id}")
-    
+
     while True:
-        # Check if opponent data exists
-        if user_id not in room or "opponent" not in room[user_id]:
+        # Check opponent assignment
+        room_data = room.get(user_id)
+        if not room_data or "opponent" not in room_data:
             print(f"DEBUG: Room data not ready for user {user_id}")
             await asyncio.sleep(1)
             continue
-            
-        opp_id = room[user_id]["opponent"]
-        
-        # Check if opponent exists in battle_state
-        if opp_id not in battle_state:
+
+        opp_id = room_data["opponent"]
+        opp_state = battle_state.get(opp_id)
+
+        # Check opponent existence in battle_state
+        if not opp_state:
             print(f"DEBUG: Opponent {opp_id} not in battle_state")
             await asyncio.sleep(1)
             continue
-            
-        # Check if opponent has finalized team selection
-        if battle_state[opp_id].get("team_finalize"):
+
+        # Check if opponent finalized team
+        if opp_state.get("team_finalize"):
             print(f"DEBUG: Both players ready, starting battle")
-            await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)__")
+
+            # Edit message safely
+            try:
+                await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)__")
+            except MessageNotModifiedError:
+                pass
+
             await asyncio.sleep(1)
-            
-            mode = battle_state[int(user_id)]["mode"]
-            fmt = battle_state[int(user_id)]["fmt"]
-            
-            # Set active Pokemon
+
+            user_state = battle_state[user_id]
+            mode = user_state["mode"]
+            fmt = user_state["fmt"]
+
+            # Set active Pokémon based on format
             if fmt == "singles":
-                battle_state[user_id]["active_pokemon"] = [battle_state[user_id]["allowed_pokemon"][0]]
-                battle_state[opp_id]["active_pokemon"] = [battle_state[opp_id]["allowed_pokemon"][0]]
+                user_state["active_pokemon"] = [user_state["allowed_pokemon"][0]]
+                opp_state["active_pokemon"] = [opp_state["allowed_pokemon"][0]]
             elif fmt == "doubles":
-                battle_state[user_id]["active_pokemon"] = battle_state[user_id]["allowed_pokemon"][:2]
-                battle_state[opp_id]["active_pokemon"] = battle_state[opp_id]["allowed_pokemon"][:2]
-            
-            print(f"DEBUG: Active Pokemon set, calling first_battle_ui")
+                user_state["active_pokemon"] = user_state["allowed_pokemon"][:2]
+                opp_state["active_pokemon"] = opp_state["allowed_pokemon"][:2]
+
+            print(f"DEBUG: Active Pokémon set, calling first_battle_ui")
             await first_battle_ui(mode, fmt, user_id, None)
             break
-        
+
+        # Wait before rechecking
         await asyncio.sleep(1)
