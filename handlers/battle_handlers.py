@@ -338,26 +338,38 @@ def register_battle_handlers(bot):
         
         await event.answer(text, alert=True)
 
-    @bot.on(events.CallbackQuery(pattern=b"^(\\d+):(.+):move:(.+)$"))
-    async def handle_move(event):
-        user_id_str, poke, move = event.pattern_match.groups()
-        user_id = int(user_id_str.decode())
-        poke = poke.decode()
-        move = move.decode()
-        print("came to back0")
-        battle_text=battle_state[user_id]["player_text"]
-        # Handle move execution here
-        fmt = battle_state[user_id]["fmt"]
-        selected_move[user_id]={}
-        selected_move[user_id]["move"]=move
-        new_turn=battle_state[user_id]["turn"]+1
-        selected_move[user_id]["turn"]=new_turn
-        room_id=room[user_id]["roomid"]
-        text_data = room[user_id]["start_msg"]
+
+@bot.on(events.CallbackQuery(pattern=b"^(\\d+):(.+):move:(.+)$"))
+async def handle_move(event):
+    user_id_str, poke, move = event.pattern_match.groups()
+    user_id = int(user_id_str.decode())
+    poke = poke.decode()
+    move = move.decode()
+    
+    print(f"DEBUG: Move callback received for user {user_id} - {poke} uses {move}")
+    
+    # Get battle text
+    battle_text = battle_state[user_id].get("player_text", "")
+    fmt = battle_state[user_id]["fmt"]
+    
+    # Record selected move and increment turn
+    selected_move[user_id] = {
+        "move": move,
+        "turn": battle_state[user_id]["turn"] + 1
+    }
+    
+    # Edit the message to indicate the player is communicating
+    room_id = room[user_id]["roomid"]
+    text_data = room[user_id]["start_msg"]
+    try:
         await text_data.edit(f"◌ communicating...\n\n{battle_text}")
-        await asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
-        print("came to back")
-        #await move_handler(user_id, fmt, move, poke, event)
+    except MessageNotModifiedError:
+        pass
+
+    # Fire-and-forget: process move asynchronously
+    asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
+    
+    print(f"DEBUG: Move callback handled for user {user_id} (task scheduled)")
 
     @bot.on(events.CallbackQuery(pattern=b"^(\\d+):pokemon_switch$"))
     async def handle_pokemon_switch(event):
