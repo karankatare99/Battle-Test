@@ -908,31 +908,36 @@ async def standing_by_fn(event, user_id):
 
         # Check if opponent finalized team
         if opp_state.get("team_finalize"):
-            print(f"DEBUG: Both players ready, starting battle")
+            print(f"DEBUG: Both players ready for user {user_id}")
 
-            # Edit message safely
-            try:
-                await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)__")
-            except MessageNotModifiedError:
-                pass
+            # Determine leader: smaller user_id starts the battle UI
+            if user_id < opp_id:
+                print(f"DEBUG: Leader {user_id} starting battle UI")
+                try:
+                    await event.edit(f"__{user_id}(You) vs {opp_id}(Opposing Trainer)__")
+                except MessageNotModifiedError:
+                    pass
 
-            await asyncio.sleep(1)
+                await asyncio.sleep(1)
 
-            user_state = battle_state[user_id]
-            mode = user_state["mode"]
-            fmt = user_state["fmt"]
+                user_state = battle_state[user_id]
+                mode = user_state["mode"]
+                fmt = user_state["fmt"]
 
-            # Set active Pokémon based on format
-            if fmt == "singles":
-                user_state["active_pokemon"] = [user_state["allowed_pokemon"][0]]
-                opp_state["active_pokemon"] = [opp_state["allowed_pokemon"][0]]
-            elif fmt == "doubles":
-                user_state["active_pokemon"] = user_state["allowed_pokemon"][:2]
-                opp_state["active_pokemon"] = opp_state["allowed_pokemon"][:2]
+                # Set active Pokémon based on format
+                if fmt == "singles":
+                    user_state["active_pokemon"] = [user_state["allowed_pokemon"][0]]
+                    opp_state["active_pokemon"] = [opp_state["allowed_pokemon"][0]]
+                elif fmt == "doubles":
+                    user_state["active_pokemon"] = user_state["allowed_pokemon"][:2]
+                    opp_state["active_pokemon"] = opp_state["allowed_pokemon"][:2]
 
-            print(f"DEBUG: Active Pokémon set, calling first_battle_ui")
-            await first_battle_ui(mode, fmt, user_id, None)
-            break
+                print(f"DEBUG: Active Pokémon set, calling first_battle_ui")
+                await first_battle_ui(mode, fmt, user_id, None)
+            else:
+                print(f"DEBUG: Non-leader {user_id}, waiting for battle UI update")
+
+            break  # Stop loop for both players
 
         # Wait before rechecking
         await asyncio.sleep(1)
