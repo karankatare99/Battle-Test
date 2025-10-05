@@ -351,10 +351,10 @@ def register_battle_handlers(bot):
         fmt = battle_state[user_id]["fmt"]
     
     # Record selected move and increment turn
-        selected_move[user_id] = {
-        "move": move,
-        "turn": battle_state[user_id]["turn"] + 1
-    }
+        if user_id not in selected_move:
+            selected_move[user_id] = {}
+        selected_move[user_id]["move"] = move
+        selected_move[user_id]["turn"] = battle_state[user_id]["turn"] + 1
     
     # Edit the message to indicate the player is communicating
         room_id = room[user_id]["roomid"]
@@ -867,10 +867,10 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
     # Wait until both players have selected a move for the current turn
     while True:
-        p1_ready = selected_move[p1_id]["turn"]== battle_state[p1_id]["turn"]
-        p2_ready = selected_move[p2_id]["turn"]== battle_state[p2_id]["turn"]
+        p1_ready = True if selected_move[p1_id]["turn"]== battle_state[p1_id]["turn"] else False
+        p2_ready = True if selected_move[p2_id]["turn"]== battle_state[p2_id]["turn"] else False
 
-        if p1_ready and p2_ready:
+        if p1_ready is True and p2_ready is True:
             print(f"DEBUG: Both players have selected moves for turn {battle_state[p1_id]['turn']}")
             break
         await asyncio.sleep(0.5)  # avoid busy waiting
