@@ -833,9 +833,16 @@ async def move_handler(user_id, fmt, move, poke, event):
             # Apply damage
             old_hp = defender_pokemon["current_hp"]
             defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
-            movetext1=f"{self_pokemon} used {move}"
-            movetext2=f"Its {type_eff}!"
+            user_movetext1=f"{self_pokemon} used {move}"
+            user_movetext2=f"Its {type_eff}!"
+            opp_movetext1=f"Opposing {self_pokemon} used {move}"
+            opp_movetext2=f"Its {type_eff}!"
             movetext[user_id]["text_sequence"]=[]
+            movetext[user_id]["text_sequence"].append(user_movetext1)
+            movetext[user_id]["text_sequence"].append(user_movetext2)
+            movetext[opponent_id]["text_sequence"]=[]
+            movetext[opponent_id]["text_sequence"].append(user_movetext1)
+            movetext[opponent_id]["text_sequence"].append(user_movetext2)
             print(f"DEBUG: {move} dealt {damage} damage to {opponent_active}")
             
             # Update battle UI for both players
