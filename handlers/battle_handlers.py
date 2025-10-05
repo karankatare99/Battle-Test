@@ -903,6 +903,64 @@ async def move_handler(user_id, move, poke, fmt, event):
             opp_movetext2 = f"It’s {type_eff}!"
 
             movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
+async def move_handler(user_id, move, poke, fmt, event):
+    print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
+
+    if fmt == "singles":
+        try:
+            # ✅ Identify player and opponent
+            roomid = room[user_id]["roomid"]
+            p1_id = int(room_userids[roomid]["p1"])
+            p2_id = int(room_userids[roomid]["p2"])
+            opponent_id = p2_id if user_id == p1_id else p1_id
+
+            # ✅ Extract move data
+            move_type, category, power, accuracy = await move_data_extract(move)
+
+            # ✅ Accuracy check
+            if not await accuracy_checker(accuracy):
+                await event.answer(f"{move} missed!", alert=True)
+                return False
+
+            # ✅ Pokémon data
+            attacker_pokemon = battle_data[user_id]["pokemon"][poke]
+            opponent_active = battle_state[opponent_id]["active_pokemon"][0]
+            defender_pokemon = battle_data[opponent_id]["pokemon"][opponent_active]
+
+            # ✅ Attack/Defense stats
+            if category.lower() == "physical":
+                attack_stat = attacker_pokemon["final_atk"]
+                defense_stat = defender_pokemon["final_def"]
+            else:
+                attack_stat = attacker_pokemon["final_spa"]
+                defense_stat = defender_pokemon["final_spd"]
+
+            # ✅ Type effectiveness
+            defender_type1 = defender_pokemon.get("type1", "normal")
+            defender_type2 = defender_pokemon.get("type2")
+            type_eff = await type_modifier(move_type, defender_type1, defender_type2)
+
+            self_pokemon = poke.split("_")[0]
+            opp_pokemon = opponent_active.split("_")[0]
+
+            # ✅ Initialize movetext dicts if missing
+            if p1_id not in movetext:
+                movetext[p1_id] = {}
+            if p2_id not in movetext:
+                movetext[p2_id] = {}
+
+            # ✅ Damage calculation
+            damage = await damage_calc_fn(100, power, attack_stat, defense_stat, type_eff)
+            old_hp = defender_pokemon["current_hp"]
+            defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
+
+            # ✅ Prepare move text
+            user_movetext1 = f"{self_pokemon} used {move}"
+            user_movetext2 = f"It’s {type_eff}!"
+            opp_movetext1 = f"Opposing {self_pokemon} used {move}"
+            opp_movetext2 = f"It’s {type_eff}!"
+
+            movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
             movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
 
             print(f"DEBUG: {move} dealt {damage} damage to {opponent_active}")
