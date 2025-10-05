@@ -641,18 +641,14 @@ async def first_battle_ui(mode, fmt, user_id, event):
         battle_state[p2_id]["player_text"] = p2_text
         battle_state[p2_id]["turn"] = 1
         
-        try:
-            await p1_textmsg.edit(text=p1_text, buttons=p1_poke_buttons)
-        except MessageNotModifiedError:
-            print("DEBUG: Skipped edit for p1 (MessageNotModifiedError)")
-        except Exception as e:
-            print(f"DEBUG: Error updating p1 battle UI: {e}")
-        try:
-            await p2_textmsg.edit(text=p2_text, buttons=p2_poke_buttons)
-        except MessageNotModifiedError:
-            print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
-        except Exception as e:
-            print(f"DEBUG: Error updating p2 battle UI: {e}")
+        if event is not None:
+            try:
+                await event.edit(battle_text, buttons=buttons)
+            except MessageNotModifiedError:
+                print(f"DEBUG: Skipped edit for user {user_id} (MessageNotModifiedError)")
+        else:
+            battle_text_msg = await bot.send_message(user_id, battle_text, buttons=buttons)
+            room[user_id]["start_msg"] = battle_text_msg
     
     elif fmt == "doubles":
         roomid = room[user_id]["roomid"]
@@ -914,7 +910,7 @@ async def standing_by_fn(event, user_id):
                 battle_state[opp_id]["active_pokemon"] = battle_state[opp_id]["allowed_pokemon"][:2]
             
             print(f"DEBUG: Active Pokemon set, calling first_battle_ui")
-            await first_battle_ui(mode, fmt, user_id, event)
+            await first_battle_ui(mode, fmt, user_id, None)
             break
         
         await asyncio.sleep(1)
