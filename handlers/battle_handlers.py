@@ -665,11 +665,25 @@ async def type_modifier(move_type, defender_type1, defender_type2=None):
         return "Effective"
 
 
-async def move_data_extract(move_name):
-    """Extract move data from database."""
-    # This is a placeholder - you'll need to query your actual move database
-    # For now, returning default values
-    return ("normal", "physical", 50, 100)
+async def move_data_extract(move):
+    try:
+        with open("moves.json", "r") as f:
+            move_data = json.load(f)
+        
+        move = move.replace(" ", "-").lower()
+        
+        if move not in move_data:
+            return "normal", "physical", 40, 100
+        
+        move_info = move_data[move]
+        type_name = move_info.get("Type", "normal")
+        category = move_info.get("Category", "physical")
+        power = move_info.get("power", 50)
+        acc = move_info.get("Accuracy", 100)
+        
+        return type_name, category, power, acc
+    except (FileNotFoundError, KeyError, json.JSONDecodeError):
+        return "normal", "physical", 50, 100
 
 
 async def accuracy_checker(accuracy):
@@ -692,7 +706,7 @@ async def damage_calc_fn(level, power, attack, defense, type_eff_text):
     
     # Critical hit check (1/24 chance, ~4.17%)
     is_critical = (random.randint(1, 24) == 1)
-    critical_mult = 2 if is_critical else 1
+    critical_mult = 1.5 if is_critical else 1
     
     # Standard Pokémon damage formula (simplified)
     damage = ((((2 * level / 5) + 2) * power * (attack / defense)) / 50) + 2
