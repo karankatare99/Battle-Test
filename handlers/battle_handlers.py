@@ -1006,43 +1006,31 @@ async def battle_ui(mode,fmt,user_id,event):
         
         # OLD text with pre-damage HP
         p1_text_old = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
-            f"{p2_poke_hpbar_old} {p2hppercent_old:.0f}% 
-"
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"{p2_poke_hpbar_old} {p2hppercent_old:.0f}% "
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_poke_hpbar_old} {p1_pre_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
         
         p2_text_old = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
-            f"{p1_poke_hpbar_old} {p1hppercent_old:.0f}% 
-"
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"{p1_poke_hpbar_old} {p1hppercent_old:.0f}% "
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p2_poke_hpbar_old} {p2_pre_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         
         # FINAL text with updated HP
         p1_text_final = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
-            f"{p2_poke_hpbar_new} {p2hppercent_new:.0f}% 
-"
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"{p2_poke_hpbar_new} {p2hppercent_new:.0f}% "
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_poke_hpbar_new} {p1_current_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
         
         p2_text_final = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
-            f"{p1_poke_hpbar_new} {p1hppercent_new:.0f}% 
-"
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
-"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"{p1_poke_hpbar_new} {p1hppercent_new:.0f}% "
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p2_poke_hpbar_new} {p2_current_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         
