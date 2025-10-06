@@ -1065,9 +1065,7 @@ async def battle_ui(mode,fmt,user_id,event):
             
             try:
                 # Use OLD HP bar for all messages except the last one
-                text = f"{i}
-
-{p2_text_old if not is_last else p2_text_final}"
+                text = f"{i}{p2_text_old if not is_last else p2_text_final}"
                 if is_last and p2_poke_buttons:
                     await p2_textmsg.edit(text=text, buttons=p2_poke_buttons)
                 else:
