@@ -866,6 +866,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             return False
 
 
+
 async def battle_ui(mode,fmt,user_id,event):
     if fmt == "singles":
         roomid = room[user_id]["roomid"]
@@ -896,6 +897,7 @@ async def battle_ui(mode,fmt,user_id,event):
         
         print(f"DEBUG: Battle data ready for {user_id}")
         
+        # Generate HP bars for CURRENT (after damage) state
         p1_poke_hpbar = await hp_bar(
             battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
             battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
@@ -908,34 +910,37 @@ async def battle_ui(mode,fmt,user_id,event):
         p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
         p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
         
-        p1_text = (
+        # FINAL text with updated HP
+        p1_text_final = (
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
         
-        
-        
-        p2_text = (
+        p2_text_final = (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
             f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         
-        # Update battle_state with current text for next turn's "communicating..." message
-        battle_state[p1_id]["player_text"] = p1_text
-        battle_state[p2_id]["player_text"] = p2_text
+        # Get OLD HP bars from battle_state (stored from previous turn)
+        p1_text_old = battle_state[p1_id].get("player_text", p1_text_final)
+        p2_text_old = battle_state[p2_id].get("player_text", p2_text_final)
         
-        # Animate the move text sequence with delays
+        # Update battle_state with current text for next turn
+        battle_state[p1_id]["player_text"] = p1_text_final
+        battle_state[p2_id]["player_text"] = p2_text_final
+        
+        # Animate the move text sequence with delays for P1
         for idx, i in enumerate(movetext[p1_id]["text_sequence"]):
             is_last = (idx == len(movetext[p1_id]["text_sequence"]) - 1)
             
             try:
-                text = f"{i}\n\n{p1_text}"
+                # Use OLD HP bar for all messages except the last one
+                text = f"{i}\n\n{p1_text_old if not is_last else p1_text_final}"
                 if is_last and p1_poke_buttons:
-                    # Only show buttons if Pokemon is not fainted
                     await p1_textmsg.edit(text=text, buttons=p1_poke_buttons)
                 else:
                     await p1_textmsg.edit(text=text)
@@ -945,13 +950,14 @@ async def battle_ui(mode,fmt,user_id,event):
             except Exception as e:
                 print(f"DEBUG: Error updating p1 battle UI: {e}")
         
+        # Animate the move text sequence with delays for P2
         for idx, i in enumerate(movetext[p2_id]["text_sequence"]):
             is_last = (idx == len(movetext[p2_id]["text_sequence"]) - 1)
             
             try:
-                text = f"{i}\n\n{p2_text}"
+                # Use OLD HP bar for all messages except the last one
+                text = f"{i}\n\n{p2_text_old if not is_last else p2_text_final}"
                 if is_last and p2_poke_buttons:
-                    # Only show buttons if Pokemon is not fainted
                     await p2_textmsg.edit(text=text, buttons=p2_poke_buttons)
                 else:
                     await p2_textmsg.edit(text=text)
@@ -960,7 +966,6 @@ async def battle_ui(mode,fmt,user_id,event):
                 print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
             except Exception as e:
                 print(f"DEBUG: Error updating p2 battle UI: {e}")
-
 
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
