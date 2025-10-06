@@ -852,11 +852,98 @@ async def move_handler(user_id, move, poke, fmt, event):
                     opp_movetext2 = effectiveness_text
                     movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
                     movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
+async def move_handler(user_id, move, poke, fmt, event):
+    print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
+
+    if fmt == "singles":
+        try:
+            # ✅ Identify player and opponent
+            roomid = room[user_id]["roomid"]
+            p1_id = int(room_userids[roomid]["p1"])
+            p2_id = int(room_userids[roomid]["p2"])
+            opponent_id = p2_id if user_id == p1_id else p1_id
+
+            # ✅ Extract move data
+            move_type, category, power, accuracy = await move_data_extract(move)
+
+            # ✅ Pokémon names for messages
+            attacker_pokemon = battle_data[user_id]["pokemon"][poke]
+            opponent_active = battle_state[opponent_id]["active_pokemon"][0]
+            defender_pokemon = battle_data[opponent_id]["pokemon"][opponent_active]
+            
+            self_pokemon = poke.split("_")[0]
+            opp_pokemon = opponent_active.split("_")[0]
+
+            # ✅ Initialize movetext dicts if missing
+            if p1_id not in movetext:
+                movetext[p1_id] = {}
+            if p2_id not in movetext:
+                movetext[p2_id] = {}
+
+            # ✅ Accuracy check
+            if not await accuracy_checker(accuracy):
+                # Build miss text sequences
+                user_movetext1 = f"{self_pokemon} used {move}!"
+                opp_movetext1 = f"Opposing {self_pokemon} used {move}!"
+                user_movetext2 = f"{opp_pokemon} avoided the attack!"
+                opp_movetext2 = f"{opp_pokemon} avoided the attack!"
+                
+                movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
+                movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
+                
+                print(f"DEBUG: Move missed!")
+                return False
+
+            # ✅ Store HP BEFORE damage for animation
+            defender_old_hp = defender_pokemon["current_hp"]
+            battle_state[opponent_id]["pre_damage_hp"] = defender_old_hp
+
+            # ✅ Attack/Defense stats
+            if category.lower() == "physical":
+                attack_stat = attacker_pokemon["final_atk"]
+                defense_stat = defender_pokemon["final_def"]
+            else:
+                attack_stat = attacker_pokemon["final_spa"]
+                defense_stat = defender_pokemon["final_spd"]
+
+            # ✅ Type effectiveness
+            defender_type1 = defender_pokemon.get("type1", "normal")
+            defender_type2 = defender_pokemon.get("type2")
+            type_eff = await type_modifier(move_type, defender_type1, defender_type2)
+
+            # ✅ Damage calculation
+            damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_eff)
+            defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
+
+            # ✅ Prepare move text
+            user_movetext1 = f"{self_pokemon} used {move}!"
+            opp_movetext1 = f"Opposing {self_pokemon} used {move}!"
+            
+            # Build effectiveness and critical text
+            effectiveness_text = type_eff
+            
+            if is_critical:
+                user_movetext2 = "A critical hit!"
+                opp_movetext2 = "A critical hit!"
+                if effectiveness_text != "Effective":
+                    user_movetext3 = effectiveness_text
+                    opp_movetext3 = effectiveness_text
+                    movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2, user_movetext3]
+                    movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2, opp_movetext3]
+                else:
+                    movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
+                    movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
+            else:
+                if effectiveness_text != "Effective":
+                    user_movetext2 = effectiveness_text
+                    opp_movetext2 = effectiveness_text
+                    movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
+                    movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
                 else:
                     movetext[user_id]["text_sequence"] = [user_movetext1]
                     movetext[opponent_id]["text_sequence"] = [opp_movetext1]
 
-            print(f"DEBUG: Move resolved - Damage: {damage}, Defender HP: {old_hp} → {defender_pokemon['current_hp']}")
+            print(f"DEBUG: Move resolved - Damage: {damage}, Defender HP: {defender_old_hp} → {defender_pokemon['current_hp']}")
             return True
 
         except Exception as e:
@@ -864,7 +951,6 @@ async def move_handler(user_id, move, poke, fmt, event):
             import traceback
             traceback.print_exc()
             return False
-
 
 
 async def battle_ui(mode,fmt,user_id,event):
@@ -897,37 +983,72 @@ async def battle_ui(mode,fmt,user_id,event):
         
         print(f"DEBUG: Battle data ready for {user_id}")
         
-        # Generate HP bars for CURRENT (after damage) state
-        p1_poke_hpbar = await hp_bar(
-            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
-            battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
-        )
-        p2_poke_hpbar = await hp_bar(
-            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], 
-            battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
+        # Get pre-damage HP if stored, otherwise use current HP
+        p1_current_hp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
+        p2_current_hp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
+        
+        p1_pre_hp = battle_state[p1_id].get("pre_damage_hp", p1_current_hp)
+        p2_pre_hp = battle_state[p2_id].get("pre_damage_hp", p2_current_hp)
+        
+        # Generate HP bars for OLD state (before damage)
+        p1_poke_hpbar_old = await hp_bar(p1_pre_hp, battle_data[p1_id]["pokemon"][p1_poke]['final_hp'])
+        p2_poke_hpbar_old = await hp_bar(p2_pre_hp, battle_data[p2_id]["pokemon"][p2_poke]['final_hp'])
+        
+        # Generate HP bars for NEW state (after damage)
+        p1_poke_hpbar_new = await hp_bar(p1_current_hp, battle_data[p1_id]["pokemon"][p1_poke]['final_hp'])
+        p2_poke_hpbar_new = await hp_bar(p2_current_hp, battle_data[p2_id]["pokemon"][p2_poke]['final_hp'])
+        
+        p1hppercent_old = p1_pre_hp / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
+        p2hppercent_old = p2_pre_hp / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        
+        p1hppercent_new = p1_current_hp / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
+        p2hppercent_new = p2_current_hp / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        
+        # OLD text with pre-damage HP
+        p1_text_old = (
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p2_poke_hpbar_old} {p2hppercent_old:.0f}% 
+"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p1_poke_hpbar_old} {p1_pre_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
         
-        p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
-        p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        p2_text_old = (
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p1_poke_hpbar_old} {p1hppercent_old:.0f}% 
+"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p2_poke_hpbar_old} {p2_pre_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+        )
         
         # FINAL text with updated HP
         p1_text_final = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p2_poke_hpbar_new} {p2hppercent_new:.0f}% 
+"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p1_poke_hpbar_new} {p1_current_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
         
         p2_text_final = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p1_poke_hpbar_new} {p1hppercent_new:.0f}% 
+"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__
+"
+            f"{p2_poke_hpbar_new} {p2_current_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         
-        # Get OLD HP bars from battle_state (stored from previous turn)
-        p1_text_old = battle_state[p1_id].get("player_text", p1_text_final)
-        p2_text_old = battle_state[p2_id].get("player_text", p2_text_final)
+        # Clear pre_damage_hp after using it
+        battle_state[p1_id].pop("pre_damage_hp", None)
+        battle_state[p2_id].pop("pre_damage_hp", None)
         
         # Update battle_state with current text for next turn
         battle_state[p1_id]["player_text"] = p1_text_final
@@ -939,7 +1060,9 @@ async def battle_ui(mode,fmt,user_id,event):
             
             try:
                 # Use OLD HP bar for all messages except the last one
-                text = f"{i}\n\n{p1_text_old if not is_last else p1_text_final}"
+                text = f"{i}
+
+{p1_text_old if not is_last else p1_text_final}"
                 if is_last and p1_poke_buttons:
                     await p1_textmsg.edit(text=text, buttons=p1_poke_buttons)
                 else:
@@ -956,7 +1079,9 @@ async def battle_ui(mode,fmt,user_id,event):
             
             try:
                 # Use OLD HP bar for all messages except the last one
-                text = f"{i}\n\n{p2_text_old if not is_last else p2_text_final}"
+                text = f"{i}
+
+{p2_text_old if not is_last else p2_text_final}"
                 if is_last and p2_poke_buttons:
                     await p2_textmsg.edit(text=text, buttons=p2_poke_buttons)
                 else:
@@ -966,7 +1091,7 @@ async def battle_ui(mode,fmt,user_id,event):
                 print("DEBUG: Skipped edit for p2 (MessageNotModifiedError)")
             except Exception as e:
                 print(f"DEBUG: Error updating p2 battle UI: {e}")
-
+                
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
     fmt = battle_state[user_id]["fmt"]
