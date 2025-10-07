@@ -982,7 +982,7 @@ async def battle_ui(mode, fmt, user_id, event):
         # FINAL text with updated HP
         p1_text_final = (
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p2_poke_hpbar_new} {p2hppercent_new:.0f}% "
+            f"{p2_poke_hpbar_new} {p2hppercent_new:.0f}% ")
 async def battle_ui(mode, fmt, user_id, event):
     if fmt == "singles":
         roomid = room[user_id]["roomid"]
