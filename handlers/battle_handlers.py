@@ -686,36 +686,86 @@ async def move_data_extract(move):
         return "normal", "physical", 50, 100
 
 
+
+
 async def accuracy_checker(accuracy):
-    """Check if move hits based on accuracy."""
-    roll = random.randint(1, 100)
-    return roll <= accuracy
+    """Return True if the move hits.
+    Accepts:
+      - None → always hits
+      - fraction (0.0–1.0)
+      - percent (0–100)
+    """
+    if accuracy is None:
+        return True
+    try:
+        acc = float(accuracy)
+    except Exception:
+        return True
 
+    # Convert fraction → percent
+    acc_pct = acc * 100.0 if acc <= 1.0 else acc
+    roll = random.uniform(0, 100)
+    return roll <= acc_pct
+import re
 
-async def damage_calc_fn(level, power, attack, defense, type_eff_text):
-    """Calculate damage for a move. Returns tuple: (damage, is_critical)"""
-    # Convert type effectiveness text to multiplier
-    type_mult = {
-        "It does not effect": 0,
-        "It's extremely ineffective": 0.25,
-        "It's not very effective": 0.5,
-        "Effective": 1,
-        "It's super effective": 2,
-        "It's extremely effective": 4
-    }.get(type_eff_text, 1)
+def interpret_type_effect(type_eff):
+    """Return (multiplier, effect_text) given a numeric or string type effectiveness."""
+    mapping = {
+        0.0: "It does not affect",
+        0.25: "It's extremely ineffective",
+        0.5: "It's not very effective",
+        1.0: "Effective",
+        2.0: "It's super effective",
+        4.0: "It's extremely effective",
+    }
+
+    # Numeric case
+    if isinstance(type_eff, (int, float)):
+        mult = float(type_eff)
+        text = mapping.get(mult, "Effective")
+        return mult, text
+
+    # String case
+    s = str(type_eff).lower()
+    if "no effect" in s or "does not" in s or "doesn't" in s:
+        return 0.0, mapping[0.0]
+    if "extremely ineffective" in s or "0.25" in s:
+        return 0.25, mapping[0.25]
+    if "not very" in s or "0.5" in s:
+        return 0.5, mapping[0.5]
+    if "super" in s or "2x" in s or "2×" in s:
+        return 2.0, mapping[2.0]
+    if "extremely effective" in s or "4x" in s or "4×" in s:
+        return 4.0, mapping[4.0]
+
+    # Fallback: try to parse numeric multiplier like "2x"
+    m = re.search(r"(\d+(\.\d+)?)\s*[x×]", s)
+    if m:
+        mult = float(m.group(1))
+        return mult, mapping.get(mult, "Effective")
+
+    return 1.0, mapping[1.0]
     
-    # Critical hit check (1/24 chance, ~4.17%)
+import random
+
+async def damage_calc_fn(level, power, attack, defense, type_multiplier):
+    """Calculate Pokémon-style damage.
+    `type_multiplier` must be numeric.
+    Returns: (damage:int, is_critical:bool)
+    """
+    try:
+        type_mult = float(type_multiplier)
+    except Exception:
+        type_mult = 1.0
+
     is_critical = (random.randint(1, 24) == 1)
-    critical_mult = 1.5 if is_critical else 1
-    
-    # Standard Pokémon damage formula (simplified)
-    damage = ((((2 * level / 5) + 2) * power * (attack / defense)) / 50) + 2
-    damage *= type_mult
-    damage *= critical_mult
-    damage *= random.uniform(0.85, 1.0)  # Random factor
-    
-    return int(damage), is_critical
+    critical_mult = 1.5 if is_critical else 1.0
 
+    # Simplified Pokémon damage formula
+    base = ((((2 * level) / 5) + 2) * power * (attack / (defense if defense > 0 else 1))) / 50 + 2
+    damage = base * type_mult * critical_mult * random.uniform(0.85, 1.0)
+
+    return max(1, int(damage)), is_critical  # ensure at least 1 damage
 
 async def first_battle_ui(mode, fmt, user_id, event):
     """Initialize the first battle UI for both players."""
@@ -776,52 +826,45 @@ async def first_battle_ui(mode, fmt, user_id, event):
         
         print(f"DEBUG: First battle UI initialized for room {roomid}")
 
-                  
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
     if fmt == "singles":
         try:
-            # ✅ Identify player and opponent
             roomid = room[user_id]["roomid"]
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
 
-            # ✅ Extract move data
+            # Extract move data
             move_type, category, power, accuracy = await move_data_extract(move)
 
-            # ✅ Pokémon names for messages
-            attacker_pokemon = battle_data[user_id]["pokemon"][poke]
-            opponent_active = battle_state[opponent_id]["active_pokemon"][0]
-            defender_pokemon = battle_data[opponent_id]["pokemon"][opponent_active]
-            
-            self_pokemon = poke.split("_")[0]
-            opp_pokemon = opponent_active.split("_")[0]
-
-            # ✅ Initialize movetext dicts if missing
+            # Initialize movetext containers
             if p1_id not in movetext:
                 movetext[p1_id] = {}
             if p2_id not in movetext:
                 movetext[p2_id] = {}
 
-            # ✅ Accuracy check
-            if not await accuracy_checker(accuracy):
-                # Build miss text sequences
-                user_movetext1 = f"{self_pokemon} used {move}!"
-                opp_movetext1 = f"Opposing {self_pokemon} used {move}!"
-                user_movetext2 = f"{opp_pokemon} avoided the attack!"
-                opp_movetext2 = f"{opp_pokemon} avoided the attack!"
-                
-                movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
-                movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
-                
-                print(f"DEBUG: Move missed!")
-                return False
+            # Pokémon data
+            attacker_pokemon = battle_data[user_id]["pokemon"][poke]
+            opponent_active = battle_state[opponent_id]["active_pokemon"][0]
+            defender_pokemon = battle_data[opponent_id]["pokemon"][opponent_active]
 
-            # ✅ Store HP BEFORE damage for animation
-            defender_old_hp = defender_pokemon["current_hp"]
-            battle_state[opponent_id]["pre_damage_hp"] = defender_old_hp
+            self_pokemon = poke.split("_")[0]
+            opp_pokemon = opponent_active.split("_")[0]
+
+            # ✅ Accuracy check
+            hit = await accuracy_checker(accuracy)
+            if not hit:
+                user_movetext1 = f"{self_pokemon} used {move}!"
+                user_movetext2 = f"Opposing {opp_pokemon} avoided the attack!"
+                opp_movetext1 = f"Opposing {self_pokemon} used {move}!"
+
+                movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
+                movetext[user_id]["hp_update_at"] = 999  # No HP change
+                movetext[opponent_id]["text_sequence"] = [opp_movetext1, user_movetext2]
+                movetext[opponent_id]["hp_update_at"] = 999
+                return True
 
             # ✅ Attack/Defense stats
             if category.lower() == "physical":
@@ -832,43 +875,39 @@ async def move_handler(user_id, move, poke, fmt, event):
                 defense_stat = defender_pokemon["final_spd"]
 
             # ✅ Type effectiveness
-            defender_type1 = defender_pokemon.get("type1", "normal")
-            defender_type2 = defender_pokemon.get("type2")
-            type_eff = await type_modifier(move_type, defender_type1, defender_type2)
+            type_eff_raw = await type_modifier(
+                move_type, defender_pokemon.get("type1", "normal"), defender_pokemon.get("type2")
+            )
+            type_mult, effect_text = interpret_type_effect(type_eff_raw)
 
             # ✅ Damage calculation
-            damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_eff)
+            damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult)
+            old_hp = defender_pokemon["current_hp"]
             defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
 
-            # ✅ Prepare move text
-            user_movetext1 = f"{self_pokemon} used {move}!"
-            opp_movetext1 = f"Opposing {self_pokemon} used {move}!"
-            
-            # Build effectiveness and critical text
-            effectiveness_text = type_eff
-            
-            if is_critical:
-                user_movetext2 = "A critical hit!"
-                opp_movetext2 = "A critical hit!"
-                if effectiveness_text != "Effective":
-                    user_movetext3 = effectiveness_text
-                    opp_movetext3 = effectiveness_text
-                    movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2, user_movetext3]
-                    movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2, opp_movetext3]
-                else:
-                    movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
-                    movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
-            else:
-                if effectiveness_text != "Effective":
-                    user_movetext2 = effectiveness_text
-                    opp_movetext2 = effectiveness_text
-                    movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
-                    movetext[opponent_id]["text_sequence"] = [opp_movetext1, opp_movetext2]
-                else:
-                    movetext[user_id]["text_sequence"] = [user_movetext1]
-                    movetext[opponent_id]["text_sequence"] = [opp_movetext1]
+            # ✅ Build move text
+            used_text = f"{self_pokemon} used {move}!"
+            crit_text = "A critical hit!" if is_critical else None
 
-            print(f"DEBUG: Move resolved - Damage: {damage}, Defender HP: {defender_old_hp} → {defender_pokemon['current_hp']}")
+            if is_critical and effect_text != "Effective":
+                seq = [used_text, crit_text, effect_text]
+            elif is_critical:
+                seq = [used_text, crit_text]
+            elif effect_text != "Effective":
+                seq = [used_text, effect_text]
+            else:
+                seq = [used_text, ""]
+
+            hp_update_at = 1  # Show HP change after 1 sec
+
+            opp_seq = [f"Opposing {self_pokemon} used {move}!"] + seq[1:]
+
+            movetext[user_id]["text_sequence"] = seq
+            movetext[user_id]["hp_update_at"] = hp_update_at
+            movetext[opponent_id]["text_sequence"] = opp_seq
+            movetext[opponent_id]["hp_update_at"] = hp_update_at
+
+            print(f"DEBUG: Move resolved - Damage: {damage}, Defender HP: {old_hp} → {defender_pokemon['current_hp']}")
             return True
 
         except Exception as e:
