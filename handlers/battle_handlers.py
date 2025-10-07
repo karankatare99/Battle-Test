@@ -919,6 +919,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
 async def battle_ui(mode, fmt, user_id, event):
     if fmt == "singles":
+        print(movetext)
         roomid = room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"])
         p2_id = int(room_userids[roomid]["p2"])
