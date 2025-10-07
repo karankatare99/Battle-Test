@@ -1007,10 +1007,6 @@ async def battle_ui(mode, fmt, user_id, event):
         battle_state[p1_id].pop("pre_damage_hp", None)
         battle_state[p2_id].pop("pre_damage_hp", None)
 
-        # After displaying the text to both players
-        movetext[p1_id]["text_sequence"].clear()
-        movetext[p2_id]["text_sequence"].clear()
-
         # Store for next turn
         battle_state[p1_id]["player_text"] = p1_text_final
         battle_state[p2_id]["player_text"] = p2_text_final
