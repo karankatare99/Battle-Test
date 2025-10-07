@@ -424,27 +424,24 @@ def register_battle_handlers(bot):
                         del battle_state[opp_id]
                 except:
                     pass
-            del room[user_id]
-            del battle_data[user_id]
-            del battle_state[user_id]
-            del invitecode[user_id]
-            del textic[user_id]
-            del movetext[user_id]
-            del room_userids[user_id]
-            del searchmsg[user_id]
-            del selectteam[user_id]
-            del selected_move[user_id]
-            
-            del room[opp_id]
-            del battle_data[opp_id]
-            del battle_state[opp_id]
-            del invitecode[opp_id]
-            del textic[opp_id]
-            del movetext[opp_id]
-            del room_userids[opp_id]
-            del searchmsg[opp_id]
-            del selectteam[opp_id]
-            del selected_move[opp_id]
+            room.pop(user_id, None)
+            battle_data.pop(user_id, None)
+            invitecode.pop(user_id, None)
+            textic.pop(user_id, None)
+            movetext.pop(user_id, None)
+            room_userids.pop(user_id, None)
+            searchmsg.pop(user_id, None)
+            selectteam.pop(user_id, None)
+            selected_move.pop(user_id, None)
+            room.pop(opp_id, None)
+            battle_data.pop(opp_id, None)
+            invitecode.pop(opp_id, None)
+            textic.pop(opp_id, None)
+            movetext.pop(opp_id, None)
+            room_userids.pop(opp_id, None)
+            searchmsg.pop(opp_id, None)
+            selectteam.pop(opp_id, None)
+            selected_move.pop(opp_id, None)
 
 
 async def battle_create(user_id, mode, format):
