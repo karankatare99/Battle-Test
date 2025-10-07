@@ -826,6 +826,7 @@ async def first_battle_ui(mode, fmt, user_id, event):
         
         print(f"DEBUG: First battle UI initialized for room {roomid}")
 
+
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -840,10 +841,8 @@ async def move_handler(user_id, move, poke, fmt, event):
             move_type, category, power, accuracy = await move_data_extract(move)
 
             # Initialize movetext containers
-            if p1_id not in movetext:
-                movetext[p1_id] = {}
-            if p2_id not in movetext:
-                movetext[p2_id] = {}
+            movetext.setdefault(p1_id, {"text_sequence": [], "hp_update_at": 999})
+            movetext.setdefault(p2_id, {"text_sequence": [], "hp_update_at": 999})
 
             # Pokémon data
             attacker_pokemon = battle_data[user_id]["pokemon"][poke]
@@ -856,13 +855,16 @@ async def move_handler(user_id, move, poke, fmt, event):
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy)
             if not hit:
-                user_movetext1 = f"{self_pokemon} used {move}!"
-                user_movetext2 = f"Opposing {opp_pokemon} avoided the attack!"
-                opp_movetext1 = f"Opposing {self_pokemon} used {move}!"
+                # Missed attack text
+                used_text_self = f"{self_pokemon} used {move}!"
+                miss_text = f"Opposing {opp_pokemon} avoided the attack!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
 
-                movetext[user_id]["text_sequence"] = [user_movetext1, user_movetext2]
-                movetext[user_id]["hp_update_at"] = 999  # No HP change
-                movetext[opponent_id]["text_sequence"] = [opp_movetext1, user_movetext2]
+                # Append (not overwrite)
+                movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
+                movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+
+                movetext[user_id]["hp_update_at"] = 999
                 movetext[opponent_id]["hp_update_at"] = 999
                 return True
 
@@ -885,29 +887,32 @@ async def move_handler(user_id, move, poke, fmt, event):
             old_hp = defender_pokemon["current_hp"]
             defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
 
-            # ✅ Build move text
-            used_text = f"{self_pokemon} used {move}!"
+            # ✅ Build text sequences
+            used_text_self = f"{self_pokemon} used {move}!"
+            used_text_opp = f"Opposing {self_pokemon} used {move}!"
             crit_text = "A critical hit!" if is_critical else None
 
-            if is_critical and effect_text != "Effective":
-                seq = [used_text, crit_text, effect_text]
-            elif is_critical:
-                seq = [used_text, crit_text]
-            elif effect_text != "Effective":
-                seq = [used_text, effect_text]
-            else:
-                seq = [used_text, ""]
+            # Build attacker’s sequence
+            seq_self = [used_text_self]
+            if crit_text:
+                seq_self.append(crit_text)
+            if effect_text != "Effective":
+                seq_self.append(effect_text)
 
-            hp_update_at = 1  # Show HP change after 1 sec
+            # Build opponent’s sequence
+            seq_opp = [used_text_opp] + seq_self[1:]
 
-            opp_seq = [f"Opposing {self_pokemon} used {move}!"] + seq[1:]
+            # ✅ Append to movetext (don’t replace)
+            movetext[user_id]["text_sequence"].extend(seq_self)
+            movetext[opponent_id]["text_sequence"].extend(seq_opp)
 
-            movetext[user_id]["text_sequence"] = seq
-            movetext[user_id]["hp_update_at"] = hp_update_at
-            movetext[opponent_id]["text_sequence"] = opp_seq
-            movetext[opponent_id]["hp_update_at"] = hp_update_at
+            movetext[user_id]["hp_update_at"] = 1
+            movetext[opponent_id]["hp_update_at"] = 1
 
-            print(f"DEBUG: Move resolved - Damage: {damage}, Defender HP: {old_hp} → {defender_pokemon['current_hp']}")
+            print(
+                f"DEBUG: Move resolved - {self_pokemon} used {move}, "
+                f"Damage: {damage}, {opp_pokemon} HP: {old_hp} → {defender_pokemon['current_hp']}"
+            )
             return True
 
         except Exception as e:
@@ -915,6 +920,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             import traceback
             traceback.print_exc()
             return False
+
 
 
 async def battle_ui(mode, fmt, user_id, event):
