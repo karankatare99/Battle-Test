@@ -424,6 +424,26 @@ def register_battle_handlers(bot):
                 except:
                     pass
             del room[user_id]
+            del battle_data[user_id]
+            del battle_state[user_id]
+            del invitecode[user_id]
+            del textic[user_id]
+            del movetext[user_id]
+            del room_userids[user_id]
+            del searchmsg[user_id]
+            del selectteam[user_id]
+            del selected_move[user_id]
+            
+            del room[opp_id]
+            del battle_data[opp_id]
+            del battle_state[opp_id]
+            del invitecode[opp_id]
+            del textic[opp_id]
+            del movetext[opp_id]
+            del room_userids[opp_id]
+            del searchmsg[opp_id]
+            del selectteam[opp_id]
+            del selected_move[opp_id]
 
 
 async def battle_create(user_id, mode, format):
