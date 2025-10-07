@@ -917,7 +917,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             return False
 
 
-async def battle_ui(mode,fmt,user_id,event):
+async def battle_ui(mode, fmt, user_id, event):
     if fmt == "singles":
         roomid = room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"])
@@ -954,17 +954,14 @@ async def battle_ui(mode,fmt,user_id,event):
         p1_pre_hp = battle_state[p1_id].get("pre_damage_hp", p1_current_hp)
         p2_pre_hp = battle_state[p2_id].get("pre_damage_hp", p2_current_hp)
         
-        # Generate HP bars for OLD state (before damage)
+        # Generate HP bars for OLD and NEW state
         p1_poke_hpbar_old = await hp_bar(p1_pre_hp, battle_data[p1_id]["pokemon"][p1_poke]['final_hp'])
         p2_poke_hpbar_old = await hp_bar(p2_pre_hp, battle_data[p2_id]["pokemon"][p2_poke]['final_hp'])
-        
-        # Generate HP bars for NEW state (after damage)
         p1_poke_hpbar_new = await hp_bar(p1_current_hp, battle_data[p1_id]["pokemon"][p1_poke]['final_hp'])
         p2_poke_hpbar_new = await hp_bar(p2_current_hp, battle_data[p2_id]["pokemon"][p2_poke]['final_hp'])
         
         p1hppercent_old = p1_pre_hp / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
         p2hppercent_old = p2_pre_hp / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
-        
         p1hppercent_new = p1_current_hp / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
         p2hppercent_new = p2_current_hp / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
         
@@ -975,7 +972,6 @@ async def battle_ui(mode,fmt,user_id,event):
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_poke_hpbar_old} {p1_pre_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
-        
         p2_text_old = (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_poke_hpbar_old} {p1hppercent_old:.0f}% "
@@ -990,7 +986,6 @@ async def battle_ui(mode,fmt,user_id,event):
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_poke_hpbar_new} {p1_current_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
         )
-        
         p2_text_final = (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_poke_hpbar_new} {p1hppercent_new:.0f}% "
@@ -998,21 +993,25 @@ async def battle_ui(mode,fmt,user_id,event):
             f"{p2_poke_hpbar_new} {p2_current_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         
-        # Clear pre_damage_hp after using it
+        # Clear pre_damage_hp
         battle_state[p1_id].pop("pre_damage_hp", None)
         battle_state[p2_id].pop("pre_damage_hp", None)
         
-        # Update battle_state with current text for next turn
+        # Update text for next turn
         battle_state[p1_id]["player_text"] = p1_text_final
         battle_state[p2_id]["player_text"] = p2_text_final
-        
-        # Animate the move text sequence with delays for P1
+
+        # --- Animation for P1 ---
         for idx, i in enumerate(movetext[p1_id]["text_sequence"]):
             is_last = (idx == len(movetext[p1_id]["text_sequence"]) - 1)
             
+            # ✅ New HP update logic
+            hp_update_at = movetext.get(p1_id, {}).get("hp_update_at", len(movetext[p1_id]["text_sequence"]) - 1)
+            show_final_hp = (idx >= hp_update_at)
+            
+            text = f"{i}\n\n{p1_text_final if show_final_hp else p1_text_old}"
+            
             try:
-                # Use OLD HP bar for all messages except the last one
-                text = f"{i}{p1_text_old if not is_last else p1_text_final}"
                 if is_last and p1_poke_buttons:
                     await p1_textmsg.edit(text=text, buttons=p1_poke_buttons)
                 else:
@@ -1023,13 +1022,17 @@ async def battle_ui(mode,fmt,user_id,event):
             except Exception as e:
                 print(f"DEBUG: Error updating p1 battle UI: {e}")
         
-        # Animate the move text sequence with delays for P2
+        # --- Animation for P2 ---
         for idx, i in enumerate(movetext[p2_id]["text_sequence"]):
             is_last = (idx == len(movetext[p2_id]["text_sequence"]) - 1)
+
+            # ✅ New HP update logic
+            hp_update_at = movetext.get(p2_id, {}).get("hp_update_at", len(movetext[p2_id]["text_sequence"]) - 1)
+            show_final_hp = (idx >= hp_update_at)
+
+            text = f"{i}\n\n{p2_text_final if show_final_hp else p2_text_old}"
             
             try:
-                # Use OLD HP bar for all messages except the last one
-                text = f"{i}{p2_text_old if not is_last else p2_text_final}"
                 if is_last and p2_poke_buttons:
                     await p2_textmsg.edit(text=text, buttons=p2_poke_buttons)
                 else:
