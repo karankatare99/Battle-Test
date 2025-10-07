@@ -421,6 +421,7 @@ def register_battle_handlers(bot):
                     opp_msg = room[opp_id].get("start_msg")
                     if opp_msg:
                         await opp_msg.edit("Opponent ran away! You win!")
+                        del battle_state[opp_id]
                 except:
                     pass
             del room[user_id]
