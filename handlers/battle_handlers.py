@@ -850,6 +850,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
     if fmt == "singles":
         try:
+            pass if move in only_damaging_moves else return False
             roomid = room[user_id]["roomid"]
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
