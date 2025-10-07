@@ -1052,6 +1052,9 @@ async def battle_ui(mode, fmt, user_id, event):
                             p1_text_old if slow_id == p1_id else p2_text_old,
                             p1_text_final if slow_id == p1_id else p2_text_final,
                             p1_poke_buttons if slow_id == p1_id else p2_poke_buttons)  
+        #Clear the text sequence
+        movetext[user_id]["text_sequence"].clear()
+        movetext[opponent_id]["text_sequence"].clear()
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
     fmt = battle_state[user_id]["fmt"]
