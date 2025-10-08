@@ -987,17 +987,17 @@ async def move_handler(user_id, move, poke, fmt, event):
                 seq_self.append(effect_text)
             #paralyze check
             if move in paralyze_moves:
-            paralyze = await paralyze_check(move)
-            paralyze_list = status_effects[roomid][opponent_id]["paralysis"]
+                paralyze = await paralyze_check(move)
+                paralyze_list = status_effects[roomid][opponent_id]["paralysis"]
 
-            if defender_pokemon in paralyze_list:
-                paralyze_textuser = f"The Opposing {opp_pokemon} is already paralyzed!"
-                paralyze_textopp = f"{opp_pokemon} is already paralyzed!"
-            elif paralyze:
-                paralyze_textuser = f"The Opposing {opp_pokemon} is paralyzed!\nIt may be unable to move"
-                paralyze_textopp = f"{opp_pokemon} is paralyzed!\nIt may be unable to move"
-                paralyze_list.append(defender_pokemon)
-            seq_self.append(paralyze_textuser)
+                if defender_pokemon in paralyze_list:
+                    paralyze_textuser = f"The Opposing {opp_pokemon} is already paralyzed!"
+                    paralyze_textopp = f"{opp_pokemon} is already paralyzed!"
+                elif paralyze:
+                    paralyze_textuser = f"The Opposing {opp_pokemon} is paralyzed!\nIt may be unable to move"
+                    paralyze_textopp = f"{opp_pokemon} is paralyzed!\nIt may be unable to move"
+                    paralyze_list.append(defender_pokemon)
+                seq_self.append(paralyze_textuser)
 
             # Build opponent’s sequence
             seq_opp = [used_text_opp] + seq_self[1:]
