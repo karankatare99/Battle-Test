@@ -707,7 +707,7 @@ async def move_data_extract(move):
         move_info = move_data[move]
         type_name = move_info.get("Type", "normal")
         category = move_info.get("Category", "physical")
-        power = move_info.get("power", 50)
+        power = move_info.get("power", 0)
         acc = move_info.get("Accuracy", 100)
         
         return type_name, category, power, acc
@@ -864,6 +864,14 @@ async def paralyze_check(move):
         chance = 10
     if move in paralyze_moves30%:
         chance = 30
+    rvalue=randim.randint(1,100)
+    if chance>=rvalue:
+        return True
+    else:
+        return False
+async def paralysis_checker():
+    chance = random.randint(1,100)
+    return True if chance <= 25 else False
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -873,7 +881,15 @@ async def move_handler(user_id, move, poke, fmt, event):
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
+            if roomid not in status_effects:
+                status_effects[roomid] = {}
+                # Define all possible conditions (status ailments)
+                conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze"]
 
+                # Initialize both players’ status lists
+                status_effects[roomid][user_id] = {cond: [] for cond in conditions}
+                status_effects[roomid][opponent_id] = {cond: [] for cond in conditions}
+                    
             # Extract move data
             move_type, category, power, accuracy = await move_data_extract(move)
 
@@ -890,9 +906,9 @@ async def move_handler(user_id, move, poke, fmt, event):
             opp_pokemon = opponent_active.split("_")[0]
             if move not in all_moves:
                 # Missed attack text
-                used_text_self = f"{self_pokemon} used {move}!"
-                miss_text = f"This move cant be used!"
-                used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                used_text_self = f"{self_pokemon} is paralyzed It cant move!"
+                miss_text = f""
+                used_text_opp = f"Opposing {self_pokemon} is paralyzed It cant move!"
 
                 # Append (not overwrite)
                 movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
@@ -902,12 +918,24 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 999
             
                 return True
-            #paralyze check
-            if move in paralyze_moves:
-                paralyze = await paralyze_check(move)
-                if paralyze:
-                    paralyze_textuser=f"The Opposing {opp_pokemon} is paralyzed!\nIt may be unable to move"
-                    paralyze_textopp=f"The {opp_pokemon} is paralyzed!\nIt may be unable to move"
+            #paralysis check
+            if defender_pokemon in status_effects[roomid][user_id]["paralysis"]:
+                paralysis = await paralysis_checker()
+                if paralysis:
+                    # Missed attack text
+                    used_text_self = f"{self_pokemon} used {move}!"
+                    miss_text = f"This move cant be used!"
+                    used_text_opp = f"Opposing {self_pokemon} used {move}!"
+
+                    # Append (not overwrite)
+                    movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+
+                    movetext[user_id]["hp_update_at"] = 999
+                    movetext[opponent_id]["hp_update_at"] = 999
+            
+                    return True
+
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
             if not hit:
@@ -952,12 +980,25 @@ async def move_handler(user_id, move, poke, fmt, event):
             seq_self = [used_text_self]
             if crit_text:
                 seq_self.append(crit_text)
-            if effect_text != "Effective":
+            if power > 0 and effect_text != "Effective":
                 seq_self.append(effect_text)
+            #paralyze check
+            if move in paralyze_moves:
+                paralyze = await paralyze_check(move)
+                if paralyze:
+                    paralyze_textuser=f"The Opposing {opp_pokemon} is paralyzed!\nIt may be unable to move"
+                    paralyze_textopp=f"{opp_pokemon} is paralyzed!\nIt may be unable to move"
+                paralyze_list = status_effects[roomid][opponent_id]["paralysis"]
+                if not defender_pokemon in paralyze_list:
+                    paralyze_list.append(defender_pokemon)
+                if defender_pokemon in paralyze_list:
+                    paralyze_textuser=f"The Opposing {opp_pokemon} is already paralyzed!"
+                    paralyze_textopp=f"{opp_pokemon} is already paralyzed!"
+            seq_self.append(paralyze_textuser)
 
             # Build opponent’s sequence
             seq_opp = [used_text_opp] + seq_self[1:]
-
+            seq_opp.append(paralyze_textopp)
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
             movetext[opponent_id]["text_sequence"].extend(seq_opp)
@@ -1326,6 +1367,14 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         # Both using moves - sort by speed
         p1_speed = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]
         p2_speed = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]["stats"]["spe"]
+        p1_poke = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]
+        p2_poke = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]
+        if room_id in status_effects:
+            if p1_id in status_effects[room_id] or p2_id in status_effects[room_id]:
+                if p1_poke in status_effects[room_id][p1_id]["paralysis"]:
+                    p1_speed= p1_speed/2
+                if p2_poke in status_effects[room_id][p2_id]["paralysis"]:
+                    p2_speed= p2_speed/2
         
         if p1_speed >= p2_speed:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]), (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
