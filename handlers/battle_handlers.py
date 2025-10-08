@@ -20,6 +20,8 @@ searchmsg = {}
 selectteam = {}
 room_userids = {}
 movetext = {}
+#Only damage dealing moves
+only_damage_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -850,7 +852,20 @@ async def move_handler(user_id, move, poke, fmt, event):
 
     if fmt == "singles":
         try:
-            pass if move in only_damaging_moves else return False
+            if move not in only_damaging_moves:
+                # Missed attack text
+                used_text_self = f"{self_pokemon} used {move}!"
+                miss_text = f"This move cant be used!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
+
+                # Append (not overwrite)
+                movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
+                movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+
+                movetext[user_id]["hp_update_at"] = 999
+                movetext[opponent_id]["hp_update_at"] = 999
+            
+                return True
             roomid = room[user_id]["roomid"]
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
