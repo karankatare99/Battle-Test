@@ -906,7 +906,8 @@ async def move_handler(user_id, move, poke, fmt, event):
             if move in paralyze_moves:
                 paralyze = await paralyze_check(move)
                 if paralyze:
-                    paralyze_text=
+                    paralyze_textuser=f"The Opposing {opp_pokemon} is paralyzed!\nIt may be unable to move"
+                    paralyze_textopp=f"The {opp_pokemon} is paralyzed!\nIt may be unable to move"
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
             if not hit:
