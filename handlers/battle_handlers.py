@@ -20,6 +20,7 @@ searchmsg = {}
 selectteam = {}
 room_userids = {}
 movetext = {}
+status_effects = {}
 #all moves
 all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Only damage dealing moves
