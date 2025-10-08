@@ -30,7 +30,7 @@ never_miss_moves = ["Swift"]
 paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash"]
 paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
 paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
-always_paralyze_moves=[]
+always_paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -864,6 +864,8 @@ async def paralyze_check(move):
         chance = 10
     if move in paralyze_moves30:
         chance = 30
+    if move in always_paralyze_moves:
+        return True
     rvalue=randim.randint(1,100)
     if chance>=rvalue:
         return True
