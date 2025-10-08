@@ -857,21 +857,7 @@ async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
     if fmt == "singles":
-        try:
-            if move not in only_damage_moves:
-                # Missed attack text
-                used_text_self = f"{self_pokemon} used {move}!"
-                miss_text = f"This move cant be used!"
-                used_text_opp = f"Opposing {self_pokemon} used {move}!"
-
-                # Append (not overwrite)
-                movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
-                movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
-
-                movetext[user_id]["hp_update_at"] = 999
-                movetext[opponent_id]["hp_update_at"] = 999
-            
-                return True
+        try:         
             roomid = room[user_id]["roomid"]
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
@@ -891,7 +877,20 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             self_pokemon = poke.split("_")[0]
             opp_pokemon = opponent_active.split("_")[0]
+            if move not in only_damage_moves:
+                # Missed attack text
+                used_text_self = f"{self_pokemon} used {move}!"
+                miss_text = f"This move cant be used!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
 
+                # Append (not overwrite)
+                movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
+                movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+
+                movetext[user_id]["hp_update_at"] = 999
+                movetext[opponent_id]["hp_update_at"] = 999
+            
+                return True
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
             if not hit:
