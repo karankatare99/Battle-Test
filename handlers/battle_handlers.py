@@ -22,7 +22,7 @@ room_userids = {}
 movetext = {}
 status_effects = {}
 #all moves
-all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
+all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -909,9 +909,9 @@ async def move_handler(user_id, move, poke, fmt, event):
             opp_pokemon = opponent_active.split("_")[0]
             if move not in all_moves:
                 # Missed attack text
-                used_text_self = f"{self_pokemon} is paralyzed It cant move!"
-                miss_text = f""
-                used_text_opp = f"Opposing {self_pokemon} is paralyzed It cant move!"
+                used_text_self = f"{self_pokemon} used {move}"
+                miss_text = f"This move cant be used!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
 
                 # Append (not overwrite)
                 movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
@@ -926,9 +926,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 paralysis = await paralysis_checker()
                 if paralysis:
                     # Missed attack text
-                    used_text_self = f"{self_pokemon} used {move}!"
-                    miss_text = f"This move cant be used!"
-                    used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                    used_text_self = f"{self_pokemon} is paralyzed It cant move!"
+                    miss_text = f""
+                    used_text_opp = f"Opposing {self_pokemon} is paralyzed It cant move!"
 
                     # Append (not overwrite)
                     movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
