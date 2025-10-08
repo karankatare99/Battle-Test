@@ -858,7 +858,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
     if fmt == "singles":
         try:
-            if move not in only_damaging_moves:
+            if move not in only_damage_moves:
                 # Missed attack text
                 used_text_self = f"{self_pokemon} used {move}!"
                 miss_text = f"This move cant be used!"
