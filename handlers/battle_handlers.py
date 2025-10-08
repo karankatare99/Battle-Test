@@ -21,7 +21,9 @@ selectteam = {}
 room_userids = {}
 movetext = {}
 #Only damage dealing moves
-only_damage_moves=[]
+only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
+#Never miss moves
+never_miss_moves = ["Swift"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -708,13 +710,15 @@ async def move_data_extract(move):
 
 
 
-async def accuracy_checker(accuracy):
+async def accuracy_checker(accuracy,move):
     """Return True if the move hits.
     Accepts:
       - None → always hits
       - fraction (0.0–1.0)
       - percent (0–100)
     """
+    if move in never_miss_moves:
+        return True
     if accuracy is None:
         return True
     try:
@@ -768,16 +772,18 @@ def interpret_type_effect(type_eff):
     
 import random
 
-async def damage_calc_fn(level, power, attack, defense, type_multiplier):
+async def damage_calc_fn(level, power, attack, defense, type_multiplier,move):
     """Calculate Pokémon-style damage.
     `type_multiplier` must be numeric.
     Returns: (damage:int, is_critical:bool)
     """
+    
     try:
         type_mult = float(type_multiplier)
     except Exception:
         type_mult = 1.0
-
+    if move == "Pay Day":
+        return 20,False
     is_critical = (random.randint(1, 24) == 1)
     critical_mult = 1.5 if is_critical else 1.0
 
@@ -887,7 +893,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             opp_pokemon = opponent_active.split("_")[0]
 
             # ✅ Accuracy check
-            hit = await accuracy_checker(accuracy)
+            hit = await accuracy_checker(accuracy,move)
             if not hit:
                 # Missed attack text
                 used_text_self = f"{self_pokemon} used {move}!"
@@ -917,7 +923,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             type_mult, effect_text = interpret_type_effect(type_eff_raw)
 
             # ✅ Damage calculation
-            damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult)
+            damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult,move)
             old_hp = defender_pokemon["current_hp"]
             defender_pokemon["current_hp"] = max(0, defender_pokemon["current_hp"] - damage)
 
