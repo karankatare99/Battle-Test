@@ -28,6 +28,8 @@ only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hy
 never_miss_moves = ["Swift"]
 #Paralyze moves
 paralyze_moves=[]
+paralyze_moves30%=[]
+paralyze_moves10%=[]
 always_paralyze_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
@@ -857,7 +859,11 @@ async def first_battle_ui(mode, fmt, user_id, event):
         
         print(f"DEBUG: First battle UI initialized for room {roomid}")
 
-
+async def paralyze_check(move):
+    if move in paralyze_moves10%:
+        chance = 10
+    if move in paralyze_moves30%:
+        chance = 30
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -896,6 +902,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 999
             
                 return True
+            #paralyze check
+            if move in paralyze_moves:
+                paralyze = await paralyze_check(move)
+                if paralyze:
+                    paralyze_text=
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
             if not hit:
