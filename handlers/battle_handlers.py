@@ -27,9 +27,9 @@ only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hy
 #Never miss moves
 never_miss_moves = ["Swift"]
 #Paralyze moves
-paralyze_moves=[]
-paralyze_moves30%=[]
-paralyze_moves10%=[]
+paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash"]
+paralyze_moves30% = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
+paralyze_moves10% = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
