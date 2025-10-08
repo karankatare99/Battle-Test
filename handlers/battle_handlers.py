@@ -28,8 +28,8 @@ only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hy
 never_miss_moves = ["Swift"]
 #Paralyze moves
 paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash"]
-paralyze_moves30% = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
-paralyze_moves10% = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
+paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
+paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
@@ -860,9 +860,9 @@ async def first_battle_ui(mode, fmt, user_id, event):
         print(f"DEBUG: First battle UI initialized for room {roomid}")
 
 async def paralyze_check(move):
-    if move in paralyze_moves10%:
+    if move in paralyze_moves10:
         chance = 10
-    if move in paralyze_moves30%:
+    if move in paralyze_moves30:
         chance = 30
     rvalue=randim.randint(1,100)
     if chance>=rvalue:
