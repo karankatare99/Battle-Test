@@ -20,10 +20,15 @@ searchmsg = {}
 selectteam = {}
 room_userids = {}
 movetext = {}
+#all moves
+all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
 never_miss_moves = ["Swift"]
+#Paralyze moves
+paralyze_moves=[]
+always_paralyze_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -877,7 +882,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             self_pokemon = poke.split("_")[0]
             opp_pokemon = opponent_active.split("_")[0]
-            if move not in only_damage_moves:
+            if move not in all_moves:
                 # Missed attack text
                 used_text_self = f"{self_pokemon} used {move}!"
                 miss_text = f"This move cant be used!"
