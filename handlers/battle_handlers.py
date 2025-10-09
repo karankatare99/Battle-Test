@@ -32,6 +32,12 @@ paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Sla
 paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
 paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz"]
+#flinch moves
+flinch_moves = []
+flinch_moves10=[]
+flinch_moves20=[]
+flinch_moves30=[]
+always_flinch_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -872,6 +878,20 @@ async def paralyze_check(move):
         return True
     else:
         return False
+async def flinch_check(move):
+    if move in flinch_moves10:
+        chance = 10
+    if move in flinch_moves20:
+        chance = 20
+    if move in paralyze_moves30:
+        chance = 30
+    if move in always_paralyze_moves:
+        return True
+    rvalue=randim.randint(1,100)
+    if chance>=rvalue:
+        return True
+    else:
+        return False
 async def paralysis_checker():
     chance = random.randint(1,100)
     return True if chance <= 25 else False
@@ -887,7 +907,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             if roomid not in status_effects:
                 status_effects[roomid] = {}
                 # Define all possible conditions (status ailments)
-                conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze"]
+                conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze","flinch"]
 
                 # Initialize both players’ status lists
                 status_effects[roomid][user_id] = {cond: [] for cond in conditions}
@@ -937,6 +957,22 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
             
+                    return True
+                #flinch check
+                if defender_pokemon in status_effects[roomid][user_id]["flinch"]:
+                
+                    # Missed attack text
+                    used_text_self = f"{self_pokemon} flinched and couldn't move!"
+                    miss_text = f""
+                    used_text_opp = f"Opposing {self_pokemon} flinched and couldn't move!"
+
+                    # Append (not overwrite)
+                    movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+
+                    movetext[user_id]["hp_update_at"] = 999
+                    movetext[opponent_id]["hp_update_at"] = 999
+                    status_effects[roomid][user_id]["flinch"].remove(defender_pokemon)
                     return True
 
             # ✅ Accuracy check
