@@ -942,7 +942,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             
                 return True
             #paralysis check
-            if defender_pokemon in status_effects[roomid][user_id]["paralysis"]:
+            if attacker_pokemon in status_effects[roomid][user_id]["paralysis"] or attacker_pokemon in status_effects[roomid][user_id]["flinch"]:
                 paralysis = await paralysis_checker()
                 if paralysis:
                     # Missed attack text
@@ -959,7 +959,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             
                     return True
                 #flinch check
-                if defender_pokemon in status_effects[roomid][user_id]["flinch"]:
+                if attacker_pokemon in status_effects[roomid][user_id]["flinch"]:
                 
                     # Missed attack text
                     used_text_self = f"{self_pokemon} flinched and couldn't move!"
