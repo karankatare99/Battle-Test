@@ -22,7 +22,7 @@ room_userids = {}
 movetext = {}
 status_effects = {}
 #all moves
-all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash"]
+all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -39,10 +39,10 @@ flinch_moves20=[]
 flinch_moves30=[]
 always_flinch_moves=[]
 #burn moves
-burn_moves=[]
+burn_moves=["Sizzly Slide"]
 burn_moves10=[]
 burn_moves20=[]
-always_burn_moves=[]
+always_burn_moves=["Sizzly Slide"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1089,139 +1089,117 @@ async def move_handler(user_id, move, poke, fmt, event):
             return False
 
 
-
 async def battle_ui(mode, fmt, user_id, event):
-    if fmt == "singles":
-        print(movetext)
-        roomid = room[user_id]["roomid"]
-        p1_id = int(room_userids[roomid]["p1"])
-        p2_id = int(room_userids[roomid]["p2"])
+    if fmt != "singles":
+        return
 
-        p1_textmsg = room[p1_id]["start_msg"]
-        p2_textmsg = room[p2_id]["start_msg"]
+    roomid = room[user_id]["roomid"]
+    p1_id = int(room_userids[roomid]["p1"])
+    p2_id = int(room_userids[roomid]["p2"])
 
-        p1_poke = battle_state[p1_id]["active_pokemon"][0]
-        p2_poke = battle_state[p2_id]["active_pokemon"][0]
+    p1_poke = battle_state[p1_id]["active_pokemon"][0]
+    p2_poke = battle_state[p2_id]["active_pokemon"][0]
 
-        # Safety: ensure both Pokémon keys exist
-        for pid, poke in [(p1_id, p1_poke), (p2_id, p2_poke)]:
-            if poke not in battle_data[pid]["pokemon"]:
-                print(f"DEBUG: Restoring missing Pokémon {poke} for {pid}")
-                battle_data[pid]["pokemon"][poke] = {
-                    "current_hp": 0,
-                    "final_hp": 1,
-                    "moves": []
-                }
+    # Safety: restore missing Pokémon keys
+    for pid, poke in [(p1_id, p1_poke), (p2_id, p2_poke)]:
+        if poke not in battle_data[pid]["pokemon"]:
+            battle_data[pid]["pokemon"][poke] = {
+                "current_hp": 0,
+                "final_hp": 1,
+                "moves": []
+            }
 
-        # Check fainted Pokémon
-        p1_fainted = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] <= 0
-        p2_fainted = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] <= 0
+    # Check fainted Pokémon
+    p1_fainted = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] <= 0
+    p2_fainted = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] <= 0
 
-        # Generate buttons only if not fainted
-        p1_poke_buttons = None if p1_fainted else await button_generator(
-            battle_data[p1_id]["pokemon"][p1_poke]["moves"], p1_id, p1_poke
-        )
-        p2_poke_buttons = None if p2_fainted else await button_generator(
-            battle_data[p2_id]["pokemon"][p2_poke]["moves"], p2_id, p2_poke
-        )
+    # Generate HP bars
+    p1_pre_hp = battle_state[p1_id].get("pre_damage_hp", battle_data[p1_id]["pokemon"][p1_poke]["current_hp"])
+    p2_pre_hp = battle_state[p2_id].get("pre_damage_hp", battle_data[p2_id]["pokemon"][p2_poke]["current_hp"])
 
-        # Get HP states
-        p1_current_hp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
-        p2_current_hp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
+    p1_hpbar_old = await hp_bar(p1_pre_hp, battle_data[p1_id]["pokemon"][p1_poke]["final_hp"])
+    p2_hpbar_old = await hp_bar(p2_pre_hp, battle_data[p2_id]["pokemon"][p2_poke]["final_hp"])
+    p1_hpbar_new = await hp_bar(battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], battle_data[p1_id]["pokemon"][p1_poke]["final_hp"])
+    p2_hpbar_new = await hp_bar(battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], battle_data[p2_id]["pokemon"][p2_poke]["final_hp"])
 
-        p1_pre_hp = battle_state[p1_id].get("pre_damage_hp", p1_current_hp)
-        p2_pre_hp = battle_state[p2_id].get("pre_damage_hp", p2_current_hp)
-
-        # Generate HP bars
-        p1_hpbar_old = await hp_bar(p1_pre_hp, battle_data[p1_id]["pokemon"][p1_poke]["final_hp"])
-        p2_hpbar_old = await hp_bar(p2_pre_hp, battle_data[p2_id]["pokemon"][p2_poke]["final_hp"])
-        p1_hpbar_new = await hp_bar(p1_current_hp, battle_data[p1_id]["pokemon"][p1_poke]["final_hp"])
-        p2_hpbar_new = await hp_bar(p2_current_hp, battle_data[p2_id]["pokemon"][p2_poke]["final_hp"])
-
-        # Percentages
-        p1hppercent_old = p1_pre_hp / battle_data[p1_id]["pokemon"][p1_poke]["final_hp"] * 100
-        p2hppercent_old = p2_pre_hp / battle_data[p2_id]["pokemon"][p2_poke]["final_hp"] * 100
-        p1hppercent_new = p1_current_hp / battle_data[p1_id]["pokemon"][p1_poke]["final_hp"] * 100
-        p2hppercent_new = p2_current_hp / battle_data[p2_id]["pokemon"][p2_poke]["final_hp"] * 100
-
-        # Text templates
-        p1_text_old = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p2_hpbar_old} {p2hppercent_old:.0f}% "
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p1_hpbar_old} {p1_pre_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
-        )
-        p2_text_old = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p1_hpbar_old} {p1hppercent_old:.0f}% "
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p2_hpbar_old} {p2_pre_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
-        )
-        p1_text_final = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p2_hpbar_new} {p2hppercent_new:.0f}% "
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p1_hpbar_new} {p1_current_hp}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
-        )
-        p2_text_final = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p1_hpbar_new} {p1hppercent_new:.0f}% "
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p2_hpbar_new} {p2_current_hp}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+    # Text templates
+    def build_text(attacker_poke, defender_poke, attacker_hpbar, defender_hpbar, attacker_hp, defender_hp):
+        return (
+            f"__**「{defender_poke.split('_')[0].capitalize()}(Lv.100)」**__{defender_hpbar} "
+            f"__**「{attacker_poke.split('_')[0].capitalize()}(Lv.100)」**__{attacker_hpbar} "
+            f"{attacker_hp}/{battle_data[user_id]['pokemon'][attacker_poke]['final_hp']}"
         )
 
-        # Cleanup old pre-damage values
-        battle_state[p1_id].pop("pre_damage_hp", None)
-        battle_state[p2_id].pop("pre_damage_hp", None)
+    p1_text_final = build_text(p1_poke, p2_poke, p1_hpbar_new, p2_hpbar_new,
+                               battle_data[p1_id]["pokemon"][p1_poke]["current_hp"],
+                               battle_data[p2_id]["pokemon"][p2_poke]["current_hp"])
+    p2_text_final = build_text(p2_poke, p1_poke, p2_hpbar_new, p1_hpbar_new,
+                               battle_data[p2_id]["pokemon"][p2_poke]["current_hp"],
+                               battle_data[p1_id]["pokemon"][p1_poke]["current_hp"])
 
-        # Store for next turn
-        battle_state[p1_id]["player_text"] = p1_text_final
-        battle_state[p2_id]["player_text"] = p2_text_final
+    battle_state[p1_id]["player_text"] = p1_text_final
+    battle_state[p2_id]["player_text"] = p2_text_final
 
-        
+    # --- Play Sequence Function ---
+    async def play_sequence(pid, textmsg, text_old, text_final, show_buttons=False):
+        seq = movetext[pid]["text_sequence"]
+        hp_update_at = movetext.get(pid, {}).get("hp_update_at", len(seq) - 1)
 
-        async def play_sequence(pid, textmsg, text_old, text_final, poke_buttons):
-            seq = movetext[pid]["text_sequence"]
-            hp_update_at = movetext.get(pid, {}).get("hp_update_at", len(seq) - 1)
-
-            for idx, i in enumerate(seq):
-                is_last = (idx == len(seq) - 1)
-                show_final_hp = (idx >= hp_update_at)
-                text = f"{i}\n\n{text_final if show_final_hp else text_old}"
-
-                try:
-                    if is_last and poke_buttons:
-                        await textmsg.edit(text=text, buttons=poke_buttons)
+        for idx, i in enumerate(seq):
+            show_final_hp = (idx >= hp_update_at)
+            text = f"{i}\n\n{text_final if show_final_hp else text_old}"
+            try:
+                if idx == len(seq) - 1 and show_buttons:
+                    if battle_data[pid]["pokemon"][battle_state[pid]["active_pokemon"][0]]["current_hp"] > 0:
+                        buttons = await button_generator(
+                            battle_data[pid]["pokemon"][battle_state[pid]["active_pokemon"][0]]["moves"],
+                            pid,
+                            battle_state[pid]["active_pokemon"][0]
+                        )
+                        await textmsg.edit(text=text, buttons=buttons)
                     else:
                         await textmsg.edit(text=text)
-                    await asyncio.sleep(1)
-                except MessageNotModifiedError:
-                    print(f"DEBUG: Skipped edit for {pid} (MessageNotModifiedError)")
-                except Exception as e:
-                    print(f"DEBUG: Error updating UI for {pid}: {e}")
+                else:
+                    await textmsg.edit(text=text)
+                await asyncio.sleep(1)
+            except MessageNotModifiedError:
+                pass
+            except Exception as e:
+                print(f"DEBUG: Error updating UI for {pid}: {e}")
 
-        # Fast-first, then slow
-        fast_id, slow_id = (
-            (p1_id, p2_id)
-            if battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"] >=
-               battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"]
-            else (p2_id, p1_id)
-        )
+    # --- Phase 1: Moves ---
+    fast_id, slow_id = (
+        (p1_id, p2_id) if battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"] >=
+        battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"] else (p2_id, p1_id)
+    )
 
-        await play_sequence(fast_id,
-                            room[fast_id]["start_msg"],
-                            p1_text_old if fast_id == p1_id else p2_text_old,
-                            p1_text_final if fast_id == p1_id else p2_text_final,
-                            p1_poke_buttons if fast_id == p1_id else p2_poke_buttons)
+    await play_sequence(fast_id, room[fast_id]["start_msg"], p1_text_final, p1_text_final, show_buttons=False)
+    await play_sequence(slow_id, room[slow_id]["start_msg"], p1_text_final, p1_text_final, show_buttons=False)
 
-        await play_sequence(slow_id,
-                            room[slow_id]["start_msg"],
-                            p1_text_old if slow_id == p1_id else p2_text_old,
-                            p1_text_final if slow_id == p1_id else p2_text_final,
-                            p1_poke_buttons if slow_id == p1_id else p2_poke_buttons)  
-        #Clear the text sequence
-        movetext[p1_id]["text_sequence"].clear()
-        movetext[p2_id]["text_sequence"].clear()
+    # --- Phase 2: End-of-turn effects ---
+    had_effects = await end_of_turn_effects(roomid)
+    if had_effects:
+        await play_sequence(fast_id, room[fast_id]["start_msg"], p1_text_final, p1_text_final, show_buttons=False)
+        await play_sequence(slow_id, room[slow_id]["start_msg"], p1_text_final, p1_text_final, show_buttons=False)
+
+    # --- Phase 3: Buttons ---
+    for pid in [p1_id, p2_id]:
+        if battle_data[pid]["pokemon"][battle_state[pid]["active_pokemon"][0]]["current_hp"] > 0:
+            buttons = await button_generator(
+                battle_data[pid]["pokemon"][battle_state[pid]["active_pokemon"][0]]["moves"],
+                pid,
+                battle_state[pid]["active_pokemon"][0]
+            )
+            await room[pid]["start_msg"].edit(
+                text=battle_state[pid]["player_text"],
+                buttons=buttons
+            )
+
+    # Clear move texts
+    movetext[p1_id]["text_sequence"].clear()
+    movetext[p2_id]["text_sequence"].clear()
+
+
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
     fmt = battle_state[user_id]["fmt"]
