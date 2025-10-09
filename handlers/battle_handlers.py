@@ -719,7 +719,7 @@ async def move_data_extract(move):
         move_info = move_data[move]
         type_name = move_info.get("Type", "normal")
         category = move_info.get("Category", "physical")
-        power = move_info.get("power", 0)
+        power = move_info.get("Power", 0)
         acc = move_info.get("Accuracy", 100)
         
         return type_name, category, power, acc
