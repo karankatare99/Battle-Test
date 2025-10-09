@@ -1133,8 +1133,7 @@ async def battle_ui(mode, fmt, user_id, event):
         # P1's view: opponent on top, self on bottom
         p1_display = (
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p2_hpbar} {p2_percent:.0f}% 
-"
+            f"{p2_hpbar} {p2_percent:.0f}% "
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_hpbar} {p1_hp}/{p1_max_hp}"
         )
@@ -1142,8 +1141,7 @@ async def battle_ui(mode, fmt, user_id, event):
         # P2's view: opponent on top, self on bottom
         p2_display = (
             f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
-            f"{p1_hpbar} {p1_percent:.0f}% 
-"
+            f"{p1_hpbar} {p1_percent:.0f}% "
             f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p2_hpbar} {p2_hp}/{p2_max_hp}"
         )
@@ -1162,12 +1160,8 @@ async def battle_ui(mode, fmt, user_id, event):
             p1_display, p2_display = await get_current_hp_display()
             
             # Add action text above HP display
-            p1_full_text = f"{action_text}
-
-{p1_display}"
-            p2_full_text = f"{action_text}
-
-{p2_display}"
+            p1_full_text = f"{action_text}{p1_display}"
+            p2_full_text = f"{action_text}{p2_display}"
             
             try:
                 # Update both players' screens
