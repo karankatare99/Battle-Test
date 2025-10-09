@@ -1212,9 +1212,7 @@ async def battle_ui(mode, fmt, user_id, event):
 
         for idx, i in enumerate(seq):
             show_final_hp = (idx >= hp_update_at)
-            text = f"{i}
-
-{text_final if show_final_hp else text_old}"
+            text = f"{i}{text_final if show_final_hp else text_old}"
             
             try:
                 await room[pid]["start_msg"].edit(text=text)
