@@ -959,7 +959,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             
                 return True
             #paralysis check
-            if attacker_pokemon in status_effects[roomid][user_id]["paralysis"] or attacker_pokemon in status_effects[roomid][user_id]["flinch"]:
+            if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"]:
                 paralysis = await paralysis_checker()
                 if paralysis:
                     # Missed attack text
@@ -976,7 +976,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             
                     return True
                 #flinch check
-                if attacker_pokemon in status_effects[roomid][user_id]["flinch"]:
+                if poke in status_effects[roomid][user_id]["flinch"]:
                 
                     # Missed attack text
                     used_text_self = f"{self_pokemon} flinched and couldn't move!"
@@ -1043,7 +1043,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 paralyze = await paralyze_check(move)
                 paralyze_list = status_effects[roomid][opponent_id]["paralysis"]
 
-                if defender_pokemon in paralyze_list:
+                if opponent_active in paralyze_list:
                     paralyze_textuser = f"The Opposing {opp_pokemon} is already paralyzed!"
                     paralyze_textopp = f"{opp_pokemon} is already paralyzed!"
                 elif paralyze:
@@ -1055,7 +1055,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 burn = await burn_check(move)
                 burn_list = status_effects[roomid][opponent_id]["burn"]
 
-                if defender_pokemon in burn_list:
+                if opponent_active in burn_list:
                     burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
                     burn_textopp = f"{opp_pokemon} is already burned!"
                 elif burn:
