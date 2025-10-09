@@ -38,6 +38,11 @@ flinch_moves10=[]
 flinch_moves20=[]
 flinch_moves30=[]
 always_flinch_moves=[]
+#burn moves
+burn_moves=[]
+burn_moves10=[]
+burn_moves20=[]
+always_burn_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -892,6 +897,18 @@ async def flinch_check(move):
         return True
     else:
         return False
+async def burn_check(move):
+    if move in burn_moves10:
+        chance = 10
+    if move in burn_moves20:
+        chance = 20
+    if move in always_burn_moves:
+        return True
+    rvalue=randim.randint(1,100)
+    if chance>=rvalue:
+        return True
+    else:
+        return False
 async def paralysis_checker():
     chance = random.randint(1,100)
     return True if chance <= 25 else False
@@ -1034,10 +1051,24 @@ async def move_handler(user_id, move, poke, fmt, event):
                     paralyze_textopp = f"{opp_pokemon} is paralyzed!\nIt may be unable to move"
                     paralyze_list.append(defender_pokemon)
                 seq_self.append(paralyze_textuser)
+            if move in burn_moves:
+                burn = await burn_check(move)
+                burn_list = status_effects[roomid][opponent_id]["burn"]
+
+                if defender_pokemon in burn_list:
+                    burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
+                    burn_textopp = f"{opp_pokemon} is already burned!"
+                elif burn:
+                    burn_textuser = f"The Opposing {opp_pokemon} was burned!"
+                    burn_textopp = f"{opp_pokemon} was burned!"
+                    burn_list.append(defender_pokemon)
+                seq_self.append(burn_textuser)
+                
 
             # Build opponent’s sequence
             seq_opp = [used_text_opp] + seq_self[1:]
-            seq_opp.append(paralyze_textopp)
+            seq_opp.append(paralyze_textopp) if defender_pokemon in status_effects[roomid][opponent_id]["paralyse"] else None
+            seq_opp.append(burn_textopp) if defender_pokemon in status_effects[roomid][opponent_id]["burn"] else None
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
             movetext[opponent_id]["text_sequence"].extend(seq_opp)
