@@ -1133,37 +1133,68 @@ async def battle_ui(mode, fmt, user_id, event):
         p2_percent = p2_hp / p2_max_hp * 100 if p2_max_hp > 0 else 0
 
         p1_display = (
-            f"__**「{p2_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**ã€Œ{p2_poke_current.split('_')[0].capitalize()}(Lv.100)ã€**__"
             f"{p2_hpbar} {p2_percent:.0f}% "
-            f"__**「{p1_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**ã€Œ{p1_poke_current.split('_')[0].capitalize()}(Lv.100)ã€**__"
             f"{p1_hpbar} {p1_hp}/{p1_max_hp}"
         )
 
         p2_display = (
-            f"__**「{p1_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**ã€Œ{p1_poke_current.split('_')[0].capitalize()}(Lv.100)ã€**__"
             f"{p1_hpbar} {p1_percent:.0f}% "
-            f"__**「{p2_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**ã€Œ{p2_poke_current.split('_')[0].capitalize()}(Lv.100)ã€**__"
             f"{p2_hpbar} {p2_hp}/{p2_max_hp}"
         )
 
         return p1_display, p2_display
 
-    async def play_action_for_both(actor_id):
-        """Play actor's sequence with HP damage applied at the correct time."""
-        actor_data = movetext.get(actor_id, {})
-        if not actor_data or not actor_data.get("text_sequence"):
+    async def play_action_for_actor(actor_id):
+        """
+        Play actor's move sequence with proper damage application.
+        Fixed to prevent text duplication and wrong damage targeting.
+        """
+        # Validate movetext data exists
+        if actor_id not in movetext:
+            print(f"DEBUG: No movetext data for actor {actor_id}")
             return
-
-        # Copy safely to prevent async mutation
-        action_texts = actor_data["text_sequence"][:]
+            
+        actor_data = movetext[actor_id]
+        
+        # Validate required fields
+        if not isinstance(actor_data, dict):
+            print(f"DEBUG: Invalid movetext data type for actor {actor_id}")
+            return
+            
+        text_sequence = actor_data.get("text_sequence", [])
         damage_to_apply = actor_data.get("damage", 0)
         move_hit = actor_data.get("move_hit", True)
-
-        # Identify correct target
+        
+        # Skip if no text sequence
+        if not text_sequence:
+            print(f"DEBUG: No text sequence for actor {actor_id}")
+            return
+            
+        # Determine correct target (opposite of actor)
         target_id = p2_id if actor_id == p1_id else p1_id
-
-        for i, action_text in enumerate(action_texts):
+        target_poke = battle_state[target_id]["active_pokemon"][0]
+        
+        print(f"DEBUG: Actor {actor_id} targeting {target_id} ({target_poke})")
+        print(f"DEBUG: Damage to apply: {damage_to_apply}, Move hit: {move_hit}")
+        
+        # Apply damage BEFORE showing any text (if move hits)
+        damage_applied = False
+        if damage_to_apply > 0 and move_hit:
+            old_hp = battle_data[target_id]["pokemon"][target_poke]["current_hp"]
+            new_hp = max(0, old_hp - damage_to_apply)
+            battle_data[target_id]["pokemon"][target_poke]["current_hp"] = new_hp
+            damage_applied = True
+            print(f"DEBUG: {target_poke} took {damage_to_apply} damage â€” HP: {old_hp} â†’ {new_hp}")
+        
+        # Display each text in sequence
+        for i, action_text in enumerate(text_sequence):
+            # Get updated HP displays after damage application
             p1_display, p2_display = await get_current_hp_display()
+            
             p1_full_text = f"{action_text}\n\n{p1_display}"
             p2_full_text = f"{action_text}\n\n{p2_display}"
 
@@ -1176,36 +1207,41 @@ async def battle_ui(mode, fmt, user_id, event):
             except Exception as e:
                 print(f"DEBUG: UI edit error: {e}")
 
-            # Apply damage only after showing the move text (once per move)
-            if i == 0 and damage_to_apply > 0 and move_hit:
-                target_poke = battle_state[target_id]["active_pokemon"][0]
-                old_hp = battle_data[target_id]["pokemon"][target_poke]["current_hp"]
-                new_hp = max(0, old_hp - damage_to_apply)
-                battle_data[target_id]["pokemon"][target_poke]["current_hp"] = new_hp
-                print(
-                    f"DEBUG: {target_poke} took {damage_to_apply} damage "
-                    f"— HP: {old_hp} → {new_hp}"
-                )
-
-        # Reset movetext safely for next turn
+        # Clear movetext for this actor to prevent repetition
         movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True}
+        print(f"DEBUG: Cleared movetext for actor {actor_id}")
 
     # --- TURN ORDER LOGIC ---
     p1_speed = battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"]
     p2_speed = battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"]
-    fast_id, slow_id = (p1_id, p2_id) if p1_speed >= p2_speed else (p2_id, p1_id)
+    
+    # Determine turn order based on speed
+    if p1_speed >= p2_speed:
+        fast_id, slow_id = p1_id, p2_id
+        print(f"DEBUG: P1 ({p1_speed} speed) moves first, P2 ({p2_speed} speed) moves second")
+    else:
+        fast_id, slow_id = p2_id, p1_id
+        print(f"DEBUG: P2 ({p2_speed} speed) moves first, P1 ({p1_speed} speed) moves second")
+
+    print(f"DEBUG: Turn order - Fast: {fast_id}, Slow: {slow_id}")
 
     # --- PHASE 1: Execute moves sequentially ---
-    await play_action_for_both(fast_id)
-    await play_action_for_both(slow_id)
+    print("DEBUG: === PHASE 1: MOVE EXECUTION ===")
+    await play_action_for_actor(fast_id)
+    await play_action_for_actor(slow_id)
 
     # --- PHASE 2: End-of-turn effects (burn, poison, etc.) ---
+    print("DEBUG: === PHASE 2: END-OF-TURN EFFECTS ===")
     had_effects = await end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke)
     if had_effects:
-        await play_action_for_both(p1_id)
-        await play_action_for_both(p2_id)
+        # Only process end-of-turn effects if they exist in movetext
+        if p1_id in movetext and movetext[p1_id].get("text_sequence"):
+            await play_action_for_actor(p1_id)
+        if p2_id in movetext and movetext[p2_id].get("text_sequence"):
+            await play_action_for_actor(p2_id)
 
     # --- PHASE 3: Refresh UI and buttons ---
+    print("DEBUG: === PHASE 3: UI REFRESH ===")
     p1_final_display, p2_final_display = await get_current_hp_display()
     battle_state[p1_id]["player_text"] = p1_final_display
     battle_state[p2_id]["player_text"] = p2_final_display
@@ -1213,6 +1249,9 @@ async def battle_ui(mode, fmt, user_id, event):
     p1_fainted = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] <= 0
     p2_fainted = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] <= 0
 
+    print(f"DEBUG: P1 fainted: {p1_fainted}, P2 fainted: {p2_fainted}")
+
+    # Update UI for each player
     for pid, poke, final_text, fainted in [
         (p1_id, p1_poke, p1_final_display, p1_fainted),
         (p2_id, p2_poke, p2_final_display, p2_fainted),
@@ -1224,6 +1263,56 @@ async def battle_ui(mode, fmt, user_id, event):
             await room[pid]["start_msg"].edit(text=final_text, buttons=buttons)
         else:
             await room[pid]["start_msg"].edit(text=final_text)
+
+    print("DEBUG: === TURN COMPLETE ===")
+
+# Additional helper function to validate movetext state
+def validate_movetext_state():
+    """Helper function to validate movetext data integrity"""
+    for actor_id, data in movetext.items():
+        if not isinstance(data, dict):
+            print(f"WARNING: Invalid movetext data for actor {actor_id}")
+            movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True}
+        
+        required_keys = ["text_sequence", "damage", "move_hit"]
+        for key in required_keys:
+            if key not in data:
+                print(f"WARNING: Missing {key} in movetext for actor {actor_id}")
+                if key == "text_sequence":
+                    data[key] = []
+                elif key == "damage":
+                    data[key] = 0
+                elif key == "move_hit":
+                    data[key] = True
+
+# Additional debugging function
+def debug_battle_state(p1_id, p2_id):
+    """Print current battle state for debugging"""
+    print("=== BATTLE STATE DEBUG ===")
+    print(f"P1 ID: {p1_id}")
+    print(f"P2 ID: {p2_id}")
+    
+    if p1_id in battle_state:
+        p1_poke = battle_state[p1_id]["active_pokemon"][0]
+        print(f"P1 Active: {p1_poke}")
+        if p1_poke in battle_data[p1_id]["pokemon"]:
+            p1_hp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
+            p1_max_hp = battle_data[p1_id]["pokemon"][p1_poke]["final_hp"]
+            print(f"P1 HP: {p1_hp}/{p1_max_hp}")
+    
+    if p2_id in battle_state:
+        p2_poke = battle_state[p2_id]["active_pokemon"][0]
+        print(f"P2 Active: {p2_poke}")
+        if p2_poke in battle_data[p2_id]["pokemon"]:
+            p2_hp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
+            p2_max_hp = battle_data[p2_id]["pokemon"][p2_poke]["final_hp"]
+            print(f"P2 HP: {p2_hp}/{p2_max_hp}")
+    
+    print("Movetext state:")
+    for actor_id, data in movetext.items():
+        print(f"  Actor {actor_id}: {data}")
+    print("=========================")
+
 
 async def end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke):
     """
