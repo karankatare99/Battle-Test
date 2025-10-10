@@ -1175,7 +1175,7 @@ async def battle_ui(mode, fmt, user_id, event):
             return
             
         # Determine correct target (opposite of actor)
-        target_id = p2_id if actor_id == p1_id else p1_id
+        target_id = p2_id if actor_id == p2_id else p1_id
         target_poke = battle_state[target_id]["active_pokemon"][0]
         
         print(f"DEBUG: Actor {actor_id} targeting {target_id} ({target_poke})")
