@@ -1154,56 +1154,43 @@ async def battle_ui(mode, fmt, user_id, event):
 
         return p1_display, p2_display
 
+    
+        
     async def play_action_for_actor(actor_id):
         """
-        Play actor's move sequence with proper damage application.
-        Fixed to prevent text duplication and wrong damage targeting.
+        Play actor's move sequence:
+        - Show each text in actor's text_sequence
+        - Apply damage at actor_data['hp_update_at'] (default 1) AFTER showing that move text
+        - Then refresh the UI so HP bars reflect the damage
         """
-        # Validate movetext data exists
-        if actor_id not in movetext:
-            print(f"DEBUG: No movetext data for actor {actor_id}")
+        # Basic validation
+        actor_data = movetext.get(actor_id)
+        if not actor_data or not isinstance(actor_data, dict):
+            print(f"DEBUG: No/invalid movetext for actor {actor_id}")
             return
-            
-        actor_data = movetext[actor_id]
-        
-        # Validate required fields
-        if not isinstance(actor_data, dict):
-            print(f"DEBUG: Invalid movetext data type for actor {actor_id}")
-            return
-            
-        text_sequence = actor_data.get("text_sequence", [])
-        print(text_sequence)
-        
-        move_hit = actor_data.get("move_hit", True)
-        
-        # Skip if no text sequence
+
+        text_sequence = list(actor_data.get("text_sequence", []))
         if not text_sequence:
-            print(f"DEBUG: No text sequence for actor {actor_id}")
+            print(f"DEBUG: No text_sequence for actor {actor_id}")
             return
-            
-        # Determine correct target (opposite of actor)
-        target_id = p2_id if actor_id == p1_id else p2_id
-        target_data = movetext[target_id]
-        damage_to_apply = target_data.get("damage", 0)
+
+        # Where to update HP (after showing this index). default 1 (after first line)
+        hp_update_at = actor_data.get("hp_update_at", 1)
+        move_hit = actor_data.get("move_hit", True)
+
+        # Correct target selection (opposite of actor)
+        target_id = p2_id if actor_id == p1_id else p1_id
         target_poke = battle_state[target_id]["active_pokemon"][0]
-        
-        print(f"DEBUG: Actor {actor_id} targeting {target_id} ({target_poke})")
-        print(f"DEBUG: Damage to apply: {damage_to_apply}, Move hit: {move_hit}")
-        
-        # Apply damage BEFORE showing any text (if move hits)
-        damage_applied = False
-        if damage_to_apply > 0 and move_hit:
-            old_hp = battle_data[target_id]["pokemon"][target_poke]["current_hp"]
-            new_hp = max(0, old_hp - damage_to_apply)
-            battle_data[target_id]["pokemon"][target_poke]["current_hp"] = new_hp
-            damage_applied = True
-            print(f"DEBUG: {target_poke} took {damage_to_apply} damage â€” HP: {old_hp} â†’ {new_hp}")
-        
-        # Display each text in sequence
+
+        # Damage should come from the attacker (actor), not the defender
+        damage_to_apply = actor_data.get("damage", 0)
+
+        print(f"DEBUG: Actor {actor_id} -> target {target_id} ({target_poke}), damage={damage_to_apply}, hp_update_at={hp_update_at}, move_hit={move_hit}")
+
+        # Play sequence: show text lines one by one
         for i, action_text in enumerate(text_sequence):
-            # Get updated HP displays after damage application
+            # show current text + current HP bars (before any change for this step)
             p1_display, p2_display = await get_current_hp_display()
-            
             p1_full_text = f"{action_text}\n\n{p1_display}"
             p2_full_text = f"{action_text}\n\n{p2_display}"
 
@@ -1212,14 +1199,38 @@ async def battle_ui(mode, fmt, user_id, event):
                 await room[p2_id]["start_msg"].edit(p2_full_text)
                 await asyncio.sleep(1.5)
             except MessageNotModifiedError:
+                # nothing to do, still continue
                 pass
             except Exception as e:
                 print(f"DEBUG: UI edit error: {e}")
 
-        # Clear movetext for this actor to prevent repetition
-        movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True}
-        print(f"DEBUG: Cleared movetext for actor {actor_id}")
+            # If this is the designated step to update HP, apply damage now (after showing move text)
+            if i == hp_update_at - 1:  # hp_update_at is 1-based in your example
+                if damage_to_apply > 0 and move_hit:
+                    # re-fetch target in case of switches/updates
+                    target_poke = battle_state[target_id]["active_pokemon"][0]
+                    old_hp = battle_data[target_id]["pokemon"][target_poke]["current_hp"]
+                    new_hp = max(0, old_hp - damage_to_apply)
+                    battle_data[target_id]["pokemon"][target_poke]["current_hp"] = new_hp
+                    print(f"DEBUG: Applied {damage_to_apply} dmg to {target_poke} ({target_id}) — HP: {old_hp} → {new_hp}")
 
+                    # Immediately update UI to reflect new HP (show same action_text but updated bars)
+                    p1_display_after, p2_display_after = await get_current_hp_display()
+                    p1_full_after = f"{action_text}\n\n{p1_display_after}"
+                    p2_full_after = f"{action_text}\n\n{p2_display_after}"
+                    try:
+                        await room[p1_id]["start_msg"].edit(p1_full_after)
+                        await room[p2_id]["start_msg"].edit(p2_full_after)
+                    except MessageNotModifiedError:
+                        pass
+                    except Exception as e:
+                        print(f"DEBUG: UI edit error after hp update: {e}")
+
+                # If move missed or damage==0, still nothing happens and we continue
+
+        # After sequence finishes, clear ONLY this actor's movetext to avoid cross-contamination
+        movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True, "hp_update_at": 1}
+        print(f"DEBUG: Cleared movetext for actor {actor_id}")
     # --- TURN ORDER LOGIC ---
     p1_speed = battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"]
     p2_speed = battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"]
