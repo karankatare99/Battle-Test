@@ -1103,7 +1103,6 @@ async def move_handler(user_id, move, poke, fmt, event):
             return False
 import asyncio
 import re
-from pyrogram.errors import MessageNotModified
 
 async def battle_ui(mode, fmt, user_id, event):
     """
