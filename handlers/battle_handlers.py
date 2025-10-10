@@ -1397,7 +1397,7 @@ async def battle_ui(mode, fmt, user_id, event):
                 if actor_id == p1_id:
                     p1_text = f"{actor_view}\n\n{p1_display}"
                     p2_text = f"{opp_view}\n\n{p2_display}"
-               else:
+                else:
                     p1_text = f"{opp_view}\n\n{p1_display}"
                     p2_text = f"{actor_view}\n\n{p2_display}"
 
