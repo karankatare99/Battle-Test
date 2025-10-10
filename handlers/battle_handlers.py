@@ -1228,7 +1228,7 @@ async def battle_ui(mode, fmt, user_id, event):
     # --- PHASE 1: Execute moves sequentially ---
     print("DEBUG: === PHASE 1: MOVE EXECUTION ===")
     await play_action_for_actor(fast_id)
-    await play_action_for_actor(slow_id)
+    #await play_action_for_actor(slow_id)
 
     # --- PHASE 2: End-of-turn effects (burn, poison, etc.) ---
     print("DEBUG: === PHASE 2: END-OF-TURN EFFECTS ===")
