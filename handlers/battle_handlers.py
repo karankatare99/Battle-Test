@@ -1101,8 +1101,21 @@ async def move_handler(user_id, move, poke, fmt, event):
             import traceback
             traceback.print_exc()
             return False
+import asyncio
+import re
+from pyrogram.errors import MessageNotModified
 
 async def battle_ui(mode, fmt, user_id, event):
+    """
+    Full battle UI function (singles only).
+    - Integrates play_action_for_actor() fully inside.
+    - Produces a single edit per action (no double edit / flicker).
+    - Applies move damage and simple status (burn) before composing the UI text,
+      so players see the move/status and the latest HP in the same message.
+    Assumes globals: room, room_userids, battle_state, battle_data, movetext,
+                     hp_bar, button_generator, end_of_turn_effects
+    """
+
     if fmt != "singles":
         return
 
@@ -1154,19 +1167,16 @@ async def battle_ui(mode, fmt, user_id, event):
 
         return p1_display, p2_display
 
-    import re
-    import asyncio
-
+    # -------------------------
+    # play_action_for_actor
+    # -------------------------
     async def play_action_for_actor(actor_id):
         """
-        New move-sequence player.
-        - Builds per-player view text (e.g. "Dragonite used Water Gun!" vs "Opposing Dragonite used Water Gun!")
-        - Shows each action, then applies damage immediately when the action is a 'used' move
-        - Handles simple status messages (e.g. burned / was hit by burn) and applies a burn tick.
-        - Clears processed movetext entries (actor and opponent if used).
-        Assumes globals: movetext, room, room_userids, battle_state, battle_data, get_current_hp_display
+        Play actor's move sequence with per-view phrasing and single-edit-per-action.
+        Parses movetext for the actor (and optionally the opponent) and executes lines
+        in combined order, applying damage/status before composing the single UI update.
         """
-        # quick sanity checks
+        # sanity
         if actor_id not in movetext:
             print(f"DEBUG: no movetext for actor {actor_id}")
             return
@@ -1176,18 +1186,18 @@ async def battle_ui(mode, fmt, user_id, event):
         actor_damage = actor_mv.get("damage", 0)
         actor_hit = actor_mv.get("move_hit", True)
 
-        # get room / p1/p2
+        # get room / p1/p2 (re-read to be robust)
         try:
-            roomid = room[actor_id]["roomid"]
-            p1_id = int(room_userids[roomid]["p1"])
-            p2_id = int(room_userids[roomid]["p2"])
+            local_roomid = room[actor_id]["roomid"]
+            local_p1 = int(room_userids[local_roomid]["p1"])
+            local_p2 = int(room_userids[local_roomid]["p2"])
         except Exception as e:
-            print(f"DEBUG: could not determine room/p1/p2 for actor {actor_id}: {e}")
-            return
+            # fallback to outer scope
+            local_p1, local_p2 = p1_id, p2_id
 
-        target_id = p2_id if actor_id == p1_id else p1_id
+        target_id = local_p2 if actor_id == local_p1 else local_p1
 
-        # active pokemon names (strings like "Dragonite-PKM-251010-ZM4W4")
+        # active pokemon names
         try:
             actor_poke = battle_state[actor_id]["active_pokemon"][0]
             target_poke = battle_state[target_id]["active_pokemon"][0]
@@ -1195,180 +1205,157 @@ async def battle_ui(mode, fmt, user_id, event):
             print(f"DEBUG: missing active_pokemon data: {e}")
             return
 
-        # try to read opponent movetext if present (we may use its damage)
+        # opponent movetext
         opp_mv = movetext.get(target_id, {})
         opp_seq = opp_mv.get("text_sequence", []) or []
         opp_damage = opp_mv.get("damage", 0)
         opp_hit = opp_mv.get("move_hit", True)
 
-        # Build combined sequence: prefer actor_seq order, append any unique opponent lines
-        combined = list(actor_seq)
-        for s in opp_seq:
-            if s not in combined:
-                combined.append(s)
+        # Build combined sequence preserving each actor's relative order:
+        # actor lines interleaved with opponent lines if present (actor-first preference).
+        combined = []
+        max_len = max(len(actor_seq), len(opp_seq))
+        for i in range(max_len):
+            if i < len(actor_seq):
+                combined.append((actor_id, actor_seq[i]))
+            if i < len(opp_seq):
+                combined.append((target_id, opp_seq[i]))
 
-        # helper: shorten a full name like "Dragonite-PKM-..." -> "Dragonite"
+        # helpers
         def short_name(full):
             if not full:
                 return full
             if "-PKM-" in full:
                 return full.split("-PKM-")[0]
-            # fall back to first token
             return full.split()[0]
 
-        # helper: parse a subject token from a raw action string
         def parse_subject_and_rest(raw):
-            # remove leading "The "
             raw_stripped = raw.strip()
-            # case-insensitive search for " used ", " is ", " was "
             low = raw_stripped.lower()
             if " used " in low:
                 idx = low.find(" used ")
                 subj = raw_stripped[:idx]
-                rest = raw_stripped[idx + len(" used "):]  # move name + anything
+                rest = raw_stripped[idx + len(" used "):]
                 return subj.strip(), "used", rest.strip()
-            # status-like: "X is already burned!", "X was hit by burn"
             m = re.search(r'^(?P<subj>.+?)\s+(?P<verb>is|was)\b(?P<rest>.*)', raw_stripped, flags=re.I)
             if m:
                 return m.group("subj").strip(), m.group("verb").lower(), m.group("rest").strip()
-            # fallback: everything is subject
             return raw_stripped, "", ""
 
-        # helper: decide owner id given subject token (by checking if it matches active pokemon)
-        def owner_for_subject_token(subj_token):
+        def owner_for_subject_token(subj_token, actor_poke_local, target_poke_local):
             token_clean = re.sub(r'^(The\s+)?Opposing\s+', '', subj_token, flags=re.I).strip()
-            # compare short names
-            if short_name(actor_poke) in token_clean:
+            if short_name(actor_poke_local).lower() in token_clean.lower():
                 return actor_id
-            if short_name(target_poke) in token_clean:
+            if short_name(target_poke_local).lower() in token_clean.lower():
                 return target_id
-            # fallback: if string contains actor_id? improbable. default to actor_id
             return actor_id
- 
-        # iterate combined events
-        for raw_action in combined:
-            raw = raw_action.strip()
+
+        # Process each event
+        for ev_actor, raw_action in combined:
+            raw = (raw_action or "").strip()
             if not raw:
                 continue
 
             subj_token, verb, rest = parse_subject_and_rest(raw)
-            subj_owner = owner_for_subject_token(subj_token)
+            subj_owner = owner_for_subject_token(subj_token, actor_poke, target_poke)
             subj_short = re.sub(r'^(The\s+)?Opposing\s+', '', subj_token, flags=re.I).strip()
             subj_short = short_name(subj_short)
 
-            # decide view texts
+            # Decide phrasing for each player's view
             actor_view = ""
             opp_view = ""
 
+            # Determine damage/target to apply for this line
+            damage_to_apply = 0
+            should_apply = False
+            victim_id = None
+            victim_poke_name = None
+
             if verb == "used":
-                move_text = rest  # e.g. "Water Gun!"
-                # build phrasing depending on who did it
-                if subj_owner == actor_id:
-                    actor_view = f"{subj_short} used {move_text}"
-                    opp_view   = f"Opposing {subj_short} used {move_text}"
+                move_text = rest
+                # Who used it?
+                if subj_owner == ev_actor:
+                    # ev_actor did this move
+                    if ev_actor == actor_id:
+                        # this move belongs to the currently-processing actor
+                        actor_view = f"{subj_short} used {move_text}"
+                        opp_view = f"Opposing {subj_short} used {move_text}"
+                        damage_to_apply = actor_damage if ev_actor == actor_id else 0
+                        should_apply = bool(actor_damage and actor_hit)
+                        victim_id = target_id if ev_actor == actor_id else local_p1
+                        victim_poke_name = target_poke if ev_actor == actor_id else actor_poke
+                    else:
+                        # ev_actor is opponent relative to this play call
+                        actor_view = f"Opposing {subj_short} used {move_text}"
+                        opp_view = f"{subj_short} used {move_text}"
+                        damage_to_apply = opp_damage if ev_actor == target_id else 0
+                        should_apply = bool(opp_damage and opp_hit)
+                        victim_id = local_p1 if ev_actor == target_id else target_id
+                        victim_poke_name = actor_poke if ev_actor == target_id else target_poke
                 else:
-                    actor_view = f"Opposing {subj_short} used {move_text}"
-                    opp_view   = f"{subj_short} used {move_text}"
+                    # Subj_owner not matching ev_actor — fallback phrasing
+                    if ev_actor == actor_id:
+                        actor_view = f"{subj_short} used {move_text}"
+                        opp_view = f"Opposing {subj_short} used {move_text}"
+                        damage_to_apply = actor_damage
+                        should_apply = bool(actor_damage and actor_hit)
+                        victim_id = target_id
+                        victim_poke_name = target_poke
+                    else:
+                        actor_view = f"Opposing {subj_short} used {move_text}"
+                        opp_view = f"{subj_short} used {move_text}"
+                        damage_to_apply = opp_damage
+                        should_apply = bool(opp_damage and opp_hit)
+                        victim_id = local_p1
+                        victim_poke_name = actor_poke
+
             else:
-                # status / generic text: preserve verb + rest if present
+                # status / generic messages
                 if verb:
                     remainder = f"{verb} {rest}".strip()
                 else:
-                    remainder = raw  # fallback
-                if subj_owner == actor_id:
+                    remainder = raw
+                if ev_actor == actor_id:
                     actor_view = f"{subj_short} {remainder}"
-                    opp_view   = f"Opposing {subj_short} {remainder}"
+                    opp_view = f"Opposing {subj_short} {remainder}"
                 else:
                     actor_view = f"Opposing {subj_short} {remainder}"
-                    opp_view   = f"{subj_short} {remainder}"
+                    opp_view = f"{subj_short} {remainder}"
 
-            # fetch current HP displays and send per-player view
-            try:
-                p1_display, p2_display = await get_current_hp_display()
-            except Exception as e:
-                print(f"DEBUG: get_current_hp_display failed: {e}")
-                p1_display, p2_display = "", ""
-
-            # map actor_view / opp_view into p1_text / p2_text depending on who actor_id is
-            if actor_id == p1_id:
-                p1_text = f"{actor_view}\n\n{p1_display}"
-                p2_text = f"{opp_view}\n\n{p2_display}"
-            else:
-                p1_text = f"{opp_view}\n\n{p1_display}"
-                p2_text = f"{actor_view}\n\n{p2_display}"
-
-            # send UI update
-            try:
-                await room[p1_id]["start_msg"].edit(p1_text)
-                await room[p2_id]["start_msg"].edit(p2_text)
-                await asyncio.sleep(1.2)
-            except MessageNotModifiedError:
-                pass
-            except Exception as e:
-                print(f"DEBUG: UI edit error while showing action '{raw}': {e}")
-
-            # If this was a move, apply damage immediately (use the matching movetext damage)
-            if verb == "used":
-                if subj_owner == actor_id:
-                    damage = actor_damage
-                    hit = actor_hit
-                    victim = target_id
-                    victim_poke_name = target_poke
-                else:
-                    damage = opp_damage
-                    hit = opp_hit
-                    victim = actor_id
-                    victim_poke_name = actor_poke
-
-                if hit and damage and damage > 0:
-                    try:
-                        old_hp = battle_data[victim]["pokemon"][victim_poke_name]["current_hp"]
-                    except Exception as e:
-                        print(f"DEBUG: missing hp entry for victim {victim}: {e}")
-                        old_hp = 0
-                    new_hp = max(0, old_hp - damage)
-                    # commit
-                    try:
-                        battle_data[victim]["pokemon"][victim_poke_name]["current_hp"] = new_hp
-                    except Exception as e:
-                        print(f"DEBUG: failed to write new_hp: {e}")
-
-                    print(f"DEBUG: Applied move damage: {short_name(victim_poke_name)} took {damage} — HP {old_hp} -> {new_hp}")
-
-                    # show updated HP immediately
-                    try:
-                        p1_display, p2_display = await get_current_hp_display()
-                    except Exception:
-                        p1_display, p2_display = "", ""
-
-                    if actor_id == p1_id:
-                        p1_text = f"{actor_view}\n\n{p1_display}"
-                        p2_text = f"{opp_view}\n\n{p2_display}"
-                    else:
-                        p1_text = f"{opp_view}\n\n{p1_display}"
-                        p2_text = f"{actor_view}\n\n{p2_display}"
-
-                    try:
-                        await room[p1_id]["start_msg"].edit(p1_text)
-                        await room[p2_id]["start_msg"].edit(p2_text)
-                        await asyncio.sleep(0.9)
-                    except MessageNotModifiedError:
-                        pass
-                    except Exception as e:
-                        print(f"DEBUG: HP update UI error after move: {e}")
-
-            # If status contains burn/was hit by burn etc -> apply burn tick to the subject
+            # Handle applying damage or burn BEFORE composing the UI message,
+            # so we can display updated HP in the same edit (single edit).
             raw_low = raw.lower()
+            applied_any = False
+
+            # Apply move damage
+            if verb == "used" and should_apply and damage_to_apply and victim_id is not None:
+                try:
+                    old_hp = battle_data[victim_id]["pokemon"][victim_poke_name]["current_hp"]
+                except Exception as e:
+                    print(f"DEBUG: missing hp entry for victim {victim_id}: {e}")
+                    old_hp = 0
+                new_hp = max(0, old_hp - damage_to_apply)
+                try:
+                    battle_data[victim_id]["pokemon"][victim_poke_name]["current_hp"] = new_hp
+                    applied_any = True
+                except Exception as e:
+                    print(f"DEBUG: failed to write new_hp: {e}")
+                print(f"DEBUG: Applied move damage: {short_name(victim_poke_name)} took {damage_to_apply} — HP {old_hp} -> {new_hp}")
+
+            # Apply burn tick if relevant
             if ("burn" in raw_low or "burned" in raw_low) and ("hit" in raw_low or "was" in raw_low or "is" in raw_low):
-                # determine affected owner by matching subj_short
-                affected_owner = actor_id if short_name(actor_poke) == subj_short else (target_id if short_name(target_poke) == subj_short else subj_owner)
+                # try to determine affected owner by subj_short
+                if short_name(actor_poke).lower() == subj_short.lower():
+                    affected_owner = actor_id
+                elif short_name(target_poke).lower() == subj_short.lower():
+                    affected_owner = target_id
+                else:
+                    affected_owner = subj_owner
+
                 affected_poke = battle_state[affected_owner]["active_pokemon"][0]
-                # compute burn tick (1/8 of max hp) fallback to 1
                 try:
                     poke_entry = battle_data[affected_owner]["pokemon"][affected_poke]
-                    max_hp = poke_entry.get("max_hp", poke_entry.get("hp", poke_entry.get("max_hp", poke_entry.get("current_hp", 0))))
-                    if not max_hp:
-                        max_hp = poke_entry.get("current_hp", 0)
+                    max_hp = poke_entry.get("final_hp", poke_entry.get("current_hp", 1))
                     burn_dmg = max(1, int(max_hp // 8)) if max_hp else 1
                 except Exception as e:
                     print(f"DEBUG: computing burn damage failed: {e}")
@@ -1382,46 +1369,66 @@ async def battle_ui(mode, fmt, user_id, event):
                 new_hp = max(0, old_hp - burn_dmg)
                 try:
                     battle_data[affected_owner]["pokemon"][affected_poke]["current_hp"] = new_hp
+                    applied_any = True
                 except Exception as e:
                     print(f"DEBUG: failed to write burn new_hp: {e}")
-
                 print(f"DEBUG: Burn tick: {short_name(affected_poke)} took {burn_dmg} burn damage — {old_hp} -> {new_hp}")
 
-                # show updated HP after burn
-                try:
-                    p1_display, p2_display = await get_current_hp_display()
-                except Exception:
-                    p1_display, p2_display = "", ""
+            # Compose and send a single edit containing the action text and the updated HP bars
+            try:
+                p1_display, p2_display = await get_current_hp_display()
+            except Exception as e:
+                print(f"DEBUG: get_current_hp_display failed: {e}")
+                p1_display, p2_display = "", ""
 
-                # reuse last phrasing for UI (status text already shown once)
-                if actor_id == p1_id:
+            # Map actor_view / opp_view into p1_text / p2_text
+            if actor_id == p1_id:
+                # When playing actor (the "local" actor for this function) as p1
+                if ev_actor == p1_id:
                     p1_text = f"{actor_view}\n\n{p1_display}"
                     p2_text = f"{opp_view}\n\n{p2_display}"
                 else:
                     p1_text = f"{opp_view}\n\n{p1_display}"
                     p2_text = f"{actor_view}\n\n{p2_display}"
+            else:
+                # actor_id corresponds to p2 in this room
+                if ev_actor == p2_id:
+                    p2_text = f"{actor_view}\n\n{p2_display}"
+                    p1_text = f"{opp_view}\n\n{p1_display}"
+                else:
+                    p2_text = f"{opp_view}\n\n{p2_display}"
+                    p1_text = f"{actor_view}\n\n{p1_display}"
 
-                try:
-                    await room[p1_id]["start_msg"].edit(p1_text)
-                    await room[p2_id]["start_msg"].edit(p2_text)
-                    await asyncio.sleep(0.9)
-                except MessageNotModifiedError:
-                    pass
-                except Exception as e:
-                    print(f"DEBUG: HP update UI error after burn: {e}")
+            # Final single edit
+            try:
+                await room[p1_id]["start_msg"].edit(p1_text)
+                await room[p2_id]["start_msg"].edit(p2_text)
+                # amount of time to let users read text; adjust if desired
+                await asyncio.sleep(1.1)
+            except MessageNotModified:
+                # nothing changed (rare), ignore
+                pass
+            except Exception as e:
+                print(f"DEBUG: UI edit error while showing action '{raw}': {e}")
 
-        # finished processing sequence -> clear processed movetexts
-        # If we touched opponent movetext in combined list (opp_seq non-empty), clear both to avoid double-processing.
+        # Clear movetext entries for actor and opponent (if opponent had seq)
         movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True, "hp_update_at": 1}
         if opp_seq:
             movetext[target_id] = {"text_sequence": [], "damage": 0, "move_hit": True, "hp_update_at": 1}
         print(f"DEBUG: Cleared movetext for actor {actor_id}{' and opponent' if opp_seq else ''}")
-    
-    # --- TURN ORDER LOGIC ---
-    p1_speed = battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"]
-    p2_speed = battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"]
-    
-    # Determine turn order based on speed
+
+    # -------------------------
+    # TURN ORDER & PHASES
+    # -------------------------
+    try:
+        p1_speed = battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"]
+    except Exception:
+        p1_speed = 0
+    try:
+        p2_speed = battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"]
+    except Exception:
+        p2_speed = 0
+
     if p1_speed >= p2_speed:
         fast_id, slow_id = p1_id, p2_id
         print(f"DEBUG: P1 ({p1_speed} speed) moves first, P2 ({p2_speed} speed) moves second")
@@ -1431,22 +1438,21 @@ async def battle_ui(mode, fmt, user_id, event):
 
     print(f"DEBUG: Turn order - Fast: {fast_id}, Slow: {slow_id}")
 
-    # --- PHASE 1: Execute moves sequentially ---
+    # Phase 1: execute moves
     print("DEBUG: === PHASE 1: MOVE EXECUTION ===")
     await play_action_for_actor(fast_id)
     await play_action_for_actor(slow_id)
 
-    # --- PHASE 2: End-of-turn effects (burn, poison, etc.) ---
+    # Phase 2: end-of-turn effects
     print("DEBUG: === PHASE 2: END-OF-TURN EFFECTS ===")
     had_effects = await end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke)
     if had_effects:
-        # Only process end-of-turn effects if they exist in movetext
         if p1_id in movetext and movetext[p1_id].get("text_sequence"):
             await play_action_for_actor(p1_id)
         if p2_id in movetext and movetext[p2_id].get("text_sequence"):
             await play_action_for_actor(p2_id)
 
-    # --- PHASE 3: Refresh UI and buttons ---
+    # Phase 3: UI refresh and buttons
     print("DEBUG: === PHASE 3: UI REFRESH ===")
     p1_final_display, p2_final_display = await get_current_hp_display()
     battle_state[p1_id]["player_text"] = p1_final_display
@@ -1457,7 +1463,6 @@ async def battle_ui(mode, fmt, user_id, event):
 
     print(f"DEBUG: P1 fainted: {p1_fainted}, P2 fainted: {p2_fainted}")
 
-    # Update UI for each player
     for pid, poke, final_text, fainted in [
         (p1_id, p1_poke, p1_final_display, p1_fainted),
         (p2_id, p2_poke, p2_final_display, p2_fainted),
@@ -1466,20 +1471,32 @@ async def battle_ui(mode, fmt, user_id, event):
             buttons = await button_generator(
                 battle_data[pid]["pokemon"][poke]["moves"], pid, poke
             )
-            await room[pid]["start_msg"].edit(text=final_text, buttons=buttons)
+            try:
+                await room[pid]["start_msg"].edit(text=final_text, buttons=buttons)
+            except MessageNotModified:
+                pass
+            except Exception as e:
+                print(f"DEBUG: UI update error when adding buttons: {e}")
         else:
-            await room[pid]["start_msg"].edit(text=final_text)
+            try:
+                await room[pid]["start_msg"].edit(text=final_text)
+            except MessageNotModified:
+                pass
+            except Exception as e:
+                print(f"DEBUG: UI update error for fainted: {e}")
 
     print("DEBUG: === TURN COMPLETE ===")
+
 
 # Additional helper function to validate movetext state
 def validate_movetext_state():
     """Helper function to validate movetext data integrity"""
-    for actor_id, data in movetext.items():
+    for actor_id, data in list(movetext.items()):
         if not isinstance(data, dict):
             print(f"WARNING: Invalid movetext data for actor {actor_id}")
             movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True}
-        
+            data = movetext[actor_id]
+
         required_keys = ["text_sequence", "damage", "move_hit"]
         for key in required_keys:
             if key not in data:
@@ -1492,33 +1509,32 @@ def validate_movetext_state():
                     data[key] = True
 
 # Additional debugging function
-def debug_battle_state(p1_id, p2_id):
+def debug_battle_state(p1_id_arg, p2_id_arg):
     """Print current battle state for debugging"""
     print("=== BATTLE STATE DEBUG ===")
-    print(f"P1 ID: {p1_id}")
-    print(f"P2 ID: {p2_id}")
-    
-    if p1_id in battle_state:
-        p1_poke = battle_state[p1_id]["active_pokemon"][0]
-        print(f"P1 Active: {p1_poke}")
-        if p1_poke in battle_data[p1_id]["pokemon"]:
-            p1_hp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
-            p1_max_hp = battle_data[p1_id]["pokemon"][p1_poke]["final_hp"]
+    print(f"P1 ID: {p1_id_arg}")
+    print(f"P2 ID: {p2_id_arg}")
+
+    if p1_id_arg in battle_state:
+        p1_poke_local = battle_state[p1_id_arg]["active_pokemon"][0]
+        print(f"P1 Active: {p1_poke_local}")
+        if p1_poke_local in battle_data[p1_id_arg]["pokemon"]:
+            p1_hp = battle_data[p1_id_arg]["pokemon"][p1_poke_local]["current_hp"]
+            p1_max_hp = battle_data[p1_id_arg]["pokemon"][p1_poke_local]["final_hp"]
             print(f"P1 HP: {p1_hp}/{p1_max_hp}")
-    
-    if p2_id in battle_state:
-        p2_poke = battle_state[p2_id]["active_pokemon"][0]
-        print(f"P2 Active: {p2_poke}")
-        if p2_poke in battle_data[p2_id]["pokemon"]:
-            p2_hp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
-            p2_max_hp = battle_data[p2_id]["pokemon"][p2_poke]["final_hp"]
+
+    if p2_id_arg in battle_state:
+        p2_poke_local = battle_state[p2_id_arg]["active_pokemon"][0]
+        print(f"P2 Active: {p2_poke_local}")
+        if p2_poke_local in battle_data[p2_id_arg]["pokemon"]:
+            p2_hp = battle_data[p2_id_arg]["pokemon"][p2_poke_local]["current_hp"]
+            p2_max_hp = battle_data[p2_id_arg]["pokemon"][p2_poke_local]["final_hp"]
             print(f"P2 HP: {p2_hp}/{p2_max_hp}")
-    
+
     print("Movetext state:")
     for actor_id, data in movetext.items():
         print(f"  Actor {actor_id}: {data}")
     print("=========================")
-
 
 async def end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke):
     """
