@@ -961,7 +961,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                 movetext[user_id]["hp_update_at"] = 999
                 movetext[opponent_id]["hp_update_at"] = 999
-            
+                print(movetext)
                 return True
             #paralysis check
             if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"]:
