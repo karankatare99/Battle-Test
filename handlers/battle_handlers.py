@@ -1076,7 +1076,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 
 
             # Build opponent’s sequence
-            seq_opp = [used_text_opp] + seq_self[1:]
+            seq_opp = [used_text_opp]
+            if paralyze:
+                seq_opp.append(paralyze_textopp)
+            if burn:
+                seq_opp.append(burn_textopp)
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
             movetext[opponent_id]["text_sequence"].extend(seq_opp)
