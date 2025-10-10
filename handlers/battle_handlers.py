@@ -1096,8 +1096,6 @@ async def move_handler(user_id, move, poke, fmt, event):
             traceback.print_exc()
             return False
 
-
-    
 async def battle_ui(mode, fmt, user_id, event):
     if fmt != "singles":
         return
@@ -1112,56 +1110,63 @@ async def battle_ui(mode, fmt, user_id, event):
     # Safety restore
     for pid, poke in [(p1_id, p1_poke), (p2_id, p2_poke)]:
         if poke not in battle_data[pid]["pokemon"]:
-            battle_data[pid]["pokemon"][poke] = {"current_hp": 0, "final_hp": 1, "moves": []}
+            battle_data[pid]["pokemon"][poke] = {
+                "current_hp": 0,
+                "final_hp": 1,
+                "moves": [],
+            }
 
     async def get_current_hp_display():
-        """Get real-time HP display"""
-        p1_hp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
-        p1_max_hp = battle_data[p1_id]["pokemon"][p1_poke]["final_hp"]
-        p2_hp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
-        p2_max_hp = battle_data[p2_id]["pokemon"][p2_poke]["final_hp"]
-        
+        """Return formatted HP display for both sides."""
+        p1_poke_current = battle_state[p1_id]["active_pokemon"][0]
+        p2_poke_current = battle_state[p2_id]["active_pokemon"][0]
+
+        p1_hp = battle_data[p1_id]["pokemon"][p1_poke_current]["current_hp"]
+        p1_max_hp = battle_data[p1_id]["pokemon"][p1_poke_current]["final_hp"]
+        p2_hp = battle_data[p2_id]["pokemon"][p2_poke_current]["current_hp"]
+        p2_max_hp = battle_data[p2_id]["pokemon"][p2_poke_current]["final_hp"]
+
         p1_hpbar = await hp_bar(p1_hp, p1_max_hp)
         p2_hpbar = await hp_bar(p2_hp, p2_max_hp)
+
         p1_percent = p1_hp / p1_max_hp * 100 if p1_max_hp > 0 else 0
         p2_percent = p2_hp / p2_max_hp * 100 if p2_max_hp > 0 else 0
-        
+
         p1_display = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**「{p2_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p2_hpbar} {p2_percent:.0f}% "
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**「{p1_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_hpbar} {p1_hp}/{p1_max_hp}"
         )
-        
+
         p2_display = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**「{p1_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p1_hpbar} {p1_percent:.0f}% "
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__"
+            f"__**「{p2_poke_current.split('_')[0].capitalize()}(Lv.100)」**__"
             f"{p2_hpbar} {p2_hp}/{p2_max_hp}"
         )
-        
+
         return p1_display, p2_display
 
     async def play_action_for_both(actor_id):
-        """Play actor's sequence with HP damage applied at the correct time"""
-        if not movetext.get(actor_id, {}).get("text_sequence"):
+        """Play actor's sequence with HP damage applied at the correct time."""
+        actor_data = movetext.get(actor_id, {})
+        if not actor_data or not actor_data.get("text_sequence"):
             return
-    
-        action_texts = movetext[actor_id]["text_sequence"]
-        damage_to_apply = movetext.get(actor_id, {}).get("damage", 0)
-    
-        # Determine which player is the target
+
+        # Copy safely to prevent async mutation
+        action_texts = actor_data["text_sequence"][:]
+        damage_to_apply = actor_data.get("damage", 0)
+        move_hit = actor_data.get("move_hit", True)
+
+        # Identify correct target
         target_id = p2_id if actor_id == p1_id else p1_id
-        target_poke = battle_state[target_id]["active_pokemon"][0]
-    
-        # Show each action text sequentially
+
         for i, action_text in enumerate(action_texts):
-            # Get CURRENT HP display (before any damage for this text)
             p1_display, p2_display = await get_current_hp_display()
-        
             p1_full_text = f"{action_text}\n\n{p1_display}"
             p2_full_text = f"{action_text}\n\n{p2_display}"
-        
+
             try:
                 await room[p1_id]["start_msg"].edit(p1_full_text)
                 await room[p2_id]["start_msg"].edit(p2_full_text)
@@ -1169,114 +1174,56 @@ async def battle_ui(mode, fmt, user_id, event):
             except MessageNotModifiedError:
                 pass
             except Exception as e:
-                print(f"DEBUG: Error: {e}")
-          
-            # Apply damage AFTER showing the move text (i==0), before effectiveness text
-            if i == 0 and damage_to_apply > 0:
-                old_hp = battle_data[target_id]["pokemon"][target_poke]["current_hp"]
-                battle_data[target_id]["pokemon"][target_poke]["current_hp"] = max(0, old_hp - damage_to_apply)
-                print(f"DEBUG: Applied {damage_to_apply} damage to {target_poke} - HP: {old_hp} → {battle_data[target_id]['pokemon'][target_poke]['current_hp']}")
-    
-        movetext[actor_id]["text_sequence"].clear()
-        movetext[actor_id]["damage"] = 0
-     
+                print(f"DEBUG: UI edit error: {e}")
 
-    # Determine speed order
+            # Apply damage only after showing the move text (once per move)
+            if i == 0 and damage_to_apply > 0 and move_hit:
+                target_poke = battle_state[target_id]["active_pokemon"][0]
+                old_hp = battle_data[target_id]["pokemon"][target_poke]["current_hp"]
+                new_hp = max(0, old_hp - damage_to_apply)
+                battle_data[target_id]["pokemon"][target_poke]["current_hp"] = new_hp
+                print(
+                    f"DEBUG: {target_poke} took {damage_to_apply} damage "
+                    f"— HP: {old_hp} → {new_hp}"
+                )
+
+        # Reset movetext safely for next turn
+        movetext[actor_id] = {"text_sequence": [], "damage": 0, "move_hit": True}
+
+    # --- TURN ORDER LOGIC ---
     p1_speed = battle_data[p1_id]["pokemon"][p1_poke]["stats"]["spe"]
     p2_speed = battle_data[p2_id]["pokemon"][p2_poke]["stats"]["spe"]
     fast_id, slow_id = (p1_id, p2_id) if p1_speed >= p2_speed else (p2_id, p1_id)
 
-    # PHASE 1: Execute moves sequentially
+    # --- PHASE 1: Execute moves sequentially ---
     await play_action_for_both(fast_id)
     await play_action_for_both(slow_id)
 
-    # PHASE 2: Burn damage
+    # --- PHASE 2: End-of-turn effects (burn, poison, etc.) ---
     had_effects = await end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke)
     if had_effects:
         await play_action_for_both(p1_id)
         await play_action_for_both(p2_id)
 
-    # PHASE 3: Buttons
+    # --- PHASE 3: Refresh UI and buttons ---
     p1_final_display, p2_final_display = await get_current_hp_display()
     battle_state[p1_id]["player_text"] = p1_final_display
     battle_state[p2_id]["player_text"] = p2_final_display
-    
+
     p1_fainted = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] <= 0
     p2_fainted = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] <= 0
-    
-    for pid, poke, final_text, fainted in [(p1_id, p1_poke, p1_final_display, p1_fainted), (p2_id, p2_poke, p2_final_display, p2_fainted)]:
+
+    for pid, poke, final_text, fainted in [
+        (p1_id, p1_poke, p1_final_display, p1_fainted),
+        (p2_id, p2_poke, p2_final_display, p2_fainted),
+    ]:
         if not fainted:
-            buttons = await button_generator(battle_data[pid]["pokemon"][poke]["moves"], pid, poke)
+            buttons = await button_generator(
+                battle_data[pid]["pokemon"][poke]["moves"], pid, poke
+            )
             await room[pid]["start_msg"].edit(text=final_text, buttons=buttons)
         else:
             await room[pid]["start_msg"].edit(text=final_text)
-
-# ===================================================================
-# END-OF-TURN EFFECTS FUNCTION
-# ===================================================================
-
-async def end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke):
-    """
-    Apply burn and poison damage at end of turn
-    Returns True if any effects occurred
-    """
-    had_effects = False
-    
-    for pid, poke in [(p1_id, p1_poke), (p2_id, p2_poke)]:
-        opponent_id = p2_id if pid == p1_id else p1_id
-        pokemon = battle_data[pid]["pokemon"][poke]
-        poke_name = poke.split("_")[0]
-        
-        # Initialize movetext if needed
-        if pid not in movetext:
-            movetext[pid] = {"text_sequence": [], "hp_update_at": 0, "damage": 0}
-        if opponent_id not in movetext:
-            movetext[opponent_id] = {"text_sequence": [], "hp_update_at": 0, "damage": 0}
-        
-        # Check burn status
-        if roomid in status_effects and pid in status_effects[roomid]:
-            if poke in status_effects[roomid][pid].get("burn", []):
-                # Apply burn damage (1/16 of max HP)
-                burn_damage = max(1, pokemon["final_hp"] // 16)
-                old_hp = pokemon["current_hp"]
-                pokemon["current_hp"] = max(0, pokemon["current_hp"] - burn_damage)
-                
-                burn_text_self = f"{poke_name} was hurt by its burn!"
-                burn_text_opp = f"Opposing {poke_name} was hurt by its burn!"
-                
-                movetext[pid]["text_sequence"].append(burn_text_self)
-                movetext[opponent_id]["text_sequence"].append(burn_text_opp)
-                movetext[pid]["hp_update_at"] = 0
-                movetext[opponent_id]["hp_update_at"] = 0
-                
-                had_effects = True
-                print(f"DEBUG: {poke_name} (user {pid}) took {burn_damage} burn damage: {old_hp} → {pokemon['current_hp']}")
-        
-        # Check poison status
-        if roomid in status_effects and pid in status_effects[roomid]:
-            if poke in status_effects[roomid][pid].get("poison", []):
-                poison_damage = max(1, pokemon["final_hp"] // 8)
-                old_hp = pokemon["current_hp"]
-                pokemon["current_hp"] = max(0, pokemon["current_hp"] - poison_damage)
-                
-                poison_text_self = f"{poke_name} was hurt by poison!"
-                poison_text_opp = f"Opposing {poke_name} was hurt by poison!"
-                
-                movetext[pid]["text_sequence"].append(poison_text_self)
-                movetext[opponent_id]["text_sequence"].append(poison_text_opp)
-                movetext[pid]["hp_update_at"] = 0
-                movetext[opponent_id]["hp_update_at"] = 0
-                
-                had_effects = True
-                print(f"DEBUG: {poke_name} (user {pid}) took {poison_damage} poison damage: {old_hp} → {pokemon['current_hp']}")
-        
-        # Clear flinch (one-turn status)
-        if roomid in status_effects and pid in status_effects[roomid]:
-            if poke in status_effects[roomid][pid].get("flinch", []):
-                status_effects[roomid][pid]["flinch"].remove(poke)
-    
-    return had_effects
-
     
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
