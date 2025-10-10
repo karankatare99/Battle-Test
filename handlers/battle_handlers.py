@@ -1083,7 +1083,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             movetext[user_id]["hp_update_at"] = 1
             movetext[opponent_id]["hp_update_at"] = 1
-
+            print(movetext)
             print(
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
                 f"Damage: {damage} will be applied to {opp_pokemon}"
