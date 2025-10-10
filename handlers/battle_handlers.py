@@ -1046,6 +1046,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                 seq_self.append(crit_text)
             if power > 0 and effect_text != "Effective":
                 seq_self.append(effect_text)
+            # Build opponent’s sequence
+            seq_opp = [used_text_opp]
             #paralyze check
             if move in paralyze_moves:
                 paralyze = await paralyze_check(move)
@@ -1055,11 +1057,13 @@ async def move_handler(user_id, move, poke, fmt, event):
                     paralyze_textuser = f"The Opposing {opp_pokemon} is already paralyzed!"
                     paralyze_textopp = f"{opp_pokemon} is already paralyzed!"
                     seq_self.append(paralyze_textuser)
+                    seq_opp.append(paralyze_textopp)
                 elif paralyze:
                     paralyze_textuser = f"The Opposing {opp_pokemon} is paralyzed!\nIt may be unable to move"
                     paralyze_textopp = f"{opp_pokemon} is paralyzed!\nIt may be unable to move"
                     paralyze_list.append(opponent_active)
                     seq_self.append(paralyze_textuser)
+                    seq_opp.append(paralyze_textopp)
             if move in burn_moves:
                 burn = await burn_check(move)
                 burn_list = status_effects[roomid][opponent_id]["burn"]
@@ -1068,19 +1072,17 @@ async def move_handler(user_id, move, poke, fmt, event):
                     burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
                     burn_textopp = f"{opp_pokemon} is already burned!"
                     seq_self.append(burn_textuser)
+                    seq_opp.append(burn_textopp)
                 elif burn:
                     burn_textuser = f"The Opposing {opp_pokemon} was burned!"
                     burn_textopp = f"{opp_pokemon} was burned!"
                     burn_list.append(opponent_active)
                     seq_self.append(burn_textuser)
+                    seq_opp.append(burn_textopp)
                 
 
-            # Build opponent’s sequence
-            seq_opp = [used_text_opp]
-            if paralyze:
-                seq_opp.append(paralyze_textopp)
-            if burn:
-                seq_opp.append(burn_textopp)
+            
+            
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
             movetext[opponent_id]["text_sequence"].extend(seq_opp)
