@@ -1224,6 +1224,68 @@ async def battle_ui(mode, fmt, user_id, event):
             await room[pid]["start_msg"].edit(text=final_text, buttons=buttons)
         else:
             await room[pid]["start_msg"].edit(text=final_text)
+
+async def end_of_turn_effects(roomid, p1_id, p2_id, p1_poke, p2_poke):
+    """
+    Apply burn and poison damage at end of turn
+    Returns True if any effects occurred
+    """
+    had_effects = False
+    
+    for pid, poke in [(p1_id, p1_poke), (p2_id, p2_poke)]:
+        opponent_id = p2_id if pid == p1_id else p1_id
+        pokemon = battle_data[pid]["pokemon"][poke]
+        poke_name = poke.split("_")[0]
+        
+        # Initialize movetext if needed
+        if pid not in movetext:
+            movetext[pid] = {"text_sequence": [], "hp_update_at": 0, "damage": 0}
+        if opponent_id not in movetext:
+            movetext[opponent_id] = {"text_sequence": [], "hp_update_at": 0, "damage": 0}
+        
+        # Check burn status
+        if roomid in status_effects and pid in status_effects[roomid]:
+            if poke in status_effects[roomid][pid].get("burn", []):
+                # Apply burn damage (1/16 of max HP)
+                burn_damage = max(1, pokemon["final_hp"] // 16)
+                old_hp = pokemon["current_hp"]
+                pokemon["current_hp"] = max(0, pokemon["current_hp"] - burn_damage)
+                
+                burn_text_self = f"{poke_name} was hurt by its burn!"
+                burn_text_opp = f"Opposing {poke_name} was hurt by its burn!"
+                
+                movetext[pid]["text_sequence"].append(burn_text_self)
+                movetext[opponent_id]["text_sequence"].append(burn_text_opp)
+                movetext[pid]["hp_update_at"] = 0
+                movetext[opponent_id]["hp_update_at"] = 0
+                
+                had_effects = True
+                print(f"DEBUG: {poke_name} (user {pid}) took {burn_damage} burn damage: {old_hp} → {pokemon['current_hp']}")
+        
+        # Check poison status
+        if roomid in status_effects and pid in status_effects[roomid]:
+            if poke in status_effects[roomid][pid].get("poison", []):
+                poison_damage = max(1, pokemon["final_hp"] // 8)
+                old_hp = pokemon["current_hp"]
+                pokemon["current_hp"] = max(0, pokemon["current_hp"] - poison_damage)
+                
+                poison_text_self = f"{poke_name} was hurt by poison!"
+                poison_text_opp = f"Opposing {poke_name} was hurt by poison!"
+                
+                movetext[pid]["text_sequence"].append(poison_text_self)
+                movetext[opponent_id]["text_sequence"].append(poison_text_opp)
+                movetext[pid]["hp_update_at"] = 0
+                movetext[opponent_id]["hp_update_at"] = 0
+                
+                had_effects = True
+                print(f"DEBUG: {poke_name} (user {pid}) took {poison_damage} poison damage: {old_hp} → {pokemon['current_hp']}")
+        
+        # Clear flinch (one-turn status)
+        if roomid in status_effects and pid in status_effects[roomid]:
+            if poke in status_effects[roomid][pid].get("flinch", []):
+                status_effects[roomid][pid]["flinch"].remove(poke)
+    
+    return had_effects
     
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
