@@ -1158,15 +1158,15 @@ async def battle_ui(mode, fmt, user_id, event):
     import asyncio
 
     async def play_action_for_actor(actor_id):
-    """
-    New move-sequence player.
-    - Builds per-player view text (e.g. "Dragonite used Water Gun!" vs "Opposing Dragonite used Water Gun!")
-    - Shows each action, then applies damage immediately when the action is a 'used' move.
-    - Handles simple status messages (e.g. burned / was hit by burn) and applies a burn tick.
-    - Clears processed movetext entries (actor and opponent if used).
-    Assumes globals: movetext, room, room_userids, battle_state, battle_data, get_current_hp_display
-    """
-    # quick sanity checks
+        """
+        New move-sequence player.
+        - Builds per-player view text (e.g. "Dragonite used Water Gun!" vs "Opposing Dragonite used Water Gun!")
+        - Shows each action, then applies damage immediately when the action is a 'used' move
+        - Handles simple status messages (e.g. burned / was hit by burn) and applies a burn tick.
+        - Clears processed movetext entries (actor and opponent if used).
+        Assumes globals: movetext, room, room_userids, battle_state, battle_data, get_current_hp_display
+        """
+        # quick sanity checks
         if actor_id not in movetext:
             print(f"DEBUG: no movetext for actor {actor_id}")
             return
