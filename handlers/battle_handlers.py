@@ -1169,7 +1169,7 @@ async def battle_ui(fmt, user_id, event):
                 p2_text1= f"{j}\n\n{p2_text}"
                 await p1_textmsg.edit(p1_text0)
                 await p2_textmsg.edit(p2_text0)
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(4)
                 await p1_textmsg.edit(p1_text1)
                 await p2_textmsg.edit(p2_text1)
             if i!=0 or j!=0:
@@ -1177,7 +1177,7 @@ async def battle_ui(fmt, user_id, event):
                 p2_text2= f"{j}\n\n{p2_text}"
                 await p1_textmsg.edit(p1_text2)
                 await p2_textmsg.edit(p2_text2)
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(4)
         
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
