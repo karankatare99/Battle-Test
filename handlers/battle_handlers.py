@@ -1537,7 +1537,8 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                 if faint_result == "switch_required":
                     user_msg = room[uid]["start_msg"]
                     await show_forced_switch_menu(uid, user_msg)
-
+        selected_move[p1_id] = {}
+        selected_move[p2_id] = {}
         print(f"DEBUG: Turn {battle_state[p1_id]['turn'] - 1} resolved for room {room_id}")
 
     finally:
