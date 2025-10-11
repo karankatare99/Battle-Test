@@ -563,7 +563,7 @@ async def button_generator(movelist, user_id, poke):
 
 
 # Import necessary helper functions from other modules
-from helpers import (
+from handlers.helpers import (
     hp_bar,
     accuracy_checker,
     interpret_type_effect,
