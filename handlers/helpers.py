@@ -3,7 +3,7 @@ Helper functions for Pokemon battle mechanics.
 """
 import random
 import asyncio
-from battle_handlers import movetext, status_effects, battle_data, battle_state, room_userids, room
+from handlers.battle_handlers import movetext, status_effects, battle_data, battle_state, room_userids, room
 
 
 async def hp_bar(current_hp, final_hp):
