@@ -370,31 +370,46 @@ def register_battle_handlers(bot):
     
         print(f"DEBUG: Move callback received for user {user_id} - {poke} uses {move}")
     
-    # Get battle text
+        # Get battle text
         battle_text = battle_state[user_id].get("player_text", "")
         fmt = battle_state[user_id]["fmt"]
+        room_id = room[user_id]["roomid"]
     
-    # Record selected move and increment turn
+        # Record selected move and increment turn
         if user_id not in selected_move:
             selected_move[user_id] = {}
-        selected_move[user_id] = {
-    "move": move,
-    "turn": battle_state[user_id]["turn"]
-}
     
-    # Edit the message to indicate the player is communicating
-        room_id = room[user_id]["roomid"]
+        selected_move[user_id] = {
+            "move": move,
+            "turn": battle_state[user_id]["turn"]
+        }
+    
+        # Edit the message to indicate the player is communicating
         text_data = room[user_id]["start_msg"]
         try:
-            await text_data.edit(f"◌ communicating...\n\n{battle_text}")
+            await text_data.edit(f"◌ communicating...\n{battle_text}")
         except MessageNotModifiedError:
             pass
-
-    # Fire-and-forget: process move asynchronously
-        asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
     
-        print(f"DEBUG: Move callback handled for user {user_id} (task scheduled)")
-
+        # Only ONE player should create the task (let's use the room leader)
+        p1_id = int(room_userids[room_id]["p1"])
+        p2_id = int(room_userids[room_id]["p2"])
+       
+        # Check if both players have selected moves
+        p1_turn = selected_move.get(p1_id, {}).get("turn")
+        p2_turn = selected_move.get(p2_id, {}).get("turn")
+        current_turn = battle_state[user_id]["turn"]
+    
+        p1_ready = (p1_turn == current_turn)
+        p2_ready = (p2_turn == current_turn)
+    
+        # Only trigger awaiting_move_action once when both are ready
+        # Use the smaller ID as the "leader" to prevent double execution
+        if p1_ready and p2_ready and user_id == min(p1_id, p2_id):
+            print(f"DEBUG: Both players ready, {user_id} (leader) starting move resolution")
+            asyncio.create_task(awaiting_move_action(room_id, fmt, move, poke, event))
+    
+        print(f"DEBUG: Move callback handled for user {user_id}")
     @bot.on(events.CallbackQuery(pattern=b"^(\\d+):pokemon_switch$"))
     async def handle_pokemon_switch(event):
         user_id_str = event.pattern_match.group(1)
