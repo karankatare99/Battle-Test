@@ -160,7 +160,7 @@ async def end_of_turn_effects(room_id, p1_id, p2_id, p1_active, p2_active):
 
 async def search_for_opp_trainer(lobby):
     """Search for opponent in lobby and create room."""
-    from battle_handlers import (
+    from handlers.battle_handlers import (
         room, room_userids, generate_room_id, 
         battle_state, searchmsg, build_team_buttons
     )
