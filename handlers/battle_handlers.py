@@ -1162,8 +1162,8 @@ async def battle_ui(mode, fmt, user_id, event):
         p2_textsequence=movetext[roomid][p2_id]["text_sequence"]
         for i,j in p1_textsequence,p2_textsequence:
             if i==0 or j==0:
-                p1_text0= f"{i}\n\n{battle_state[p1_id]["player_text"]}"
-                p2_text0= f"{j}\n\n{battle_state[p2_id]["player_text"]}"
+                p1_text0= f"{i}\n\n{battle_state[p1_id]['player_text']}"
+                p2_text0= f"{j}\n\n{battle_state[p2_id]['player_text']}"
                 p1_text1= f"{i}\n\n{p1_text}"
                 p2_text1= f"{j}\n\n{p2_text}"
                 await p1_textmsg.edit(p1_text0)
