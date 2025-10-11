@@ -1170,6 +1170,7 @@ import re
 async def battle_ui(fmt, user_id, event):
     """Configure the battle UI for both players."""
     if fmt == "singles":
+        print(battle_data)
         roomid = room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"])
         p2_id = int(room_userids[roomid]["p2"])
