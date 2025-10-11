@@ -21,6 +21,7 @@ selectteam = {}
 room_userids = {}
 movetext = {}
 status_effects = {}
+process_turn={}
 #all moves
 all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide"]
 #Only damage dealing moves
@@ -1380,6 +1381,8 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             break
         await asyncio.sleep(0.5)  # avoid busy waiting
     print("got out")
+    if process_turn.get(room_id,False):
+        return
     # Get moves
     p1_move = selected_move[p1_id]["move"]
     p2_move = selected_move[p2_id]["move"]
