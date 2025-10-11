@@ -1101,7 +1101,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             import traceback
             traceback.print_exc()
             return False
-                                                        print(f"DEBUG: failed to write new_hp: {e}")
+        print(f"DEBUG: failed to write new_hp: {e}")
                 
 async def battle_ui(mode, fmt, user_id, event):
     """
