@@ -1358,18 +1358,17 @@ async def handle_fainted_pokemon(user_id, event):
     return "switch_required"
 
 
+
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
     p2_id = int(room_userids[room_id]["p2"])
 
-    # Ensure both players have entries in selected_move
     for uid in [p1_id, p2_id]:
-        if uid not in selected_move:
-            selected_move[uid] = {}
+        selected_move.setdefault(uid, {})
 
     print(f"DEBUG: awaiting_move_action triggered for room {room_id}, fmt={fmt}")
 
-    # Wait until both players have selected a move for the current turn
+    # Wait until both players have selected a move
     while True:
         p1_turn = selected_move.get(p1_id, {}).get("turn")
         p2_turn = selected_move.get(p2_id, {}).get("turn")
@@ -1377,111 +1376,109 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         p2_ready = (p2_turn == battle_state[p2_id]["turn"])
 
         if p1_ready and p2_ready:
-            print(f"DEBUG: Both players have selected moves for turn {battle_state[p1_id]['turn']}")
-            break
-        await asyncio.sleep(0.5)  # avoid busy waiting
-    print("got out")
-    if process_turn.get(room_id,False):
-        return
-    # Get moves
-    p1_move = selected_move[p1_id]["move"]
-    p2_move = selected_move[p2_id]["move"]
-
-    # Determine turn order - switches always go first, then by speed
-    p1_is_switch = (p1_move == "SWITCH")
-    p2_is_switch = (p2_move == "SWITCH")
-    
-    if p1_is_switch and p2_is_switch:
-        # Both switching - order by user ID
-        turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]), (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
-    elif p1_is_switch:
-        # P1 switching goes first
-        turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]), (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
-    elif p2_is_switch:
-        # P2 switching goes first
-        turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]), (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
-    else:
-        # Both using moves - sort by speed
-        p1_speed = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]
-        p2_speed = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]["stats"]["spe"]
-        p1_poke = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]
-        p2_poke = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]
-        if room_id in status_effects:
-            if p1_id in status_effects[room_id] or p2_id in status_effects[room_id]:
-                if p1_poke in status_effects[room_id][p1_id]["paralysis"]:
-                    p1_speed= p1_speed/2
-                if p2_poke in status_effects[room_id][p2_id]["paralysis"]:
-                    p2_speed= p2_speed/2
-        
-        if p1_speed >= p2_speed:
-            turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]), (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
-        else:
-            turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]), (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
-
-    # Resolve each move
-    for uid, mv, pokemon in turn_order:
-        print(f"DEBUG: Executing action {mv} for user {uid}")
-        
-        # Check if attacker's Pokemon has fainted before executing move
-        if await check_fainted_pokemon(uid):
-            print(f"DEBUG: {uid}'s Pokemon has fainted, cannot execute action")
-            continue
-        
-        # If this is a switch, skip the move handler (switch already happened)
-        if mv == "SWITCH":
-            print(f"DEBUG: {uid} switched Pokemon, turn is over")
-            continue
-        
-        await move_handler(uid, mv, pokemon, fmt, event)
-        
-        # Check if defender's Pokemon fainted after the move
-        defender_id = p2_id if uid == p1_id else p1_id
-        if await check_fainted_pokemon(defender_id):
-            faint_result = await handle_fainted_pokemon(defender_id, event)
-            
-            if faint_result == "lost":
-                # Defender has lost the battle
-                winner_id = uid
-                loser_id = defender_id
-                
-                # Show victory/defeat messages
-                winner_msg = room[winner_id]["start_msg"]
-                loser_msg = room[loser_id]["start_msg"]
-                
-                await winner_msg.edit("🎉 You won the battle! 🎉")
-                await loser_msg.edit("You lost the battle!")
-                
-                # Clean up battle state
-                for player_id in [p1_id, p2_id]:
-                    if player_id in battle_state:
-                        del battle_state[player_id]
-                    if player_id in room:
-                        del room[player_id]
-                
-                print(f"DEBUG: Battle ended - Winner: {winner_id}")
+            # Lock the turn processing to one coroutine only
+            if process_turn.get(room_id, False):
+                print(f"DEBUG: Turn already being processed for room {room_id}, skipping duplicate")
                 return
+            process_turn[room_id] = True
+            print(f"DEBUG: Turn lock acquired for room {room_id}")
+            break
 
-    # Increment turn counter
-    battle_state[p1_id]["turn"] += 1
-    battle_state[p2_id]["turn"] += 1
+        await asyncio.sleep(0.5)
 
-    # Update battle UI after moves are resolved
-    #await battle_ui(battle_state[p1_id]["mode"], fmt, p1_id, event)
-    
-    # Check if any Pokemon need to switch after the UI update
-    for uid in [p1_id, p2_id]:
-        if await check_fainted_pokemon(uid):
-            faint_result = await handle_fainted_pokemon(uid, event)
-            if faint_result == "switch_required":
-                # Show switch menu to the player
-                user_msg = room[uid]["start_msg"]
-                await show_forced_switch_menu(uid, user_msg)
+    try:
+        print("got out - processing turn")
 
-    print(f"DEBUG: Turn {battle_state[p1_id]['turn'] - 1} resolved for room {room_id}")
+        # Get moves
+        p1_move = selected_move[p1_id]["move"]
+        p2_move = selected_move[p2_id]["move"]
 
-    
-from telethon.errors.rpcerrorlist import MessageNotModifiedError
-import asyncio
+        # Determine turn order
+        p1_is_switch = (p1_move == "SWITCH")
+        p2_is_switch = (p2_move == "SWITCH")
+
+        if p1_is_switch and p2_is_switch:
+            turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
+                          (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+        elif p1_is_switch:
+            turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
+                          (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+        elif p2_is_switch:
+            turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
+                          (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
+        else:
+            # Both use moves → decide by speed (consider paralysis)
+            p1_speed = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]
+            p2_speed = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]["stats"]["spe"]
+            p1_poke = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]
+            p2_poke = battle_data[p2_id]["pokemon"][battle_state[p2_id]["active_pokemon"][0]]
+
+            if room_id in status_effects:
+                if p1_id in status_effects[room_id]:
+                    if p1_poke in status_effects[room_id][p1_id]["paralysis"]:
+                        p1_speed /= 2
+                if p2_id in status_effects[room_id]:
+                    if p2_poke in status_effects[room_id][p2_id]["paralysis"]:
+                        p2_speed /= 2
+
+            if p1_speed >= p2_speed:
+                turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
+                              (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+            else:
+                turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
+                              (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
+
+        # --- Main move resolution loop ---
+        for uid, mv, pokemon in turn_order:
+            print(f"DEBUG: Executing action {mv} for user {uid}")
+
+            if await check_fainted_pokemon(uid):
+                print(f"DEBUG: {uid}'s Pokemon has fainted, cannot execute action")
+                continue
+
+            if mv == "SWITCH":
+                print(f"DEBUG: {uid} switched Pokemon, turn is over")
+                continue
+
+            await move_handler(uid, mv, pokemon, fmt, event)
+
+            # Check if defender fainted
+            defender_id = p2_id if uid == p1_id else p1_id
+            if await check_fainted_pokemon(defender_id):
+                faint_result = await handle_fainted_pokemon(defender_id, event)
+                if faint_result == "lost":
+                    winner_id = uid
+                    loser_id = defender_id
+
+                    winner_msg = room[winner_id]["start_msg"]
+                    loser_msg = room[loser_id]["start_msg"]
+                    await winner_msg.edit("🎉 You won the battle! 🎉")
+                    await loser_msg.edit("You lost the battle!")
+
+                    for player_id in [p1_id, p2_id]:
+                        battle_state.pop(player_id, None)
+                        room.pop(player_id, None)
+
+                    print(f"DEBUG: Battle ended - Winner: {winner_id}")
+                    return
+
+        # Increment turn counter
+        battle_state[p1_id]["turn"] += 1
+        battle_state[p2_id]["turn"] += 1
+
+        # Handle fainted Pokémon after the UI update
+        for uid in [p1_id, p2_id]:
+            if await check_fainted_pokemon(uid):
+                faint_result = await handle_fainted_pokemon(uid, event)
+                if faint_result == "switch_required":
+                    user_msg = room[uid]["start_msg"]
+                    await show_forced_switch_menu(uid, user_msg)
+
+        print(f"DEBUG: Turn {battle_state[p1_id]['turn'] - 1} resolved for room {room_id}")
+
+    finally:
+        process_turn[room_id] = False
+        print(f"DEBUG: Turn lock released for room {room_id}")
 
 async def standing_by_fn(event, user_id):
     # Initial standing by message
