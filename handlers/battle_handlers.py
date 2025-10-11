@@ -872,6 +872,65 @@ async def first_battle_ui(mode, fmt, user_id, event):
         
         print(f"DEBUG: First battle UI initialized for room {roomid}")
 
+async def final_battle_ui(fmt, user_id, event):
+    """Initialize the first battle UI for both players."""
+    if fmt == "singles":
+        roomid = room[user_id]["roomid"]
+        p1_id = int(room_userids[roomid]["p1"])
+        p2_id = int(room_userids[roomid]["p2"])
+        
+        # Initialize turn counter
+        battle_state[p1_id]["turn"] = 1
+        battle_state[p2_id]["turn"] = 1
+        
+        p1_textmsg = room[p1_id]["start_msg"]
+        p2_textmsg = room[p2_id]["start_msg"]
+        
+        p1_poke = battle_state[p1_id]["active_pokemon"][0]
+        p2_poke = battle_state[p2_id]["active_pokemon"][0]
+        
+        p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
+        p1_poke_buttons = await button_generator(p1_poke_moves, p1_id, p1_poke)
+        
+        p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
+        p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
+        
+        print(f"DEBUG: Battle data ready for {user_id}")
+        
+        p1_poke_hpbar = await hp_bar(
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
+            battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
+        )
+        p2_poke_hpbar = await hp_bar(
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], 
+            battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
+        )
+        
+        p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
+        p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        
+        p1_text = (
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
+        )
+        
+        p2_text = (
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+        )
+        
+        battle_state[p1_id]["player_text"] = p1_text
+        battle_state[p2_id]["player_text"] = p2_text
+        
+        await p1_textmsg.edit(p1_text, buttons=p1_poke_buttons)
+        await p2_textmsg.edit(p2_text, buttons=p2_poke_buttons)
+        
+        print(f"DEBUG: First battle UI initialized for room {roomid}")
+
 async def paralyze_check(move):
     chance = 0
     if move in paralyze_moves10:
@@ -1179,8 +1238,8 @@ async def battle_ui(fmt, user_id, event):
                 await p1_textmsg.edit(text=p1_text2)
                 await p2_textmsg.edit(text=p2_text2)
                 await asyncio.sleep(2)
-        await p1_textmsg.edit(p1_text,buttons=p1_poke_buttons)
-        await p2_textmsg.edit(p2_text,buttons=p2_poke_buttons)
+        await p1_textmsg.edit(p1_text)
+        await p2_textmsg.edit(p2_text)
         
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
@@ -1463,7 +1522,8 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
                     print(f"DEBUG: Battle ended - Winner: {winner_id}")
                     return
-
+        #call final battle ui 
+        await final_battle_ui(fmt, user_id, event)
         # Increment turn counter
         battle_state[p1_id]["turn"] += 1
         battle_state[p2_id]["turn"] += 1
