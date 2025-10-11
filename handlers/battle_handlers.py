@@ -1095,6 +1095,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
                 f"Damage: {damage} will be applied to {opp_pokemon}"
             )
+            print("Debug: came to last line of move handler function")
             await battle_ui(fmt, user_id, event)
             return True
 
@@ -1158,9 +1159,9 @@ async def battle_ui(fmt, user_id, event):
         )
         
         
-        p1_textsequence=movetext[roomid][p1_id]["text_sequence"]
-        p2_textsequence=movetext[roomid][p2_id]["text_sequence"]
-        for i,j in p1_textsequence,p2_textsequence:
+        p1_textsequence=movetext[p1_id]["text_sequence"]
+        p2_textsequence=movetext[p2_id]["text_sequence"]
+        for i,j in zip(p1_textsequence,p2_textsequence):
             if i==0 or j==0:
                 p1_text0= f"{i}\n\n{battle_state[p1_id]['player_text']}"
                 p2_text0= f"{j}\n\n{battle_state[p2_id]['player_text']}"
