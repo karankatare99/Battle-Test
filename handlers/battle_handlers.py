@@ -1184,6 +1184,8 @@ async def battle_ui(fmt, user_id, event):
         
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
+        movetext[p1_id]["text_sequence"]=[]
+        movetext[p2_id]["text_sequence"]=[]
         print(f"DEBUG: First battle UI initialized for room {roomid}")
     
     
