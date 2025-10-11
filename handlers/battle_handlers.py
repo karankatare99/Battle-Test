@@ -919,10 +919,7 @@ async def paralysis_checker():
     chance = random.randint(1,100)
     return True if chance <= 25 else False
 async def move_handler(user_id, move, poke, fmt, event):
-    player_move_done.setdefault(roomid, {})[user_id] = True
-    if player_move_done[roomid].get(user_id):
-        print(f"DEBUG: Move already processed for user {user_id}, skipping duplicate")
-        return
+    
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
     if fmt == "singles":
@@ -931,6 +928,10 @@ async def move_handler(user_id, move, poke, fmt, event):
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
+            player_move_done.setdefault(roomid, {})[user_id] = True
+            if player_move_done[roomid].get(user_id):
+                print(f"DEBUG: Move already processed for user {user_id}, skipping duplicate")
+                return
             if roomid not in status_effects:
                 status_effects[roomid] = {}
                 # Define all possible conditions (status ailments)
