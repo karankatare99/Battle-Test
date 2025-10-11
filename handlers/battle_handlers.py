@@ -11,6 +11,7 @@ invitecode = {}
 textic = {}
 room = {}
 selected_move={}
+player_move_done={}
 roomids = []
 rs_lobby = []
 rd_lobby = []
