@@ -943,10 +943,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
-            player_move_done.setdefault(roomid, {})[user_id] = True
-            if player_move_done[roomid].get(user_id):
-                print(f"DEBUG: Move already processed for user {user_id}, skipping duplicate")
-                return
+            
             if roomid not in status_effects:
                 status_effects[roomid] = {}
                 # Define all possible conditions (status ailments)
@@ -1111,7 +1108,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             movetext[user_id]["hp_update_at"] = 1
             movetext[opponent_id]["hp_update_at"] = 1
-            player_move_done[roomid][user_id] = True
+            
             print(movetext)
             print(
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
