@@ -1133,7 +1133,7 @@ async def battle_ui(fmt, user_id, event):
     p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
 
     # HP bars
-    def get_hp_info(pid, poke):
+    async def get_hp_info(pid, poke):
         current_hp = min(battle_data[pid]["pokemon"][poke]["current_hp"],
                          battle_data[pid]["pokemon"][poke]["final_hp"])
         final_hp = battle_data[pid]["pokemon"][poke]["final_hp"]
