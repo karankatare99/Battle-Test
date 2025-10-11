@@ -1167,17 +1167,19 @@ async def battle_ui(fmt, user_id, event):
                 p2_text0= f"{j}\n\n{battle_state[p2_id]['player_text']}"
                 p1_text1= f"{i}\n\n{p1_text}"
                 p2_text1= f"{j}\n\n{p2_text}"
-                await p1_textmsg.edit(p1_text0)
-                await p2_textmsg.edit(p2_text0)
-                await asyncio.sleep(4)
-                await p1_textmsg.edit(p1_text1)
-                await p2_textmsg.edit(p2_text1)
+                await p1_textmsg.edit(text=p1_text0)
+                await p2_textmsg.edit(text=p2_text0)
+                await asyncio.sleep(2)
+                await p1_textmsg.edit(text=p1_text1)
+                await p2_textmsg.edit(text=p2_text1)
             if i!=0 or j!=0:
                 p1_text2= f"{i}\n\n{p1_text}"
                 p2_text2= f"{j}\n\n{p2_text}"
-                await p1_textmsg.edit(p1_text2)
-                await p2_textmsg.edit(p2_text2)
-                await asyncio.sleep(4)
+                await p1_textmsg.edit(text=p1_text2)
+                await p2_textmsg.edit(text=p2_text2)
+                await asyncio.sleep(2)
+        await p1_textmsg.edit(p1_text,buttons=p1_poke_buttons)
+        await p2_textmsg.edit(p2_text,buttons=p2_poke_buttons)
         
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
