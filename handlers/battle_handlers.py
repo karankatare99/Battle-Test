@@ -921,7 +921,7 @@ async def move_handler(user_id, move, poke, fmt, event):
     player_move_done.setdefault(roomid, {})[user_id] = True
     if player_move_done[roomid].get(user_id):
         print(f"DEBUG: Move already processed for user {user_id}, skipping duplicate")
-              return
+        return
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
     if fmt == "singles":
