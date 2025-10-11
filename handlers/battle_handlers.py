@@ -918,6 +918,10 @@ async def paralysis_checker():
     chance = random.randint(1,100)
     return True if chance <= 25 else False
 async def move_handler(user_id, move, poke, fmt, event):
+    player_move_done.setdefault(roomid, {})[user_id] = True
+    if player_move_done[roomid].get(user_id):
+        print(f"DEBUG: Move already processed for user {user_id}, skipping duplicate")
+              return
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
     if fmt == "singles":
@@ -1085,11 +1089,12 @@ async def move_handler(user_id, move, poke, fmt, event):
             
             
             # ✅ Append to movetext (don’t replace)
-            movetext[user_id]["text_sequence"]=seq_self
-            movetext[opponent_id]["text_sequence"]=seq_opp
+            movetext[user_id]["text_sequence"].extend(seq_self)
+            movetext[opponent_id]["text_sequence"].extend(seq_opp)
 
             movetext[user_id]["hp_update_at"] = 1
             movetext[opponent_id]["hp_update_at"] = 1
+            player_move_done[roomid][user_id] = True
             print(movetext)
             print(
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
@@ -1191,7 +1196,7 @@ async def battle_ui(fmt, user_id, event):
     # Update last displayed text in battle_state
     battle_state[p1_id]["player_text"] = p1_text
     battle_state[p2_id]["player_text"] = p2_text
-
+   # player_move_done[roomid][user_id] = True
     print(f"DEBUG: First battle UI initialized for room {roomid}")
     
 async def show_switch_menu(user_id, event):
