@@ -1031,7 +1031,8 @@ async def move_handler(user_id, move, poke, fmt, event):
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
 
             # Store damage for the OPPONENT (who is receiving the damage)
-            movetext[opponent_id]["damage"] = damage
+            defender_pokemon["final_hp"] = damage
+            defender_pokemon["stats"]["hp"] = damage
 
             print(f"DEBUG: {self_pokemon} (user {user_id}) attacks {opp_pokemon} (user {opponent_id}) for {damage} damage")
 
@@ -1094,6 +1095,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
                 f"Damage: {damage} will be applied to {opp_pokemon}"
             )
+            await battle_ui(mode, fmt, user_id, event)
             return True
 
         except Exception as e:
@@ -1105,7 +1107,81 @@ import asyncio
 import re
 
 async def battle_ui(mode, fmt, user_id, event):
-    pass
+    """Configure the battle UI for both players."""
+    if fmt == "singles":
+        roomid = room[user_id]["roomid"]
+        p1_id = int(room_userids[roomid]["p1"])
+        p2_id = int(room_userids[roomid]["p2"])
+        
+        # Initialize turn counter
+        battle_state[p1_id]["turn"] = 1
+        battle_state[p2_id]["turn"] = 1
+        
+        p1_textmsg = room[p1_id]["start_msg"]
+        p2_textmsg = room[p2_id]["start_msg"]
+        
+        p1_poke = battle_state[p1_id]["active_pokemon"][0]
+        p2_poke = battle_state[p2_id]["active_pokemon"][0]
+        
+        p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
+        p1_poke_buttons = await button_generator(p1_poke_moves, p1_id, p1_poke)
+        
+        p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
+        p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
+        
+        print(f"DEBUG: Battle data ready for {user_id}")
+        
+        p1_poke_hpbar = await hp_bar(
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
+            battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
+        )
+        p2_poke_hpbar = await hp_bar(
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], 
+            battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
+        )
+        
+        p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
+        p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        
+        p1_text = (
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
+        )
+        
+        p2_text = (
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+        )
+        
+        
+        p1_textsequence=movetext[roomid][p1_id]["text_sequence"]
+        p2_textsequence=movetext[roomid][p2_id]["text_sequence"]
+        for i,j in p1_textsequence,p2_textsequence:
+            if i==0 or j==0:
+                p1_text0= f"{i}\n\n{battle_state[p1_id]["player_text"]}"
+                p2_text0= f"{j}\n\n{battle_state[p2_id]["player_text"]}"
+                p1_text1= f"{i}\n\n{p1_text}"
+                p2_text1= f"{j}\n\n{p2_text}"
+                await p1_textmsg.edit(p1_text0)
+                await p2_textmsg.edit(p2_text0)
+                await asyncio.sleep(1.5)
+                await p1_textmsg.edit(p1_text1)
+                await p2_textmsg.edit(p2_text1)
+            if i!=0 or j!=0:
+                p1_text2= f"{i}\n\n{p1_text}"
+                p2_text2= f"{j}\n\n{p2_text}"
+                await p1_textmsg.edit(p1_text2)
+                await p2_textmsg.edit(p2_text2)
+                await asyncio.sleep(1.5)
+        
+        battle_state[p1_id]["player_text"] = p1_text
+        battle_state[p2_id]["player_text"] = p2_text
+        print(f"DEBUG: First battle UI initialized for room {roomid}")
+    
     
 async def show_switch_menu(user_id, event):
     """Show the Pokemon switching menu."""
@@ -1384,7 +1460,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
     battle_state[p2_id]["turn"] += 1
 
     # Update battle UI after moves are resolved
-    await battle_ui(battle_state[p1_id]["mode"], fmt, p1_id, event)
+    #await battle_ui(battle_state[p1_id]["mode"], fmt, p1_id, event)
     
     # Check if any Pokemon need to switch after the UI update
     for uid in [p1_id, p2_id]:
