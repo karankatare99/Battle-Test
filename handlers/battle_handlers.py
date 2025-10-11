@@ -1523,7 +1523,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                     print(f"DEBUG: Battle ended - Winner: {winner_id}")
                     return
         #call final battle ui 
-        await final_battle_ui(fmt, user_id, event)
+        await final_battle_ui(fmt, p1_id, event)
         # Increment turn counter
         battle_state[p1_id]["turn"] += 1
         battle_state[p2_id]["turn"] += 1
