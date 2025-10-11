@@ -1093,7 +1093,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             # Store damage for the OPPONENT (who is receiving the damage)
             maxhp=defender_pokemon["final_hp"] 
             curhp=defender_pokemon["current_hp"] - damage
-
+            defender_pokemon["current_hp"]= curhp
             print(f"DEBUG: {self_pokemon} (user {user_id}) attacks {opp_pokemon} (user {opponent_id}) for {damage} damage")
 
             # ✅ Build text sequences
