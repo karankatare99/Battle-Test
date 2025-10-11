@@ -1095,7 +1095,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
                 f"Damage: {damage} will be applied to {opp_pokemon}"
             )
-            await battle_ui(mode, fmt, user_id, event)
+            await battle_ui(fmt, user_id, event)
             return True
 
         except Exception as e:
@@ -1106,7 +1106,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 import asyncio
 import re
 
-async def battle_ui(mode, fmt, user_id, event):
+async def battle_ui(fmt, user_id, event):
     """Configure the battle UI for both players."""
     if fmt == "singles":
         roomid = room[user_id]["roomid"]
