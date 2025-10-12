@@ -1235,7 +1235,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[user_id]["hp_update_at"] = 1
                 movetext[opponent_id]["hp_update_at"] = 1
                 print("drain moves working")
-                return
+                return True
 
             
             # Store damage for the OPPONENT (who is receiving the damage)
@@ -1349,7 +1349,7 @@ import re
 async def battle_ui(fmt, user_id, event):
     """Configure the battle UI for both players."""
     if fmt == "singles":
-        print(battle_data)
+        
         roomid = room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"])
         p2_id = int(room_userids[roomid]["p2"])
