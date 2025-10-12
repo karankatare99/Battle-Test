@@ -1132,7 +1132,12 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[opponent_id]["hp_update_at"] = 999
             
                     return True
-
+                confusion = await freeze_checker()
+                if confusion:
+                    attack_stat = attacker_pokemon["final_atk"]
+                    defense_stat = attacker_pokemon["final_def"]
+                    damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+                    
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
             if not hit:
@@ -1217,7 +1222,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_self.append(burn_textuser)
                     seq_opp.append(burn_textopp)
             if move in poison_moves:
-                poison = await burn_check(move)
+                poison = await poison_check(move)
                 poison_list = status_effects[roomid][opponent_id]["poison"]
 
                 if opponent_active in burn_list:
@@ -1232,7 +1237,21 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_self.append(poison_textuser)
                     seq_opp.append(poison_textopp)
 
-            
+            if move in confusion_moves:
+                confusion = await confusion__check(move)
+                confusion_list = status_effects[roomid][opponent_id]["confusion"]
+
+                if opponent_active in confusion_list:
+                    confusion_textuser = f"The Opposing {opp_pokemon} is already confused!"
+                    confusion_textopp = f"{opp_pokemon} is already confused!"
+                    seq_self.append(confusion_textuser)
+                    seq_opp.append(confusion_textopp)
+                elif confusion:
+                    confusion_textuser = f"The Opposing {opp_pokemon} is confused!"
+                    confusion_textopp = f"{opp_pokemon} is confused!"
+                    confusion_list.append(opponent_active)
+                    seq_self.append(confusion_textuser)
+                    seq_opp.append(confusion_textopp)
             
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
