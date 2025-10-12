@@ -1490,7 +1490,7 @@ async def endturneffect_battleui(fmt,id,event):
             p2_burntextuser=f"{p2_poke} was hurt by its burn!"
             p2_burntextopp=f"Opposing {p2_poke} was hurt by its burn!"
             await p1_textmsg.edit(text=f"{p2_burntextuser}\n\n{p1_text}")
-            await p2_textmsg.edit(text=f"{p2_burntextopp}\n\n{p2_text}"0)
+            await p2_textmsg.edit(text=f"{p2_burntextopp}\n\n{p2_text}")
             
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
