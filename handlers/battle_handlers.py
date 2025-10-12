@@ -50,6 +50,9 @@ poison_moves20=[]
 poison_moves30=[]
 poison_moves40=[]
 always_burn_moves=[""]
+#freeze moves
+freeze_moves=[]
+freeze_moves10=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -995,9 +998,21 @@ async def poison_check(move):
         return True
     else:
         return False
+async def freeze_check(move):
+    chance = 0
+    if move in freeze_moves10:
+        chance = 10        
+    rvalue = random.randint(1, 100)
+    if chance >= rvalue:
+        return True
+    else:
+        return False
 async def paralysis_checker():
     chance = random.randint(1,100)
     return True if chance <= 25 else False
+async def freeze_checker():
+    chance = random.randint(1,100)
+    return True if chance <= 66 else False
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -1045,7 +1060,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 print(movetext)
                 return True
             #paralysis check
-            if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"]:
+            if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"]:
                 paralysis = await paralysis_checker()
                 if paralysis:
                     # Missed attack text
@@ -1076,6 +1091,21 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
                     status_effects[roomid][user_id]["flinch"].remove(defender_pokemon)
+                    return True
+                freeze = await freeze_checker()
+                if freeze:
+                    # Missed attack text
+                    used_text_self = f"{self_pokemon} is frozen solid!"
+                    miss_text = f""
+                    used_text_opp = f"Opposing {self_pokemon} is frozen solid!"
+
+                    # Append (not overwrite)
+                    movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+
+                    movetext[user_id]["hp_update_at"] = 999
+                    movetext[opponent_id]["hp_update_at"] = 999
+            
                     return True
 
             # ✅ Accuracy check
