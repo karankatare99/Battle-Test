@@ -1725,7 +1725,14 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
     try:
         print("got out - processing turn")
+        if room_id not in status_effects:
+            status_effects[roomid] = {}
+            # Define all possible conditions (status ailments)
+            conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze","flinch"]
 
+            # Initialize both players’ status lists
+            status_effects[roomid][user_id] = {cond: [] for cond in conditions}
+            status_effects[roomid][opponent_id] = {cond: [] for cond in conditions}
         # Get moves
         p1_move = selected_move[p1_id]["move"]
         p2_move = selected_move[p2_id]["move"]
