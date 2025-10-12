@@ -53,6 +53,12 @@ always_burn_moves=[""]
 #freeze moves
 freeze_moves=[]
 freeze_moves10=[]
+#confusion moves
+confusion_moves=[]
+confusion_moves10=[]
+confusion_moves20=[]
+always_confusion_moves=[]
+status_indeptheffect={}
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -983,6 +989,20 @@ async def burn_check(move):
         return True
     else:
         return False
+async def confusion_check(move):
+    chance = 0
+    if move in confusion_moves10:
+        chance = 10
+    if move in confusion_moves20:
+        chance = 20
+    if move in always_confusion_moves:
+        return True
+    rvalue = random.randint(1, 100)
+    if chance >= rvalue:
+        return True
+    else:
+        return False
+
 async def poison_check(move):
     chance = 0
     if move in poison_moves20:
@@ -1030,7 +1050,12 @@ async def move_handler(user_id, move, poke, fmt, event):
                 # Initialize both players’ status lists
                 status_effects[roomid][user_id] = {cond: [] for cond in conditions}
                 status_effects[roomid][opponent_id] = {cond: [] for cond in conditions}
-                    
+            if roomid not in status_indeptheffect:
+                status_indeptheffect[roomid] = {}  
+                conditions=["confusion"]
+                # Initialize both players’ status lists
+                status_effects[roomid][user_id] = {cond: {} for cond in conditions}
+                status_effects[roomid][opponent_id] = {cond: {} for cond in conditions}
             # Extract move data
             move_type, category, power, accuracy = await move_data_extract(move)
 
@@ -1060,7 +1085,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 print(movetext)
                 return True
             #paralysis check
-            if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"]:
+            if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"] or poke in status_effects[roomid][user_id]["confusion"] :
                 paralysis = await paralysis_checker()
                 if paralysis:
                     # Missed attack text
