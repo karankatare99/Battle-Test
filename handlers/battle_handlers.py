@@ -1594,6 +1594,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
                     print(f"DEBUG: Battle ended - Winner: {winner_id}")
                     return
+        await asyncio.sleep(1.5)
         await endturneffect_battleui(fmt, p1_id, event)
         # Increment turn counter
         battle_state[p1_id]["turn"] += 1
