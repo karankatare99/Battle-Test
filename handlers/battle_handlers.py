@@ -19,6 +19,7 @@ cd_lobby = []
 searchmsg = {}
 selectteam = {}
 room_userids = {}
+pending_texts={}
 movetext = {}
 status_effects = {}
 process_turn={}
@@ -1058,6 +1059,10 @@ async def move_handler(user_id, move, poke, fmt, event):
                 # Initialize both players’ status lists
                 status_effects[roomid][user_id] = {cond: {} for cond in conditions}
                 status_effects[roomid][opponent_id] = {cond: {} for cond in conditions}
+            if roomid not in pending_texts:
+                pending_texts[roomid] = {}
+                pending_texts[roomid][p1_id]=[]
+                pending_texts[roomid][p2_id]=[]
             # Extract move data
             move_type, category, power, accuracy = await move_data_extract(move)
 
@@ -1086,6 +1091,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 999
                 print(movetext)
                 return True
+            if poke in status_effects[roomid][user_id]["confusion"] and status_indeptheffect[roomid][user_id]["confusion"][poke]["turn"]>status_indeptheffect[roomid][user_id]["confusion"][poke]["max_turn"]:
+               status_effects[roomid][user_id]["confusion"].remove(poke) 
+               status_indeptheffect[roomid][user_id]["confusion"].remove(poke)
             #paralysis check
             if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"] or poke in status_effects[roomid][user_id]["confusion"] :
                 paralysis = await paralysis_checker()
