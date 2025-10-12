@@ -44,6 +44,12 @@ burn_moves=["Sizzly Slide"]
 burn_moves10=[]
 burn_moves20=[]
 always_burn_moves=["Sizzly Slide"]
+#poison moves
+poison_moves=[""]
+poison_moves20=[]
+poison_moves30=[]
+poison_moves40=[]
+always_burn_moves=[""]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -974,6 +980,21 @@ async def burn_check(move):
         return True
     else:
         return False
+async def poison_check(move):
+    chance = 0
+    if move in poison_moves20:
+        chance = 20
+    if move in poison_moves30:
+        chance = 30
+    if move in burn_moves40:
+        chance = 40
+    if move in always_burn_moves:
+        return True
+    rvalue = random.randint(1, 100)
+    if chance >= rvalue:
+        return True
+    else:
+        return False
 async def paralysis_checker():
     chance = random.randint(1,100)
     return True if chance <= 25 else False
@@ -1140,7 +1161,21 @@ async def move_handler(user_id, move, poke, fmt, event):
                     burn_list.append(opponent_active)
                     seq_self.append(burn_textuser)
                     seq_opp.append(burn_textopp)
-                
+            if move in poison_moves:
+                poison = await burn_check(move)
+                poison_list = status_effects[roomid][opponent_id]["poison"]
+
+                if opponent_active in burn_list:
+                    poison_textuser = f"The Opposing {opp_pokemon} is already poisoned!"
+                    poison_textopp = f"{opp_pokemon} is already poisoned!"
+                    seq_self.append(poison_textuser)
+                    seq_opp.append(poison_textopp)
+                elif poison:
+                    poison_textuser = f"The Opposing {opp_pokemon} was poisoned!"
+                    poison_textopp = f"{opp_pokemon} was poisoned!"
+                    poison_list.append(opponent_active)
+                    seq_self.append(poison_textuser)
+                    seq_opp.append(poison_textopp)
 
             
             
@@ -1492,6 +1527,31 @@ async def endturneffect_battleui(fmt,user_id,event):
             p2_burntextopp=f"Opposing {p2_poke} was hurt by its burn!"
             await p1_textmsg.edit(text=f"{p2_burntextuser}\n\n{p1_text}")
             await p2_textmsg.edit(text=f"{p2_burntextopp}\n\n{p2_text}")
+        if not p1_poke in status_effects[roomid][p1_id]["poison"] or p2_poke in status_effects[roomid][p2_id]["poison"]:
+            return
+        p1_posiontextuser=""
+        p1_poisontextopp=""
+        p2_poisontextuser=""
+        p2_poisontextopp=""
+        if p1_poke in status_effects[roomid][p1_id]["poison"]:
+            curhp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
+            damage = curhp//8
+            newhp = curhp-damage
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]=newhp
+            p1_poisontextuser=f"{p1_poke} was hurt by its poison!"
+            p1_poisontextopp=f"Opposing {p1_poke} was hurt by its poison!"
+            await p1_textmsg.edit(text=f"{p1_poisontextuser}\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"{p1_poisontextopp}\n\n{p2_text}")
+        await asyncio.sleep(1.5)
+        if p2_poke in status_effects[roomid][p2_id]["poison"]:
+            curhp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
+            damage = curhp//8
+            newhp = curhp-damage
+            battle_data[p2_id]["pokemon"][p12poke]["current_hp"]=newhp
+            p2_poisontextuser=f"{p2_poke} was hurt by its poiosn!"
+            p2_poisontextopp=f"Opposing {p2_poke} was hurt by its poison!"
+            await p1_textmsg.edit(text=f"{p2_poisontextuser}\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"{p2_poisontextopp}\n\n{p2_text}")
         print("effect func came")
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
