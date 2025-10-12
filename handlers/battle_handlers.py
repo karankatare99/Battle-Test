@@ -1134,7 +1134,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[opponent_id]["hp_update_at"] = 999
             
                     return True
-                confusion = await freeze_checker()
+                confusion = await confusion_checker()
+                
                 if confusion:
                     attack_stat = attacker_pokemon["final_atk"]
                     defense_stat = attacker_pokemon["final_def"]
@@ -1267,6 +1268,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                     confusion_textuser = f"The Opposing {opp_pokemon} is confused!"
                     confusion_textopp = f"{opp_pokemon} is confused!"
                     confusion_list.append(opponent_active)
+                    maxturn=random.randint(2,6)
+                    status_indeptheffect[roomid][opponent_id]["confusion"][opponent_active]={"turn":0,"max_turn":maxturn}
                     seq_self.append(confusion_textuser)
                     seq_opp.append(confusion_textopp)
             
