@@ -60,6 +60,9 @@ confusion_moves10=[]
 confusion_moves20=[]
 always_confusion_moves=[]
 status_indeptheffect={}
+#draindamage moves
+draindamage_moves=[]
+
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1036,6 +1039,9 @@ async def paralysis_checker():
 async def freeze_checker():
     chance = random.randint(1,100)
     return True if chance <= 66 else False
+async def drain_damage(damage,drain):
+    heal = damage*drain
+    return heal
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -1197,10 +1203,40 @@ async def move_handler(user_id, move, poke, fmt, event):
                 move_type, defender_pokemon.get("type1", "normal"), defender_pokemon.get("type2")
             )
             type_mult, effect_text = interpret_type_effect(type_eff_raw)
-
+ 
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+            if move in draindamage_moves:
+                drain = 1/2
+                heal = async def draindamage(damage,drain)
+                
+                maxhp=defender_pokemon["final_hp"] 
+                curhp=defender_pokemon["current_hp"] + heal
+                defender_pokemon["current_hp"]= curhp
+                # ✅ Build text sequences
+                used_text_self = f"{self_pokemon} used {move}!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                crit_text = "A critical hit!" if is_critical else None
 
+                # Build attacker’s sequence
+                seq_self = [used_text_self]
+                if crit_text:
+                    seq_self.append(crit_text)
+                if power > 0 and effect_text != "Effective":
+                    seq_self.append(effect_text)
+                seq_self.append(f"The opposing {opp_pokemon} had its energy drained!")
+                # Build opponent’s sequence
+                seq_opp = [used_text_opp]
+                seq_opp.append(f"{opp_pokemon} had its energy drained!")
+                # ✅ Append to movetext (don’t replace)
+                movetext[user_id]["text_sequence"].extend(seq_self)
+                movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                movetext[user_id]["hp_update_at"] = 1
+                movetext[opponent_id]["hp_update_at"] = 1
+                return
+
+            
             # Store damage for the OPPONENT (who is receiving the damage)
             maxhp=defender_pokemon["final_hp"] 
             curhp=defender_pokemon["current_hp"] - damage
@@ -1220,6 +1256,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 seq_self.append(effect_text)
             # Build opponent’s sequence
             seq_opp = [used_text_opp]
+            
             #paralyze check
             if move in paralyze_moves:
                 paralyze = await paralyze_check(move)
