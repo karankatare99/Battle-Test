@@ -1645,7 +1645,9 @@ async def endturneffect_battleui(fmt,user_id,event):
             f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
         )
         #burn
-        if not p1_poke in status_effects[roomid][p1_id]["burn"] or p2_poke in status_effects[roomid][p2_id]["burn"]:
+        if p1_poke not in status_effects[roomid][p1_id]["burn"] :
+            return
+        if p2_poke not in status_effects[roomid][p2_id]["burn"]:
             return
         p1_burntextuser=""
         p1_burntextopp=""
