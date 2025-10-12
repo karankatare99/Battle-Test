@@ -807,7 +807,7 @@ def interpret_type_effect(type_eff):
     
 import random
 
-async def damage_calc_fn(level, power, attack, defense, type_multiplier,move):
+async def damage_calc_fn(level, power, attack, defense, type_multiplier,move,effect=None):
     """Calculate Pokémon-style damage.
     `type_multiplier` must be numeric.
     Returns: (damage:int, is_critical:bool)
@@ -824,6 +824,8 @@ async def damage_calc_fn(level, power, attack, defense, type_multiplier,move):
 
     # Simplified Pokémon damage formula
     base = ((((2 * level) / 5) + 2) * power * (attack / (defense if defense > 0 else 1))) / 50 + 2
+    if effect == "confusion":
+        return base,False
     damage = base * type_mult * critical_mult * random.uniform(0.85, 1.0)
 
     return max(1, int(damage)), is_critical  # ensure at least 1 damage
@@ -1136,7 +1138,22 @@ async def move_handler(user_id, move, poke, fmt, event):
                 if confusion:
                     attack_stat = attacker_pokemon["final_atk"]
                     defense_stat = attacker_pokemon["final_def"]
-                    damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+                    damage, is_critical = await damage_calc_fn(100, 40, attack_stat, defense_stat, type_mult, move, "confusion")
+                    # Store damage for the OPPONENT (who is receiving the damage)
+                    maxhp=attacker_pokemon["final_hp"] 
+                    curhp=attacker_pokemon["current_hp"] - damage
+                    attacker_pokemon["current_hp"]= curhp
+                    # ✅ Build text sequences
+                    used_text_self = f"{self_pokemon} is confused!\nIt hurts itself from confusion"
+                    used_text_opp = f"Opposing {self_pokemon} is confused!\nIt hurts itself from confusion"
+                    seq_self = [used_text_self]
+                    seq_opp = [used_text_opp]
+                    # ✅ Append to movetext (don’t replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
                     
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
