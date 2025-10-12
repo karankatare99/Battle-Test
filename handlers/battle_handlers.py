@@ -61,7 +61,7 @@ confusion_moves20=[]
 always_confusion_moves=[]
 status_indeptheffect={}
 #draindamage moves
-draindamage_moves=[]
+draindamage_moves=["Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
 
 # Type effectiveness chart (complete)
 type1_modifier = {
