@@ -1420,7 +1420,7 @@ async def handle_fainted_pokemon(user_id, event):
     return "switch_required"
 
 
-async def endturneffect_battleui(fmt,id,event):
+async def endturneffect_battleui(fmt,user_id,event):
     if fmt == "singles":
         print(battle_data)
         roomid = room[user_id]["roomid"]
