@@ -1420,7 +1420,78 @@ async def handle_fainted_pokemon(user_id, event):
     return "switch_required"
 
 
-
+async def endturneffect_battleui(fmt,id,event):
+    if fmt == "singles":
+        print(battle_data)
+        roomid = room[user_id]["roomid"]
+        p1_id = int(room_userids[roomid]["p1"])
+        p2_id = int(room_userids[roomid]["p2"])
+        
+        p1_textmsg = room[p1_id]["start_msg"]
+        p2_textmsg = room[p2_id]["start_msg"]
+        
+        p1_poke = battle_state[p1_id]["active_pokemon"][0]
+        p2_poke = battle_state[p2_id]["active_pokemon"][0]
+        
+        p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
+        p1_poke_buttons = await button_generator(p1_poke_moves, p1_id, p1_poke)
+        
+        p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
+        p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
+        
+        print(f"DEBUG: Battle data ready for {user_id}")
+        
+        p1_poke_hpbar = await hp_bar(
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
+            battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
+        )
+        p2_poke_hpbar = await hp_bar(
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], 
+            battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
+        )
+        
+        p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
+        p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
+        
+        p1_text = (
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
+        )
+        
+        p2_text = (
+            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
+            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+        )
+        #burn
+        if not p1_poke in status_effects[roomid][p1_id]["burn"] or p2_poke in status_effects[roomid][p2_id]["burn"]:
+            return
+        p1_burntextuser=""
+        p1_burntextopp=""
+        p2_burntextuser=""
+        p2_burntextopp=""
+        if p1_poke in status_effects[roomid][p1_id]["burn"]:
+            curhp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
+            damage = curhp//8
+            newhp = curhp-damage
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]=newhp
+            p1_burntextuser=f"{p1_poke} was hurt by its burn!"
+            p1_burntextopp=f"Opposing {p1_poke} was hurt by its burn!"
+            await p1_textmsg.edit(text=f"{p1_burntextuser}\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"{p1_burntextopp}\n\n{p2_text}")
+        if p2_poke in status_effects[roomid][p2_id]["burn"]:
+            curhp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
+            damage = curhp//8
+            newhp = curhp-damage
+            battle_data[p2_id]["pokemon"][p12poke]["current_hp"]=newhp
+            p2_burntextuser=f"{p2_poke} was hurt by its burn!"
+            p2_burntextopp=f"Opposing {p2_poke} was hurt by its burn!"
+            await p1_textmsg.edit(text=f"{p2_burntextuser}\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"{p2_burntextopp}\n\n{p2_text}"0)
+            
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
     p2_id = int(room_userids[room_id]["p2"])
@@ -1523,7 +1594,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
                     print(f"DEBUG: Battle ended - Winner: {winner_id}")
                     return
-        
+        await endturneffect_battleui(fmt, p1_id, event)
         # Increment turn counter
         battle_state[p1_id]["turn"] += 1
         battle_state[p2_id]["turn"] += 1
