@@ -1208,7 +1208,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
             if move in draindamage_moves:
                 drain = 1/2
-                heal = await draindamage(damage,drain)
+                heal = await drain_damage(damage,drain)
                 
                 maxhp=defender_pokemon["final_hp"] 
                 curhp=defender_pokemon["current_hp"] + heal
