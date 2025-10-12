@@ -1082,7 +1082,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 used_text_self = f"{self_pokemon} used {move}"
                 miss_text = f"This move cant be used!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!"
-
+                
                 # Append (not overwrite)
                 movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
                 movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
@@ -1093,7 +1093,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 return True
             if poke in status_effects[roomid][user_id]["confusion"] and status_indeptheffect[roomid][user_id]["confusion"][poke]["turn"]>status_indeptheffect[roomid][user_id]["confusion"][poke]["max_turn"]:
                status_effects[roomid][user_id]["confusion"].remove(poke) 
-               status_indeptheffect[roomid][user_id]["confusion"].remove(poke)
+               del status_indeptheffect[roomid][user_id]["confusion"][poke]
+                used_text_self = f"{self_pokemon} snapped out of its confusion!"
+                used_text_opp = f"Opposing {self_pokemon} snapped out of its confusion!"
+                movetext[roomid][p1_id]["text_sequence"].append(used_text_self)
+                movetext[roomid][p2_id]["text_sequence"].append(used_text_opp)
             #paralysis check
             if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"] or poke in status_effects[roomid][user_id]["confusion"] :
                 paralysis = await paralysis_checker()
