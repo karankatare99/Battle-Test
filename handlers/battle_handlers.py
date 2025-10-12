@@ -1604,7 +1604,16 @@ async def endturneffect_battleui(fmt,user_id,event):
         roomid = room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"])
         p2_id = int(room_userids[roomid]["p2"])
-        
+        # --- Ensure burn key exists safely ---
+        if roomid not in status_effects:
+            status_effects[roomid] = {}
+
+            conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
+
+            for pid in [p1_id, p2_id]:
+                status_effects[roomid].setdefault(pid, {})
+                for cond in conditions:
+                    status_effects[roomid][pid].setdefault(cond, [])
         p1_textmsg = room[p1_id]["start_msg"]
         p2_textmsg = room[p2_id]["start_msg"]
         
