@@ -1235,6 +1235,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[user_id]["hp_update_at"] = 1
                 movetext[opponent_id]["hp_update_at"] = 1
                 print("drain moves working")
+                await battle_ui(fmt, user_id, event)
                 return True
 
             
