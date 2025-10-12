@@ -1625,7 +1625,7 @@ async def endturneffect_battleui(fmt,user_id,event):
         
         p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
         p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
-        
+        print(status_effects)
         print(f"DEBUG: Battle data ready for {user_id}")
         
         p1_poke_hpbar = await hp_bar(
