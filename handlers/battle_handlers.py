@@ -1063,8 +1063,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                 status_indeptheffect[roomid] = {}  
                 conditions=["confusion"]
                 # Initialize both players’ status lists
-                status_effects[roomid][user_id] = {cond: {} for cond in conditions}
-                status_effects[roomid][opponent_id] = {cond: {} for cond in conditions}
+                status_indeptheffect[roomid][user_id] = {cond: {} for cond in conditions}
+                status_indeptheffect[roomid][opponent_id] = {cond: {} for cond in conditions}
             if roomid not in pending_texts:
                 pending_texts[roomid] = {}
                 pending_texts[roomid][p1_id]=[]
