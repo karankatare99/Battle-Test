@@ -1210,9 +1210,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 drain = 1/2
                 heal = await drain_damage(damage,drain)
                 
-                maxhp=defender_pokemon["final_hp"] 
-                curhp=defender_pokemon["current_hp"] + heal
-                defender_pokemon["current_hp"]= curhp
+                maxhp=attacker_pokemon["final_hp"] 
+                curhp=attacker_pokemon["current_hp"] + heal
+                attacker_pokemon["current_hp"]= curhp
                 # ✅ Build text sequences
                 used_text_self = f"{self_pokemon} used {move}!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!"
