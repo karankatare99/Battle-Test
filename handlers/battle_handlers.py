@@ -63,7 +63,16 @@ status_indeptheffect={}
 #draindamage moves
 draindamage_moves=["Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
 #stat modifier moves
-attack1_buff_moves=[] # these moves raise attack stat by one stage
+atk1_buff_moves=[] # these moves raise attack stat by one stage
+atk2_buff_moves=[] # these moves raise attack stat by two stage
+def1_buff_moves=[] # these moves raise defense stat by one stage
+def2_buff_moves=[] # these moves raise defense stat by two stage
+spe2_buff_moves=[] # these moves raise speed stat by two stage
+spd2_buff_moves=[] # these moves raise sp defense stat by two stage
+atkdef1_buff_moves=[]
+spaspd1_buff_moves=[]
+spaspdspe1_buff_moves=[]
+miscellaneous_buff_moves=[]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
