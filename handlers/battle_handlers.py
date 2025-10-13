@@ -25,7 +25,7 @@ status_effects = {}
 process_turn={}
 stats_modifier={}
 #all moves
-all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide","Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
+all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide","Absorb","Mega Drain","Leech Life","Bouncy Bubble","Sword Dance","Calm Mind"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -65,13 +65,13 @@ status_indeptheffect={}
 draindamage_moves=["Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
 #stat modifier moves
 atk1_buff_moves=[] # these moves raise attack stat by one stage
-atk2_buff_moves=[] # these moves raise attack stat by two stage
+atk2_buff_moves=["Sword Dance"] # these moves raise attack stat by two stage
 def1_buff_moves=[] # these moves raise defense stat by one stage
 def2_buff_moves=[] # these moves raise defense stat by two stage
 spe2_buff_moves=[] # these moves raise speed stat by two stage
 spd2_buff_moves=[] # these moves raise sp defense stat by two stage
 atkdef1_buff_moves=[]
-spaspd1_buff_moves=[]
+spaspd1_buff_moves=["Calm Mind"]
 spaspdspe1_buff_moves=[]
 miscellaneous_buff_moves=[]
 # Type effectiveness chart (complete)
