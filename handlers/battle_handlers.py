@@ -1064,8 +1064,15 @@ async def move_handler(user_id, move, poke, fmt, event):
             opponent_id = p2_id if user_id == p1_id else p1_id
             if roomid not in stats_modifier:
                 stats_modifier[roomid] = {}
+                stats_modifier[roomid][user_id]={}
+                stats_modifier[roomid][opponent_id]={}
+            if poke not in stats_modifier[roomid][user_id]:
                 userpoke=poke
+                stats_modifier[roomid][user_id][userpoke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+            if poke not in stats_modifier[roomid][user_id]:
                 opppoke=battle_state[opponent_id]["active_pokemon"][0]
+                stats_modifier[roomid][user_id][userpoke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+                
             if roomid not in status_effects:
                 status_effects[roomid] = {}
                 # Define all possible conditions (status ailments)
