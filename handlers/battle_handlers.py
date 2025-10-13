@@ -1205,7 +1205,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[opponent_id]["hp_update_at"] = 1
             #check for stat modifier moves
             if move in atk1_buff_moves:
-                stats_modifier[room_id][user_id][poke]["atk"]+=1
+                stats_modifier[roomid][user_id][poke]["atk"]+=1
                 # ✅ Build text sequences
                 used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Attack rose!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Attack rose!"
@@ -1221,7 +1221,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in atk2_buff_moves:
-                stats_modifier[room_id][user_id][poke]["atk"]+=2
+                stats_modifier[roomid][user_id][poke]["atk"]+=2
                 used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Attack rose sharply!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Attack rose! sharply"
                 # Build attacker’s sequence
@@ -1236,7 +1236,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in def1_buff_moves:
-                stats_modifier[room_id][user_id][poke]["def"]+=1
+                stats_modifier[roomid][user_id][poke]["def"]+=1
                 used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Defense rose!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Defense rose!"
                 # Build attacker’s sequence
@@ -1251,7 +1251,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in def2_buff_moves:
-                stats_modifier[room_id][user_id][poke]["def"]+=2 
+                stats_modifier[roomid][user_id][poke]["def"]+=2 
                 used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Defense rose sharply!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Defense rose! sharply"
                 # Build attacker’s sequence
@@ -1266,7 +1266,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in spe2_buff_moves:
-                stats_modifier[room_id][user_id][poke]["spe"]+=2 
+                stats_modifier[roomid][user_id][poke]["spe"]+=2 
                 used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Speed rose sharply!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Speed rose! sharply"
                 # Build attacker’s sequence
@@ -1281,7 +1281,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in spd2_buff_moves:
-                stats_modifier[room_id][user_id][poke]["spd"]+=2 
+                stats_modifier[roomid][user_id][poke]["spd"]+=2 
                 used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Special Defense rose sharply!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Special Defense rose sharply!"
                 # Build attacker’s sequence
@@ -1296,8 +1296,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in atkdef1_buff_moves:
-                stats_modifier[room_id][user_id][poke]["atk"]+=1
-                stats_modifier[room_id][user_id][poke]["def"]+=1
+                stats_modifier[roomid][user_id][poke]["atk"]+=1
+                stats_modifier[roomid][user_id][poke]["def"]+=1
                 used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon}'s Attack rose!/n{self_pokemon}'s Defense rose!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon}'s Attack rose!/nOpposing {self_pokemon}'s Defense rose!"
                 # Build attacker’s sequence
@@ -1312,8 +1312,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in spaspd1_buff_moves:
-                stats_modifier[room_id][user_id][poke]["spa"]+=1
-                stats_modifier[room_id][user_id][poke]["spd"]+=1
+                stats_modifier[roomid][user_id][poke]["spa"]+=1
+                stats_modifier[roomid][user_id][poke]["spd"]+=1
                 used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon}'s Special Attack rose!/n{self_pokemon}'s Special Defense rose!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon}'s Special Attack rose!/nOpposing {self_pokemon}'s Special Defense rose!"
                 # Build attacker’s sequence
@@ -1328,9 +1328,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in spaspdspe1_buff_moves:
-                stats_modifier[room_id][user_id][poke]["spa"]+=1
-                stats_modifier[room_id][user_id][poke]["spd"]+=1
-                stats_modifier[room_id][user_id][poke]["spe"]+=1
+                stats_modifier[roomid][user_id][poke]["spa"]+=1
+                stats_modifier[roomid][user_id][poke]["spd"]+=1
+                stats_modifier[roomid][user_id][poke]["spe"]+=1
                 used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon}'s Special Attack rose!/n{self_pokemon}'s Special Defense rose!\n{self_pokemon}'s Speed rose!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon}'s Special Attack rose!/nOpposing {self_pokemon}'s Special Defense rose!\nOpposing{self_pokemon}'s Speed rose!"
                 # Build attacker’s sequence
@@ -1346,11 +1346,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 return True
             if move in miscellaneous_buff_moves:
                 if move == "Shell Smash":
-                    stats_modifier[room_id][user_id][poke]["atk"]+=2
-                    stats_modifier[room_id][user_id][poke]["def"]-=1
-                    stats_modifier[room_id][user_id][poke]["spa"]+=2
-                    stats_modifier[room_id][user_id][poke]["spd"]-=1
-                    stats_modifier[room_id][user_id][poke]["spe"]+=2
+                    stats_modifier[roomid][user_id][poke]["atk"]+=2
+                    stats_modifier[roomid][user_id][poke]["def"]-=1
+                    stats_modifier[roomid][user_id][poke]["spa"]+=2
+                    stats_modifier[roomid][user_id][poke]["spd"]-=1
+                    stats_modifier[roomid][user_id][poke]["spe"]+=2
                     used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon}'s Attack rose sharply!\n{self_pokemon}'s Defense fell!/n{self_pokemon}'s Special Attack rose sharply!/n{self_pokemon}'s Special Defense fell!\n{self_pokemon}'s Speed rose sharply!"
                     used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon}'s Attack rose sharply!\nOpposing {self_pokemon}'s Defense fell!/nOpposing {self_pokemon}'s Special Attack rose sharply!/nOpposing {self_pokemon}'s Special Defense fell!\nOpposing {self_pokemon}'s Speed rose sharply!"    
                     # Build attacker’s sequence
