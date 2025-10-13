@@ -74,6 +74,8 @@ atkdef1_buff_moves=["Bulk Up"]
 spaspd1_buff_moves=["Calm Mind"]
 spaspdspe1_buff_moves=["Quiver Dance"]
 miscellaneous_buff_moves=["Shell Smash"]
+#0hko moves
+zerohitko_moves=["Guillotine","Fissure","Horn Drill"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1401,6 +1403,50 @@ async def move_handler(user_id, move, poke, fmt, event):
                 move_type, defender_pokemon.get("type1", "normal"), defender_pokemon.get("type2")
             )
             type_mult, effect_text = interpret_type_effect(type_eff_raw)
+            if move in zerohitko_moves:
+                if type_mult!=0:
+                    damage = defender_pokemon["current_hp"]
+                    defender_pokemon["current_hp"]-=damage
+                    # ✅ Build text sequences
+                    used_text_self = f"{self_pokemon} used {move}!"
+                    used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                    # Build attacker’s sequence
+                    seq_self = [used_text_self]
+                    if power > 0 and effect_text != "Effective":
+                        seq_self.append(effect_text)
+                    # Build opponent’s sequence
+                    seq_opp = [used_text_opp]
+                    if power > 0 and effect_text != "Effective":
+                        seq_opp.append(effect_text)
+                    # ✅ Append to movetext (don’t replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
+                
+                    await battle_ui(fmt, user_id, event)
+                    return True
+                else:
+                    used_text_self = f"{self_pokemon} used {move}!"
+                    used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                    # Build attacker’s sequence
+                    seq_self = [used_text_self]
+                    if power > 0 and effect_text != "Effective":
+                        seq_self.append(effect_text)
+                    # Build opponent’s sequence
+                    seq_opp = [used_text_opp]
+                    if power > 0 and effect_text != "Effective":
+                        seq_opp.append(effect_text)
+                    # ✅ Append to movetext (don’t replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
+                
+                    await battle_ui(fmt, user_id, event)
+                    return True
  
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
