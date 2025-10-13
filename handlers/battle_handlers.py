@@ -1948,11 +1948,11 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             stats_modifier[room_id][p1_id]={}
             stats_modifier[room_id][p2_id]={}
         if battle_state[p1_id]["active_pokemon"][0] not in stats_modifier[room_id][p1_id]:
-            userpoke=poke
-            stats_modifier[room_id][p1_id][userpoke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+            
+            stats_modifier[room_id][p1_id][poke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
         if battle_state[p2_id]["active_pokemon"][0] not in stats_modifier[room_id][p2_id]:
             opppoke=battle_state[p2_id]["active_pokemon"][0]
-            stats_modifier[room_id][p2_id][userpoke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+            stats_modifier[room_id][p2_id][poke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
         # Get moves
         p1_move = selected_move[p1_id]["move"]
         p2_move = selected_move[p2_id]["move"]
