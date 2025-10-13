@@ -1053,6 +1053,15 @@ async def freeze_checker():
 async def drain_damage(damage,drain):
     heal = damage*drain
     return heal
+async def stat_multiplier(stage):
+    if stage>0:
+        multiplier = 2+stage/2
+        return multiplier
+    if stage<0:
+        multiplier = 2/2+stage
+        return multiplier
+    else:
+        return 1
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -1195,7 +1204,36 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                     movetext[user_id]["hp_update_at"] = 1
                     movetext[opponent_id]["hp_update_at"] = 1
-                    
+            #check for stat modifier moves
+            if move in atk1_buff_moves:
+                stats_modifier[room_id][user_id][poke]["atk"]+=1
+            if move in atk2_buff_moves:
+                stats_modifier[room_id][user_id][poke]["atk"]+=2
+             if move in def1_buff_moves:
+                stats_modifier[room_id][user_id][poke]["def"]+=1
+            if move in def2_buff_moves:
+                stats_modifier[room_id][user_id][poke]["def"]+=2   
+            if move in spe2_buff_moves:
+                stats_modifier[room_id][user_id][poke]["spe"]+=2 
+            if move in spd2_buff_moves:
+                stats_modifier[room_id][user_id][poke]["spd"]+=2 
+            if move in atkdef1_buff_moves:
+                stats_modifier[room_id][user_id][poke]["atk"]+=1
+                stats_modifier[room_id][user_id][poke]["def"]+=1
+            if move in spaspd1_buff_moves:
+                stats_modifier[room_id][user_id][poke]["spa"]+=1
+                stats_modifier[room_id][user_id][poke]["spd"]+=1
+            if move in spaspdspe1_buff_moves:
+                stats_modifier[room_id][user_id][poke]["spa"]+=1
+                stats_modifier[room_id][user_id][poke]["spd"]+=1
+                stats_modifier[room_id][user_id][poke]["spe"]+=1
+            if move in miscellaneous_buff_moves:
+                if move == "Shell Smash":
+                    stats_modifier[room_id][user_id][poke]["atk"]+=2
+                    stats_modifier[room_id][user_id][poke]["def"]-=1
+                    stats_modifier[room_id][user_id][poke]["spa"]+=2
+                    stats_modifier[room_id][user_id][poke]["spd"]-=1
+                    stats_modifier[room_id][user_id][poke]["spe"]+=2
             # ✅ Accuracy check
             hit = await accuracy_checker(accuracy,move)
             if not hit:
