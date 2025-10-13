@@ -1382,17 +1382,17 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             # ✅ Attack/Defense stats
             if category.lower() == "physical":
-                stage_atk = stats_modifier[room_id][user_id][poke]["atk"]
+                stage_atk = stats_modifier[rooid][user_id][poke]["atk"]
                 multiplier_atk=await stat_multiplier(stage_atk)
                 attack_stat = attacker_pokemon["final_atk"]*multiplier_atk
-                stage_def = stats_modifier[room_id][opponent_id][opponent_active]["def"]
+                stage_def = stats_modifier[roomid][opponent_id][opponent_active]["def"]
                 multiplier_def=await stat_multiplier(stage_def)
                 defense_stat = defender_pokemon["final_def"]*multiplier_def
             else:
-                stage_atk = stats_modifier[room_id][user_id][poke]["spa"]
+                stage_atk = stats_modifier[roomid][user_id][poke]["spa"]
                 multiplier_atk=await stat_multiplier(stage_atk)
                 attack_stat = attacker_pokemon["final_spa"]*multiplier_atk
-                stage_def = stats_modifier[room_id][opponent_id][opponent_active]["spd"]
+                stage_def = stats_modifier[roomid][opponent_id][opponent_active]["spd"]
                 multiplier_def=await stat_multiplier(stage_def)
                 defense_stat = defender_pokemon["final_spd"]*multiplier_def
 
