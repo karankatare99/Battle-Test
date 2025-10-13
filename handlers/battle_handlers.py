@@ -1576,6 +1576,8 @@ async def switch_pokemon(user_id, new_poke_id, event, is_forced=False):
         old_poke = battle_state[user_id]["active_pokemon"][0]
         old_poke_name = old_poke.split("_")[0]
         new_poke_name = new_poke_id.split("_")[0]
+        del stats_modifier[roomid][user_id][battle_state[user_id]["active_pokemon"][0]]
+        stats_modifier[roomid][user_id][new_poke_id]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
         
         # Update active Pokemon
         battle_state[user_id]["active_pokemon"][0] = new_poke_id
