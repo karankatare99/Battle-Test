@@ -64,16 +64,16 @@ status_indeptheffect={}
 #draindamage moves
 draindamage_moves=["Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
 #stat modifier moves
-atk1_buff_moves=[] # these moves raise attack stat by one stage
+atk1_buff_moves=["Growth","Meditate","Sharpen"] # these moves raise attack stat by one stage
 atk2_buff_moves=["Sword Dance"] # these moves raise attack stat by two stage
-def1_buff_moves=[] # these moves raise defense stat by one stage
-def2_buff_moves=[] # these moves raise defense stat by two stage
-spe2_buff_moves=[] # these moves raise speed stat by two stage
-spd2_buff_moves=[] # these moves raise sp defense stat by two stage
-atkdef1_buff_moves=[]
+def1_buff_moves=["Defense Curl","Harden","Withdraw"] # these moves raise defense stat by one stage
+def2_buff_moves=["Acid Armor","Barrier",] # these moves raise defense stat by two stage
+spe2_buff_moves=["Agility"] # these moves raise speed stat by two stage
+spd2_buff_moves=["Amnesia"] # these moves raise sp defense stat by two stage
+atkdef1_buff_moves=["Bulk Up"]
 spaspd1_buff_moves=["Calm Mind"]
-spaspdspe1_buff_moves=[]
-miscellaneous_buff_moves=[]
+spaspdspe1_buff_moves=["Quiver Dance"]
+miscellaneous_buff_moves=["Shell Smash"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1314,8 +1314,8 @@ async def move_handler(user_id, move, poke, fmt, event):
             if move in spaspd1_buff_moves:
                 stats_modifier[roomid][user_id][poke]["spa"]+=1
                 stats_modifier[roomid][user_id][poke]["spd"]+=1
-                used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon}'s Special Attack rose!/n{self_pokemon}'s Special Defense rose!"
-                used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon}'s Special Attack rose!/nOpposing {self_pokemon}'s Special Defense rose!"
+                used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Special Attack rose!\n{self_pokemon}'s Special Defense rose!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Special Attack rose!\nOpposing {self_pokemon}'s Special Defense rose!"
                 # Build attacker’s sequence
                 seq_self = [used_text_self]
                 # Build opponent’s sequence
@@ -1331,8 +1331,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                 stats_modifier[roomid][user_id][poke]["spa"]+=1
                 stats_modifier[roomid][user_id][poke]["spd"]+=1
                 stats_modifier[roomid][user_id][poke]["spe"]+=1
-                used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon}'s Special Attack rose!/n{self_pokemon}'s Special Defense rose!\n{self_pokemon}'s Speed rose!"
-                used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon}'s Special Attack rose!/nOpposing {self_pokemon}'s Special Defense rose!\nOpposing{self_pokemon}'s Speed rose!"
+                used_text_self = f"{self_pokemon} used {move}!\n{self_pokemon}'s Special Attack rose!\n{self_pokemon}'s Special Defense rose!\n{self_pokemon}'s Speed rose!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!\nOpposing {self_pokemon}'s Special Attack rose!\nOpposing {self_pokemon}'s Special Defense rose!\nOpposing{self_pokemon}'s Speed rose!"
                 # Build attacker’s sequence
                 seq_self = [used_text_self]
                 # Build opponent’s sequence
