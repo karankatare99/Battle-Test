@@ -23,6 +23,7 @@ pending_texts={}
 movetext = {}
 status_effects = {}
 process_turn={}
+stats_modifier={}
 #all moves
 all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide","Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
 #Only damage dealing moves
@@ -1061,6 +1062,10 @@ async def move_handler(user_id, move, poke, fmt, event):
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
+            if roomid not in stats_modifier:
+                stats_modifier[roomid] = {}
+                userpoke=poke
+                opppoke=battle_state[opponent_id]["active_pokemon"][0]
             if roomid not in status_effects:
                 status_effects[roomid] = {}
                 # Define all possible conditions (status ailments)
