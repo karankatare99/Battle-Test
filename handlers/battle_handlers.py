@@ -1384,7 +1384,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             # ✅ Attack/Defense stats
             if category.lower() == "physical":
-                stage_atk = stats_modifier[rooid][user_id][poke]["atk"]
+                stage_atk = stats_modifier[roomid][user_id][poke]["atk"]
                 multiplier_atk=await stat_multiplier(stage_atk)
                 attack_stat = attacker_pokemon["final_atk"]*multiplier_atk
                 stage_def = stats_modifier[roomid][opponent_id][opponent_active]["def"]
