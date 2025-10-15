@@ -2097,7 +2097,25 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                 continue
 
             await move_handler(uid, mv, pokemon, fmt, event)
+            # Check if defender fainted
+            defender_id = p2_id if uid == p1_id else p1_id
+            if await check_fainted_pokemon(uid):
+                faint_result = await handle_fainted_pokemon(uid, event)
+                if faint_result == "lost":
+                    winner_id = defenderid
+                    loser_id = uid
 
+                    winner_msg = room[winner_id]["start_msg"]
+                    loser_msg = room[loser_id]["start_msg"]
+                    await winner_msg.edit("🎉 You won the battle! 🎉")
+                    await loser_msg.edit("You lost the battle!")
+
+                    for player_id in [p1_id, p2_id]:
+                        battle_state.pop(player_id, None)
+                        room.pop(player_id, None)
+
+                    print(f"DEBUG: Battle ended - Winner: {winner_id}")
+                    return
             # Check if defender fainted
             defender_id = p2_id if uid == p1_id else p1_id
             if await check_fainted_pokemon(defender_id):
