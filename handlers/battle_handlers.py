@@ -82,6 +82,9 @@ recoil25_moves=["Double Edge","Flare Blitz"]
 recoil33_moves=["Submission","Take Down"]
 #selfko moves
 selfko_moves=["Self Destruct","Explosion"]
+#priority moves
+priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
+priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
