@@ -1459,6 +1459,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                     recoil=1/4
                 if move in recoil33_moves:
                     recoil=1/3
+                curhp=defender_pokemon["current_hp"] - damage
+                defender_pokemon["current_hp"]= curhp
                 curhp=attacker_pokemon["current_hp"]
                 recoil_damage = curhp*recoil
                 attacker_pokemon["current_hp"] = max(0,curhp-recoil_damage)
