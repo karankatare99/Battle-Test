@@ -25,7 +25,7 @@ status_effects = {}
 process_turn={}
 stats_modifier={}
 #all moves
-all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide","Absorb","Mega Drain","Leech Life","Bouncy Bubble","Sword Dance","Calm Mind","Guillotine","Fissure","Horn Drill","Double Edge","Flare Blitz","Submission","Take Down"]
+all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide","Absorb","Mega Drain","Leech Life","Bouncy Bubble","Sword Dance","Calm Mind","Guillotine","Fissure","Horn Drill","Double Edge","Flare Blitz","Submission","Take Down","Self Destruct","Explosion"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -80,6 +80,8 @@ zerohitko_moves=["Guillotine","Fissure","Horn Drill"]
 recoil_moves=["Double Edge","Flare Blitz","Submission","Take Down"]
 recoil25_moves=["Double Edge","Flare Blitz"]
 recoil33_moves=["Submission","Take Down"]
+#selfko moves
+selfko_moves=["Self Destruct","Explosion"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1454,6 +1456,8 @@ async def move_handler(user_id, move, poke, fmt, event):
  
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+            if move in selfko_moves:
+                attacker_pokemon["current_hp"]=0
             if move in recoil_moves:
                 if move in recoil25_moves:
                     recoil=1/4
