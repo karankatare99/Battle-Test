@@ -76,6 +76,10 @@ spaspdspe1_buff_moves=["Quiver Dance"]
 miscellaneous_buff_moves=["Shell Smash"]
 #0hko moves
 zerohitko_moves=["Guillotine","Fissure","Horn Drill"]
+#recoil moves
+recoil_moves=["Double Edge","Flare Blitz","Submission","Take Down"]
+recoil25_moves=["Double Edge","Flare Blitz"]
+recoil33_moves=["Submission","Take Down"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1450,6 +1454,38 @@ async def move_handler(user_id, move, poke, fmt, event):
  
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+            if move in recoil_moves:
+                if moves in recoil25_moves:
+                    recoil=1/4
+                if moves in recoil33_moves:
+                    recoil=1/3
+                curhp=attacker_pokemon["current_hp"]
+                recoil_damage = curhp*recoil
+                attacker_pokemon["current_hp"] = max(0,curhp-recoil_damage)
+                # ✅ Build text sequences
+                used_text_self = f"{self_pokemon} used {move}!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                crit_text = "A critical hit!" if is_critical else None
+
+                # Build attacker’s sequence
+                seq_self = [used_text_self]
+                if crit_text:
+                    seq_self.append(crit_text)
+                if power > 0 and effect_text != "Effective":
+                    seq_self.append(effect_text)
+                seq_self.append(f"The opposing {opp_pokemon} was damaged by the recoil")
+                # Build opponent’s sequence
+                seq_opp = [used_text_opp]
+                seq_opp.append(f"{opp_pokemon} was damaged by the recoil")
+                # ✅ Append to movetext (don’t replace)
+                movetext[user_id]["text_sequence"].extend(seq_self)
+                movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                movetext[user_id]["hp_update_at"] = 1
+                movetext[opponent_id]["hp_update_at"] = 1
+                print("drain moves working")
+                await battle_ui(fmt, user_id, event)
+                return True
             if move in draindamage_moves:
                 drain = 1/2
                 heal = await drain_damage(damage,drain)
