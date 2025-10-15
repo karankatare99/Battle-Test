@@ -1455,9 +1455,9 @@ async def move_handler(user_id, move, poke, fmt, event):
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
             if move in recoil_moves:
-                if moves in recoil25_moves:
+                if move in recoil25_moves:
                     recoil=1/4
-                if moves in recoil33_moves:
+                if move in recoil33_moves:
                     recoil=1/3
                 curhp=attacker_pokemon["current_hp"]
                 recoil_damage = curhp*recoil
