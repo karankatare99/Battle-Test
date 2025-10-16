@@ -86,8 +86,9 @@ selfko_moves=["Self Destruct","Explosion"]
 priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 #debuff moves
-debuff_moves=["Acid"]
+debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid"]
+debbuffatk10_moves=["Aurora Beam"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1555,6 +1556,15 @@ async def move_handler(user_id, move, poke, fmt, event):
                         stats_modifier[roomid][opponent_id][opponent_active]["spd"]-=1
                         usertxt = f"The Opposing {opp_pokemon}'s special defense fell!"
                         opptxt = f"{opp_pokemon}'s special defense fell!"
+                        seq_self.append(usertxt)
+                        seq_opp.append(opptxt)
+                if move in debuffatk10_moves:
+                    chance = 10
+                    debuff=await debuff_checker(chance)
+                    if debuff:
+                        stats_modifier[roomid][opponent_id][opponent_active]["atk"]-=1
+                        usertxt = f"The Opposing {opp_pokemon}'s attack fell!"
+                        opptxt = f"{opp_pokemon}'s attack fell!"
                         seq_self.append(usertxt)
                         seq_opp.append(opptxt)
             #paralyze check
