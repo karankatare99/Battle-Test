@@ -1582,9 +1582,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 if flinch:
                     print("flinch pokemon is appending")
                     flinch_list.append(opponent_active)
-                    used_text_self = f"{self_pokemon} flinched and couldn't move!"
+                    used_text_opp= f"{self_pokemon} flinched and couldn't move!"
                     
-                    used_text_opp = f"Opposing {self_pokemon} flinched and couldn't move!"
+                    used_text_self = f"Opposing {self_pokemon} flinched and couldn't move!"
                     seq_self.append(used_text_self)
                     seq_opp.append(used_text_opp)
                     if opponent_active in flinch_list:
