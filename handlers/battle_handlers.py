@@ -1183,7 +1183,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
-                    status_effects[roomid][user_id]["flinch"].remove(defender_pokemon)
+                    status_effects[roomid][user_id]["flinch"].remove(poke)
                     return True
                 freeze = await freeze_checker()
                 if freeze:
