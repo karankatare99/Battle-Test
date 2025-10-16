@@ -1588,7 +1588,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 flinch_list = status_effects[roomid][opponent_id]["flinch"]
 
                 
-                elif flinch:
+                if flinch:
                     
                     flinch_list.append(opponent_active)
                     
