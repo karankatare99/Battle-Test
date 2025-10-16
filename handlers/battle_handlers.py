@@ -1174,12 +1174,12 @@ async def move_handler(user_id, move, poke, fmt, event):
                     print(poke, "got flinched")
                     # Missed attack text
                     used_text_self = f"{self_pokemon} flinched and couldn't move!"
-                    miss_text = f""
+                    
                     used_text_opp = f"Opposing {self_pokemon} flinched and couldn't move!"
 
                     # Append (not overwrite)
-                    movetext[user_id]["text_sequence"].extend([used_text_self, miss_text])
-                    movetext[opponent_id]["text_sequence"].extend([used_text_opp, miss_text])
+                    movetext[user_id]["text_sequence"].append(used_text_self)
+                    movetext[opponent_id]["text_sequence"].append(used_text_opp)
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
