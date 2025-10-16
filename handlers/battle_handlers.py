@@ -1171,7 +1171,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     return True
                 #flinch check
                 if poke in status_effects[roomid][user_id]["flinch"]:
-                
+                    print(poke, "got flinched")
                     # Missed attack text
                     used_text_self = f"{self_pokemon} flinched and couldn't move!"
                     miss_text = f""
