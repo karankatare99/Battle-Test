@@ -1590,9 +1590,10 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                 
                 if flinch:
-                    
+                    print("flinch pokemon is appending")
                     flinch_list.append(opponent_active)
-                    
+                    if opponent_active in flinch_list:
+                        print("flinch pokemon not found")
             if move in burn_moves:
                 burn = await burn_check(move)
                 burn_list = status_effects[roomid][opponent_id]["burn"]
