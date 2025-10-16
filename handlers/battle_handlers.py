@@ -1183,7 +1183,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
-                    
+                    print(488473738388383848)
                     return True
                 freeze = await freeze_checker()
                 if freeze:
