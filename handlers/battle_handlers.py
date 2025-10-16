@@ -974,8 +974,7 @@ async def final_battle_ui(fmt, user_id, event):
         
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
-        battle_state[p1_id]["turn"] += 1
-        battle_state[p2_id]["turn"] += 1
+        
         await p1_textmsg.edit(p1_text, buttons=p1_poke_buttons)
         await p2_textmsg.edit(p2_text, buttons=p2_poke_buttons)
         
@@ -2080,18 +2079,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
     try:
         print("got out - processing turn")
-        # Ensure the room exists
-        status_effects.setdefault(room_id, {})
-
-        # Define all possible conditions (status ailments)
-        conditions = ["Reflect"]
-
-        # Ensure both players have all conditions initialized
-        for pid in [p1_id, p2_id]:
-            status_effects[room_id].setdefault(pid, {})
-            for cond in conditions:
-                status_effects[room_id][pid].setdefault(cond,{})
-        print(battlefield_effects)
+        
         # Define all possible conditions (status ailments)
         conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
 
