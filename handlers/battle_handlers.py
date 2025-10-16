@@ -1092,22 +1092,8 @@ async def move_handler(user_id, move, poke, fmt, event):
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
-            if roomid not in battlefield_effects:
-                battlefield_effects[roomid] = {}
-                battlefield_effects[roomid][user_id]={}
-                battlefield_effects[roomid][user_id]["reflect"]={}
-                battlefield_effects[roomid][opponent_id]={}
-                battlefield_effects[roomid][opponent_id]["reflect"]={}
-            if battlefield_effects[roomid][user_id]["reflect"] is None:
-                reflect=battlefield_effects[roomid][user_id]["reflect"]
-                reflect["status"]=False
-                reflect["maxturn"]=5
-                reflect["turn"]=0
-            if battlefield_effects[roomid][opponent_id]["reflect"] is None:
-                reflect=battlefield_effects[roomid][opponent_id]["reflect"]
-                reflect["status"]=False
-                reflect["maxturn"]=5
-                reflect["turn"]=0
+            battlefield_effects.setdefault(roomid, {}).setdefault(user_id, {}).setdefault("reflect", {"status": False, "maxturn": 5, "turn": 0})
+            battlefield_effects[roomid].setdefault(opponent_id, {}).setdefault("reflect", {"status": False, "maxturn": 5, "turn": 0})
             if roomid not in stats_modifier:
                 stats_modifier[roomid] = {}
                 stats_modifier[roomid][user_id]={}
