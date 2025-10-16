@@ -25,7 +25,7 @@ status_effects = {}
 process_turn={}
 stats_modifier={}
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
