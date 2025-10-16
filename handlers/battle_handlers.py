@@ -25,7 +25,7 @@ status_effects = {}
 process_turn={}
 stats_modifier={}
 #all moves
-all_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash","Sizzly Slide","Absorb","Mega Drain","Leech Life","Bouncy Bubble","Sword Dance","Calm Mind","Guillotine","Fissure","Horn Drill","Double Edge","Flare Blitz","Submission","Take Down","Self Destruct","Explosion"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -85,6 +85,9 @@ selfko_moves=["Self Destruct","Explosion"]
 #priority moves
 priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
+#debuff moves
+debuff_moves=["Acid"]
+debuffspd10_moves=["Acid"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1073,6 +1076,9 @@ async def stat_multiplier(stage):
         return multiplier
     else:
         return 1
+async def debuff_checker(chance):
+    rvalue= random.randint(1,100)
+    return True if chance>=rvalue else False 
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
@@ -1550,7 +1556,17 @@ async def move_handler(user_id, move, poke, fmt, event):
                 seq_self.append(effect_text)
             # Build opponent’s sequence
             seq_opp = [used_text_opp]
-            
+            #debuff check
+            if move in debuff_moves:
+                if move in debuffspd10_moves:
+                    chance = 10
+                    debuff=await debuff_checker(chance)
+                    if debuff:
+                        stats_modifier[roomid][opponent_id][opponent_active]["spd"]-=1
+                        usertxt = f"The Opposing {opp_pokemon}'s special defense fell!"
+                        opptxt = f"{opp_pokemon}'s special defense fell!"
+                        seq_self.append(usertxt)
+                        seq_opp.append(opptxt)
             #paralyze check
             if move in paralyze_moves:
                 paralyze = await paralyze_check(move)
