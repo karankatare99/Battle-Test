@@ -2092,7 +2092,9 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         else:
             # Both use moves → decide by speed (consider paralysis)
             p1_stage=stats_modifier[room_id][p1_id][battle_state[p1_id]["active_pokemon"][0]]["spe"]
-            p2_stage=stats_modifier[room_id][p2_id][battle_state[p2_id]["active_pokemon"][0]]["spe"]
+            p2_stage = stats_modifier.setdefault(room_id, {}).setdefault(p2_id, {}).setdefault(
+    battle_state[p2_id]["active_pokemon"][0], {}
+).setdefault("spe", 0)
             p1_multiplier = await stat_multiplier(p1_stage)
             p2_multiplier = await stat_multiplier(p2_stage)
             p1_speed = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]*p1_multiplier
