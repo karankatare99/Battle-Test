@@ -1183,7 +1183,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
-                    
+                    status_effects[roomid][user_id]["flinch"].remove(poke)
                     return True
                 freeze = await freeze_checker()
                 if freeze:
@@ -1741,10 +1741,7 @@ async def battle_ui(fmt, user_id, event):
         await p1_textmsg.edit(p1_text)
         await p2_textmsg.edit(p2_text)
         print(status_effects)
-        if p1_poke in status_effects[roomid][p1_id]["flinch"]:
-            status_effects[roomid][p1_id]["flinch"].remove(p1_poke)
-        if p2_poke in status_effects[roomid][p2_id]["flinch"]:
-            status_effects[roomid][p2_id]["flinch"].remove(p2_poke)
+        
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
         movetext[p1_id]["text_sequence"]=[]
