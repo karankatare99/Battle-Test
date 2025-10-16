@@ -1738,6 +1738,7 @@ async def battle_ui(fmt, user_id, event):
                 await asyncio.sleep(2)
         await p1_textmsg.edit(p1_text)
         await p2_textmsg.edit(p2_text)
+        print(status_effects)
         if p1_poke in status_effects[roomid][p1_id]["flinch"]:
             status_effects[roomid][p1_id]["flinch"].remove(p1_poke)
         if p2_poke in status_effects[roomid][p2_id]["flinch"]:
