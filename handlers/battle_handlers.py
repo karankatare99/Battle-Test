@@ -1092,6 +1092,22 @@ async def move_handler(user_id, move, poke, fmt, event):
             p1_id = int(room_userids[roomid]["p1"])
             p2_id = int(room_userids[roomid]["p2"])
             opponent_id = p2_id if user_id == p1_id else p1_id
+            if roomid not in battlefield_effects:
+                battlefield_effects[roomid] = {}
+                battlefield_effects[roomid][user_id]={}
+                battlefield_effects[roomid][user_id]["reflect"]={}
+                battlefield_effects[roomid][opponent_id]={}
+                battlefield_effects[roomid][opponent_id]["reflect"]={}
+            if battlefield_effects[roomid][user_id]["reflect"] is None:
+                reflect=battlefield_effects[roomid][user_id]["reflect"]
+                reflect["status"]=False
+                reflect["maxturn"]=5
+                reflect["turn"]=0
+            if battlefield_effects[roomid][opponent_id]["reflect"] is None:
+                reflect=battlefield_effects[roomid][opponent_id]["reflect"]
+                reflect["status"]=False
+                reflect["maxturn"]=5
+                reflect["turn"]=0
             if roomid not in stats_modifier:
                 stats_modifier[roomid] = {}
                 stats_modifier[roomid][user_id]={}
@@ -2088,7 +2104,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         for pid in [p1_id, p2_id]:
             status_effects[room_id].setdefault(pid, {})
             for cond in conditions:
-                status_effects[room_id][pid].setdefault(cond,{"status":False,"maxturn":0,"turn":0})
+                status_effects[room_id][pid].setdefault(cond,{})
         print(battlefield_effects)
         # Define all possible conditions (status ailments)
         conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
