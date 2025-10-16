@@ -2082,7 +2082,8 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         
         # Define all possible conditions (status ailments)
         conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
-
+        if room_id not in status_effects:
+            status_effects[room_id] = {}
         # Ensure both players have all conditions initialized
         for pid in [p1_id, p2_id]:
             status_effects[room_id].setdefault(pid, {})
