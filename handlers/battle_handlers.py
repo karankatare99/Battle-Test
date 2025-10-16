@@ -2016,7 +2016,12 @@ async def endturneffect_battleui(fmt,user_id,event):
             p2_poisontextopp=f"Opposing {p2_poke} was hurt by its poison!"
             await p1_textmsg.edit(text=f"{p2_poisontextuser}\n\n{p1_text}")
             await p2_textmsg.edit(text=f"{p2_poisontextopp}\n\n{p2_text}")
-        
+
+async def priority_value(move):
+    if move in priority01_moves:
+        return 1
+    else: 
+        return 0
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
     p2_id = int(room_userids[room_id]["p2"])
@@ -2070,7 +2075,8 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         # Get moves
         p1_move = selected_move[p1_id]["move"]
         p2_move = selected_move[p2_id]["move"]
-
+        p1_priority=await priority_value(p1_move)
+        p2_priority=await priority_value(p2_move)
         # Determine turn order
         p1_is_switch = (p1_move == "SWITCH")
         p2_is_switch = (p2_move == "SWITCH")
@@ -2104,12 +2110,20 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                         p2_speed /= 2
 
             if p1_speed >= p2_speed:
-                turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
-                              (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
-            else:
-                turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
+                if p2_priority>p1_priority:
+                    turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
                               (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
-
+                else:
+                    turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
+                              (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+            if p2_speed >= p1_speed:
+                if p1_priority>p2_priority:
+                    turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
+                              (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+                else:
+                    turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
+                              (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
+            
         # --- Main move resolution loop ---
         for uid, mv, pokemon in turn_order:
             print(f"DEBUG: Executing action {mv} for user {uid}")
