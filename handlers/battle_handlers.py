@@ -1172,18 +1172,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 #flinch check
                 if poke in status_effects[roomid][user_id]["flinch"]:
                     print(poke, "got flinched")
-                    # Missed attack text
-                    used_text_self = f"{self_pokemon} flinched and couldn't move!"
                     
-                    used_text_opp = f"Opposing {self_pokemon} flinched and couldn't move!"
-
-                    # Append (not overwrite)
-                    movetext[user_id]["text_sequence"].append(used_text_self)
-                    movetext[opponent_id]["text_sequence"].append(used_text_opp)
-                    print(movetext)
-
-                    movetext[user_id]["hp_update_at"] = 999
-                    movetext[opponent_id]["hp_update_at"] = 999
                     status_effects[roomid][user_id]["flinch"].remove(poke)
                     return True
                 freeze = await freeze_checker()
@@ -1593,6 +1582,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 if flinch:
                     print("flinch pokemon is appending")
                     flinch_list.append(opponent_active)
+                    used_text_self = f"{self_pokemon} flinched and couldn't move!"
+                    
+                    used_text_opp = f"Opposing {self_pokemon} flinched and couldn't move!"
+                    seq_self.append(used_text_self)
+                    seq_opp.append(used_text_opp)
                     if opponent_active in flinch_list:
                         print("flinch pokemon not found")
             if move in burn_moves:
