@@ -1078,7 +1078,7 @@ async def stat_multiplier(stage):
         return 1
 async def debuff_checker(chance):
     rvalue= random.randint(1,100)
-    return True if chance>=rvalue else False 
+    return True if 100>=rvalue else False 
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
