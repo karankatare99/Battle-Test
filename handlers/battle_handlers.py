@@ -2090,6 +2090,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
                           (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
         else:
+            print(stats_modifier)
             # Both use moves → decide by speed (consider paralysis)
             p1_stage=stats_modifier[room_id][p1_id][battle_state[p1_id]["active_pokemon"][0]]["spe"]
             p2_stage = stats_modifier[room_id][p1_id][battle_state[p1_id]["active_pokemon"][0]]["spe"]
