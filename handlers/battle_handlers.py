@@ -1583,6 +1583,15 @@ async def move_handler(user_id, move, poke, fmt, event):
                     paralyze_list.append(opponent_active)
                     seq_self.append(paralyze_textuser)
                     seq_opp.append(paralyze_textopp)
+            if move in flinch_moves:
+                flinch = await flinch_check(move)
+                flinch_list = status_effects[roomid][opponent_id]["flinch"]
+
+                
+                elif flinch:
+                    
+                    flinch_list.append(opponent_active)
+                    
             if move in burn_moves:
                 burn = await burn_check(move)
                 burn_list = status_effects[roomid][opponent_id]["burn"]
