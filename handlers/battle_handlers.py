@@ -2089,7 +2089,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             status_effects[room_id].setdefault(pid, {})
             for cond in conditions:
                 status_effects[room_id][pid].setdefault(cond,{"status":False,"maxturn":0,"turn":0})
-        
+        print(battlefield_effects)
         # Define all possible conditions (status ailments)
         conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
 
