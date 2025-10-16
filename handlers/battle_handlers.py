@@ -2062,16 +2062,16 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             status_effects[room_id].setdefault(pid, {})
             for cond in conditions:
                 status_effects[room_id][pid].setdefault(cond, [])
-        if room_id not in stats_modifier:
-            stats_modifier[room_id] = {}
-            stats_modifier[room_id][p1_id]={}
-            stats_modifier[room_id][p2_id]={}
-        if battle_state[p1_id]["active_pokemon"][0] not in stats_modifier[room_id][p1_id]:
-            
-            stats_modifier[room_id][p1_id][poke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
-        if battle_state[p2_id]["active_pokemon"][0] not in stats_modifier[room_id][p2_id]:
-            opppoke=battle_state[p2_id]["active_pokemon"][0]
-            stats_modifier[room_id][p2_id][opppoke]={"atk":0,"def":0,"spa":0,"spd":0,"spe":0}
+        
+        room_stats = stats_modifier.setdefault(room_id, {})
+        p1_stats = room_stats.setdefault(p1_id, {})
+        p2_stats = room_stats.setdefault(p2_id, {})
+        p1_active = battle_state[p1_id]["active_pokemon"][0]
+        p2_active = battle_state[p2_id]["active_pokemon"][0]
+        p1_stats.setdefault(p1_active, {"atk":0,"def":0,"spa":0,"spd":0,"spe":0})
+        p2_stats.setdefault(p2_active, {"atk":0,"def":0,"spa":0,"spd":0,"spe":0})
+        p1_stage = p1_stats[p1_active]["spe"]
+        p2_stage = p2_stats[p2_active]["spe"]
         # Get moves
         p1_move = selected_move[p1_id]["move"]
         p2_move = selected_move[p2_id]["move"]
@@ -2092,8 +2092,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         else:
             print(stats_modifier)
             # Both use moves → decide by speed (consider paralysis)
-            p1_stage=stats_modifier[room_id][p1_id][battle_state[p1_id]["active_pokemon"][0]]["spe"]
-            p2_stage = stats_modifier[room_id][p1_id][battle_state[p1_id]["active_pokemon"][0]]["spe"]
+            
             p1_multiplier = await stat_multiplier(p1_stage)
             p2_multiplier = await stat_multiplier(p2_stage)
             p1_speed = battle_data[p1_id]["pokemon"][battle_state[p1_id]["active_pokemon"][0]]["stats"]["spe"]*p1_multiplier
