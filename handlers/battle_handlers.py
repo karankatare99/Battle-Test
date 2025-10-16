@@ -24,8 +24,9 @@ movetext = {}
 status_effects = {}
 process_turn={}
 stats_modifier={}
+battlefield_effects={}
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -89,6 +90,8 @@ priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid"]
 debbuffatk10_moves=["Aurora Beam"]
+#refect moves
+reflect_moves=["Baddy Bad"]
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
@@ -1527,7 +1530,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 await battle_ui(fmt, user_id, event)
                 return True
 
-            
+            if move in reflect_moves:
+                reflect=battlefield_effects[roomid][user_id]["reflect"]
+                reflect["status"]=True
+                reflect["maxturn"]=5
+                reflect["turn"]=
             # Store damage for the OPPONENT (who is receiving the damage)
             maxhp=defender_pokemon["final_hp"] 
             curhp=defender_pokemon["current_hp"] - damage
@@ -2065,6 +2072,15 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         status_effects.setdefault(room_id, {})
 
         # Define all possible conditions (status ailments)
+        conditions = ["Reflect"]
+
+        # Ensure both players have all conditions initialized
+        for pid in [p1_id, p2_id]:
+            status_effects[room_id].setdefault(pid, {})
+            for cond in conditions:
+                status_effects[room_id][pid].setdefault(cond,{"status":False,"maxturn":0,"turn":0})
+        
+        # Define all possible conditions (status ailments)
         conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
 
         # Ensure both players have all conditions initialized
@@ -2072,7 +2088,6 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             status_effects[room_id].setdefault(pid, {})
             for cond in conditions:
                 status_effects[room_id][pid].setdefault(cond, [])
-        
         room_stats = stats_modifier.setdefault(room_id, {})
         p1_stats = room_stats.setdefault(p1_id, {})
         p2_stats = room_stats.setdefault(p2_id, {})
