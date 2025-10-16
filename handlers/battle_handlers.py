@@ -930,8 +930,7 @@ async def final_battle_ui(fmt, user_id, event):
         p2_id = int(room_userids[roomid]["p2"])
         
         # Initialize turn counter
-        battle_state[p1_id]["turn"] = 1
-        battle_state[p2_id]["turn"] = 1
+        
         
         p1_textmsg = room[p1_id]["start_msg"]
         p2_textmsg = room[p2_id]["start_msg"]
@@ -975,7 +974,8 @@ async def final_battle_ui(fmt, user_id, event):
         
         battle_state[p1_id]["player_text"] = p1_text
         battle_state[p2_id]["player_text"] = p2_text
-        
+        battle_state[p1_id]["turn"] += 1
+        battle_state[p2_id]["turn"] += 1
         await p1_textmsg.edit(p1_text, buttons=p1_poke_buttons)
         await p2_textmsg.edit(p2_text, buttons=p2_poke_buttons)
         
@@ -1459,6 +1459,16 @@ async def move_handler(user_id, move, poke, fmt, event):
  
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+            if battlefield_effects[roomid][opponent_id]["reflect"]["status"] is True:
+                reflect = battlefield_effects[roomid][opponent_id]["reflect"]
+                maxturns= 5
+                turn = reflect["turn"]
+                current_turn=battle_state["user_id"]["turn"]
+                if current_turn<maxturns+turn:
+                    damage = damage/2 if category.lower== "physical" else damage
+                if current_turn>=maxturns+turn:  
+                    reflect["status"]= False
+                    reflect["turn"]=0
             if move in selfko_moves:
                 attacker_pokemon["current_hp"]=0
             if move in recoil_moves:
@@ -1534,7 +1544,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 reflect=battlefield_effects[roomid][user_id]["reflect"]
                 reflect["status"]=True
                 reflect["maxturn"]=5
-                reflect["turn"]=
+                reflect["turn"]=battle_state[user_id]["turn"]
             # Store damage for the OPPONENT (who is receiving the damage)
             maxhp=defender_pokemon["final_hp"] 
             curhp=defender_pokemon["current_hp"] - damage
