@@ -36,11 +36,11 @@ paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
 paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz"]
 #flinch moves
-flinch_moves = []
+flinch_moves = ["Air Slash"]
 flinch_moves10=[]
 flinch_moves20=[]
-flinch_moves30=[]
-always_flinch_moves=[]
+flinch_moves30=["Air Slashh"]
+always_flinch_moves=["Air Slash"]
 #burn moves
 burn_moves=["Sizzly Slide"]
 burn_moves10=[]
@@ -1078,7 +1078,7 @@ async def stat_multiplier(stage):
         return 1
 async def debuff_checker(chance):
     rvalue= random.randint(1,100)
-    return True if 100>=rvalue else False 
+    return True if chance>=rvalue else False 
 async def move_handler(user_id, move, poke, fmt, event):
     print(f"DEBUG: Move handler called - User: {user_id}, Move: {move}, Pokemon: {poke}")
 
