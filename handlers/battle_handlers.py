@@ -1180,6 +1180,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     # Append (not overwrite)
                     movetext[user_id]["text_sequence"].append(used_text_self)
                     movetext[opponent_id]["text_sequence"].append(used_text_opp)
+                    print(movetext)
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
