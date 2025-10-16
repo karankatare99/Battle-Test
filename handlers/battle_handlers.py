@@ -1584,6 +1584,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_self.append(paralyze_textuser)
                     seq_opp.append(paralyze_textopp)
             if move in flinch_moves:
+                print("flinch moves condition met")
                 flinch = await flinch_check(move)
                 flinch_list = status_effects[roomid][opponent_id]["flinch"]
 
