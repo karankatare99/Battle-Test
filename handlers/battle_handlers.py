@@ -1143,7 +1143,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                 movetext[user_id]["hp_update_at"] = 999
                 movetext[opponent_id]["hp_update_at"] = 999
-                print(movetext)
+                
                 return True
             if poke in status_effects[roomid][user_id]["confusion"] and status_indeptheffect[roomid][user_id]["confusion"][poke]["turn"]>status_indeptheffect[roomid][user_id]["confusion"][poke]["max_turn"]:
                status_effects[roomid][user_id]["confusion"].remove(poke) 
@@ -1183,7 +1183,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
-                    print(488473738388383848)
+                    
                     return True
                 freeze = await freeze_checker()
                 if freeze:
@@ -1498,7 +1498,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                 movetext[user_id]["hp_update_at"] = 1
                 movetext[opponent_id]["hp_update_at"] = 1
-                print("drain moves working")
+                
                 await battle_ui(fmt, user_id, event)
                 return True
             if move in draindamage_moves:
@@ -1532,7 +1532,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                 movetext[user_id]["hp_update_at"] = 1
                 movetext[opponent_id]["hp_update_at"] = 1
-                print("drain moves working")
+                
                 await battle_ui(fmt, user_id, event)
                 return True
 
@@ -1647,12 +1647,12 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             movetext[user_id]["hp_update_at"] = 1
             movetext[opponent_id]["hp_update_at"] = 1
-            print(movetext)
+            
             print(
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
                 f"Damage: {damage} will be applied to {opp_pokemon}"
             )
-            print("Debug: came to last line of move handler function")
+            
             await battle_ui(fmt, user_id, event)
             return True
 
@@ -1924,7 +1924,7 @@ async def handle_fainted_pokemon(user_id, event):
 
 async def endturneffect_battleui(fmt,user_id,event):
     if fmt == "singles":
-        print(battle_data)
+        
         roomid = room[user_id]["roomid"]
         p1_id = int(room_userids[roomid]["p1"])
         p2_id = int(room_userids[roomid]["p2"])
@@ -1940,7 +1940,7 @@ async def endturneffect_battleui(fmt,user_id,event):
         
         p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
         p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
-        print(status_effects)
+        
         print(f"DEBUG: Battle data ready for {user_id}")
         
         p1_poke_hpbar = await hp_bar(
@@ -2021,7 +2021,7 @@ async def endturneffect_battleui(fmt,user_id,event):
             p2_poisontextopp=f"Opposing {p2_poke} was hurt by its poison!"
             await p1_textmsg.edit(text=f"{p2_poisontextuser}\n\n{p1_text}")
             await p2_textmsg.edit(text=f"{p2_poisontextopp}\n\n{p2_text}")
-        print("effect func came")
+        
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
     p2_id = int(room_userids[room_id]["p2"])
