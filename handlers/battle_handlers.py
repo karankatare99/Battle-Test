@@ -1460,7 +1460,7 @@ async def move_handler(user_id, move, poke, fmt, event):
  
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
-            if battlefield_effects[roomid][opponent_id]["reflect"]["status"] is True:
+            '''if battlefield_effects[roomid][opponent_id]["reflect"]["status"] is True:
                 reflect = battlefield_effects[roomid][opponent_id]["reflect"]
                 maxturns= 5
                 turn = reflect["turn"]
@@ -1469,7 +1469,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     damage = damage/2 if category.lower== "physical" else damage
                 if current_turn>=maxturns+turn:  
                     reflect["status"]= False
-                    reflect["turn"]=0
+                    reflect["turn"]=0'''
             if move in selfko_moves:
                 attacker_pokemon["current_hp"]=0
             if move in recoil_moves:
@@ -1542,10 +1542,10 @@ async def move_handler(user_id, move, poke, fmt, event):
                 return True
 
             if move in reflect_moves:
-                reflect=battlefield_effects[roomid][user_id]["reflect"]
+                '''reflect=battlefield_effects[roomid][user_id]["reflect"]
                 reflect["status"]=True
                 reflect["maxturn"]=5
-                reflect["turn"]=battle_state[user_id]["turn"]
+                reflect["turn"]=battle_state[user_id]["turn"]'''
             # Store damage for the OPPONENT (who is receiving the damage)
             maxhp=defender_pokemon["final_hp"] 
             curhp=defender_pokemon["current_hp"] - damage
