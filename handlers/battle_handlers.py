@@ -1502,6 +1502,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_opp.append(effect_text)
                 seq_self.append(f"Hit {hitno} times!")
                 seq_opp.append(f"Hit {hitno} times!")
+                print(movetext)
                 await battle_ui(fmt, user_id, event)
                 return True
             # ✅ Damage calculation
