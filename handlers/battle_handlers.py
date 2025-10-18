@@ -93,6 +93,7 @@ priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid","Bug Buzz"]
 debbuffatk10_moves=["Aurora Beam"]
+debuffspe10_moves=["Bubble"]
 #refect moves
 reflect_moves=["Baddy Bad"]
 #sound moves
@@ -1588,6 +1589,15 @@ async def move_handler(user_id, move, poke, fmt, event):
                         stats_modifier[roomid][opponent_id][opponent_active]["atk"]-=1
                         usertxt = f"The Opposing {opp_pokemon}'s attack fell!"
                         opptxt = f"{opp_pokemon}'s attack fell!"
+                        seq_self.append(usertxt)
+                        seq_opp.append(opptxt)
+                if move in debuffspe10_moves:
+                    chance = 10
+                    debuff=await debuff_checker(chance)
+                    if debuff:
+                        stats_modifier[roomid][opponent_id][opponent_active]["spe"]-=1
+                        usertxt = f"The Opposing {opp_pokemon}'s speed fell!"
+                        opptxt = f"{opp_pokemon}'s speed fell!"
                         seq_self.append(usertxt)
                         seq_opp.append(opptxt)
             #paralyze check
