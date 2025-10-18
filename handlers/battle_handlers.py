@@ -1502,7 +1502,12 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_opp.append(effect_text)
                 seq_self.append(f"Hit {hitno} times!")
                 seq_opp.append(f"Hit {hitno} times!")
-                print(movetext)
+                # ✅ Append to movetext (don’t replace)
+                movetext[user_id]["text_sequence"].extend(seq_self)
+                movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                movetext[user_id]["hp_update_at"] = 1
+                movetext[opponent_id]["hp_update_at"] = 1
                 await battle_ui(fmt, user_id, event)
                 return True
             # ✅ Damage calculation
@@ -1728,6 +1733,7 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             movetext[user_id]["hp_update_at"] = 1
             movetext[opponent_id]["hp_update_at"] = 1
+            
             
             print(
                 f"DEBUG: Move resolved - {self_pokemon} used {move}, "
