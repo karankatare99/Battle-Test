@@ -25,7 +25,7 @@ status_effects = {}
 process_turn={}
 stats_modifier={}
 battlefield_effects={}
-mul
+
 #all moves
 all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam"]
 #Only damage dealing moves
@@ -1477,22 +1477,33 @@ async def move_handler(user_id, move, poke, fmt, event):
                     return True
             if move in multiturn_moves:
                 hits = await hits(move)
+                Critical = False
                 for i in range(1,hits+1):
                     damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
                     defender_pokemon["current_hp"] -= damage
+                    if is_critical:
+                        Critical= True
                 # ✅ Build text sequences
                 used_text_self = f"{self_pokemon} used {move}!"
                 used_text_opp = f"Opposing {self_pokemon} used {move}!"
-                crit_text = "A critical hit!" if is_critical else None
+                crit_text = "A critical hit!" if Critical else None
 
                 # Build attacker’s sequence
-             seq_self = [used_text_self]
-            if crit_text:
-                seq_self.append(crit_text)
-            if power > 0 and effect_text != "Effective":
-                seq_self.append(effect_text)
-            # Build opponent’s sequence
-            seq_opp = [used_text_opp]
+                seq_self = [used_text_self]
+                if crit_text:
+                    seq_self.append(crit_text)
+                if power > 0 and effect_text != "Effective":
+                    seq_self.append(effect_text)
+                # Build opponent’s sequence
+                seq_opp = [used_text_opp]
+                if crit_text:
+                    seq_opp.append(crit_text)
+                if power > 0 and effect_text != "Effective":
+                    seq_opp.append(effect_text)
+                seq_self.append(f"Hit {hits} times!")
+                seq_opp.append(f"Hit {hits} times!")
+                battle_ui(fmt, user_id, event)
+                return True
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
             '''if battlefield_effects[roomid][opponent_id]["reflect"]["status"] is True:
