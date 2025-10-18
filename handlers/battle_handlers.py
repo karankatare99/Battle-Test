@@ -90,7 +90,7 @@ selfko_moves=["Self Destruct","Explosion"]
 priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 #multiturn moves
-multiturnmoves= ["Barrage"]
+multiturn_moves= ["Barrage"]
 #debuff moves
 debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid","Bug Buzz"]
