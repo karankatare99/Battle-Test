@@ -1213,7 +1213,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[opponent_id]["hp_update_at"] = 999
                     
                     return True
-                if poke in status_effects[roomid][user_id]["freeze"] and if not freeze:
+                if poke in status_effects[roomid][user_id]["freeze"] and if freeze:
                     status_effects[roomid][user_id]["freeze"].remove(poke)
                 confusion = await confusion_checker()
                 
