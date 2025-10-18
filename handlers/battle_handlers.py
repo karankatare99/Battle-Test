@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 mul
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -38,11 +38,11 @@ paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
 paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz"]
 #flinch moves
-flinch_moves = ["Air Slash"]
-flinch_moves10=[]
+flinch_moves = ["Air Slash","Bite"]
+flinch_moves10=["Bite"]
 flinch_moves20=[]
-flinch_moves30=["Air Slashh"]
-always_flinch_moves=["Air Slash"]
+flinch_moves30=["Air Slash"]
+always_flinch_moves=[]
 #burn moves
 burn_moves=["Sizzly Slide"]
 burn_moves10=[]
