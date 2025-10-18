@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 mul
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -93,7 +93,7 @@ priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid","Bug Buzz"]
 debbuffatk10_moves=["Aurora Beam"]
-debuffspe10_moves=["Bubble"]
+debuffspe10_moves=["Bubble","Bubble Beam"]
 #refect moves
 reflect_moves=["Baddy Bad"]
 #sound moves
