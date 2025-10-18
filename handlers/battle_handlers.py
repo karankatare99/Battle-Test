@@ -1503,8 +1503,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                 seq_self.append(f"Hit {hitno} times!")
                 seq_opp.append(f"Hit {hitno} times!")
                 # ✅ Append to movetext (don’t replace)
-                movetext[user_id]["text_sequence"].extend(seq_self)
-                movetext[opponent_id]["text_sequence"].extend(seq_opp)
+                movetext[user_id]["text_sequence"].append(seq_self)
+                movetext[opponent_id]["text_sequence"].append(seq_opp)
 
                 movetext[user_id]["hp_update_at"] = 1
                 movetext[opponent_id]["hp_update_at"] = 1
