@@ -1090,7 +1090,7 @@ async def stat_multiplier(stage):
 async def hits(move):
     if move == "Barrage":
         def barrage_hits():
-            hits = random.choices(
+            hit = random.choices(
                 population=[2, 3, 4, 5],
                 weights=[3/8, 3/8, 1/8, 1/8],
                 k=1
