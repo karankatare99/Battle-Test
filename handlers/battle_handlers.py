@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -57,8 +57,8 @@ poison_moves30=[]
 poison_moves40=[]
 always_burn_moves=[""]
 #freeze moves
-freeze_moves=[]
-freeze_moves10=[]
+freeze_moves=["Blizzard"]
+freeze_moves10=["Blizzard"]
 #confusion moves
 confusion_moves=[]
 confusion_moves10=[]
@@ -1074,7 +1074,7 @@ async def paralysis_checker():
     return True if chance <= 25 else False
 async def freeze_checker():
     chance = random.randint(1,100)
-    return True if chance <= 66 else False
+    return True if chance <= 80 else False
 async def drain_damage(damage,drain):
     heal = damage*drain
     return heal
@@ -1199,7 +1199,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     status_effects[roomid][user_id]["flinch"].remove(poke)
                     return True
                 freeze = await freeze_checker()
-                if freeze:
+                if poke in status_effects[roomid][user_id]["freeze"] and if freeze:
                     # Missed attack text
                     used_text_self = f"{self_pokemon} is frozen solid!"
                     miss_text = f""
@@ -1211,8 +1211,10 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
-            
+                    
                     return True
+                if poke in status_effects[roomid][user_id]["freeze"] and if not freeze:
+                    status_effects[roomid][user_id]["freeze"].remove(poke)
                 confusion = await confusion_checker()
                 
                 if confusion:
@@ -1510,6 +1512,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 1
                 await battle_ui(fmt, user_id, event)
                 return True
+            
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
             '''if battlefield_effects[roomid][opponent_id]["reflect"]["status"] is True:
@@ -1662,6 +1665,22 @@ async def move_handler(user_id, move, poke, fmt, event):
                     paralyze_list.append(opponent_active)
                     seq_self.append(paralyze_textuser)
                     seq_opp.append(paralyze_textopp)
+            #freeze check
+            if move in freeze_moves:
+                freeze = await freeze_check(move)
+                freeze_list = status_effects[roomid][opponent_id]["freeze"]
+
+                if opponent_active in freeze_list and if freeze:
+                    paralyze_textuser = f"The Opposing {opp_pokemon} is already frozen solid!"
+                    paralyze_textopp = f"{opp_pokemon} is already frozen solid!"
+                    seq_self.append(freeze_textuser)
+                    seq_opp.append(freeze_textopp)
+                elif freeze:
+                    freeze_textuser = f"The Opposing {opp_pokemon} is a frozen solid"
+                    freeze_textopp = f"{opp_pokemon} is a frozen solid"
+                    freeze_list.append(opponent_active)
+                    seq_self.append(freeze_textuser)
+                    seq_opp.append(freeze_textopp)
             if move in flinch_moves:
                 print("flinch moves condition met")
                 flinch = await flinch_check(move)
