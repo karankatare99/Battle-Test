@@ -1095,7 +1095,7 @@ async def hits(move):
                 weights=[3/8, 3/8, 1/8, 1/8],
                 k=1
             )[0]
-            return hits
+            return hit
         return barrage_hits()
 async def debuff_checker(chance):
     rvalue= random.randint(1,100)
@@ -1476,7 +1476,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     await battle_ui(fmt, user_id, event)
                     return True
             if move in multiturn_moves:
-                hits = await hits(move)
+                hitno = await hits(move)
                 Critical = False
                 for i in range(1,hits+1):
                     damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
@@ -1500,8 +1500,8 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_opp.append(crit_text)
                 if power > 0 and effect_text != "Effective":
                     seq_opp.append(effect_text)
-                seq_self.append(f"Hit {hits} times!")
-                seq_opp.append(f"Hit {hits} times!")
+                seq_self.append(f"Hit {hitno} times!")
+                seq_opp.append(f"Hit {hitno} times!")
                 battle_ui(fmt, user_id, event)
                 return True
             # ✅ Damage calculation
