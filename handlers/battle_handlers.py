@@ -1670,7 +1670,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 freeze = await freeze_check(move)
                 freeze_list = status_effects[roomid][opponent_id]["freeze"]
 
-                if opponent_active in freeze_list and if freeze:
+                if opponent_active in freeze_list and freeze:
                     paralyze_textuser = f"The Opposing {opp_pokemon} is already frozen solid!"
                     paralyze_textopp = f"{opp_pokemon} is already frozen solid!"
                     seq_self.append(freeze_textuser)
