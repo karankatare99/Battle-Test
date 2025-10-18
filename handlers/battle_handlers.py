@@ -25,8 +25,9 @@ status_effects = {}
 process_turn={}
 stats_modifier={}
 battlefield_effects={}
+mul
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -68,7 +69,7 @@ draindamage_moves=["Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
 atk1_buff_moves=["Growth","Meditate","Sharpen"] # these moves raise attack stat by one stage
 atk2_buff_moves=["Sword Dance"] # these moves raise attack stat by two stage
 def1_buff_moves=["Defense Curl","Harden","Withdraw"] # these moves raise defense stat by one stage
-def2_buff_moves=["Acid Armor","Barrier",] # these moves raise defense stat by two stage
+def2_buff_moves=["Acid Armor","Barrier"] # these moves raise defense stat by two stage
 spe2_buff_moves=["Agility"] # these moves raise speed stat by two stage
 spd2_buff_moves=["Amnesia"] # these moves raise sp defense stat by two stage
 atkdef1_buff_moves=["Bulk Up"]
@@ -92,6 +93,8 @@ debuffspd10_moves=["Acid"]
 debbuffatk10_moves=["Aurora Beam"]
 #refect moves
 reflect_moves=["Baddy Bad"]
+#multi hit moves
+
 # Type effectiveness chart (complete)
 type1_modifier = {
     "normal": {"normal": 1, "fire": 1, "water": 1, "electric": 1, "grass": 1, "ice": 1, "fighting": 1, "poison": 1, "ground": 1, "flying": 1, "psychic": 1, "bug": 1, "rock": 0.5, "ghost": 0, "dragon": 1, "dark": 1, "steel": 0.5, "fairy": 1},
