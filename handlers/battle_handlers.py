@@ -89,6 +89,8 @@ selfko_moves=["Self Destruct","Explosion"]
 #priority moves
 priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
+#multiturn moves
+multiturnmoves= ["Barrage"]
 #debuff moves
 debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid","Bug Buzz"]
@@ -1085,6 +1087,16 @@ async def stat_multiplier(stage):
         return multiplier
     else:
         return 1
+async def hits(move):
+    if move == "Barrage":
+        def barrage_hits():
+            hits = random.choices(
+                population=[2, 3, 4, 5],
+                weights=[3/8, 3/8, 1/8, 1/8],
+                k=1
+            )[0]
+            return hits
+        return barrage_hits()
 async def debuff_checker(chance):
     rvalue= random.randint(1,100)
     return True if chance>=rvalue else False 
@@ -1463,7 +1475,24 @@ async def move_handler(user_id, move, poke, fmt, event):
                 
                     await battle_ui(fmt, user_id, event)
                     return True
- 
+            if move in multiturn_moves:
+                hits = await hits(move)
+                for i in range(1,hits+1):
+                    damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+                    defender_pokemon["current_hp"] -= damage
+                # ✅ Build text sequences
+                used_text_self = f"{self_pokemon} used {move}!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                crit_text = "A critical hit!" if is_critical else None
+
+                # Build attacker’s sequence
+             seq_self = [used_text_self]
+            if crit_text:
+                seq_self.append(crit_text)
+            if power > 0 and effect_text != "Effective":
+                seq_self.append(effect_text)
+            # Build opponent’s sequence
+            seq_opp = [used_text_opp]
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
             '''if battlefield_effects[roomid][opponent_id]["reflect"]["status"] is True:
