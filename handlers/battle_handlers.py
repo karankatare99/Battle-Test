@@ -1063,7 +1063,7 @@ async def poison_check(move):
 async def freeze_check(move):
     chance = 0
     if move in freeze_moves10:
-        chance = 10        
+        chance = 100      
     rvalue = random.randint(1, 100)
     if chance >= rvalue:
         return True
