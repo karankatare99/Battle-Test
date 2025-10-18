@@ -1199,7 +1199,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     status_effects[roomid][user_id]["flinch"].remove(poke)
                     return True
                 freeze = await freeze_checker()
-                if poke in status_effects[roomid][user_id]["freeze"] and if freeze:
+                if poke in status_effects[roomid][user_id]["freeze"] and freeze:
                     # Missed attack text
                     used_text_self = f"{self_pokemon} is frozen solid!"
                     miss_text = f""
