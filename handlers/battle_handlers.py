@@ -1478,7 +1478,7 @@ async def move_handler(user_id, move, poke, fmt, event):
             if move in multiturn_moves:
                 hitno = await hits(move)
                 Critical = False
-                for i in range(1,hits+1):
+                for i in range(1,hitno+1):
                     damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
                     defender_pokemon["current_hp"] -= damage
                     if is_critical:
