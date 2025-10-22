@@ -1,4 +1,5 @@
 from telethon import events, Button
+from telethon.errors import MessageNotModifiedError
 import random
 import asyncio
 import json
@@ -27,7 +28,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bide","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -90,7 +91,7 @@ selfko_moves=["Self Destruct","Explosion"]
 priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 #multiturn moves
-multiturn_moves= ["Barrage"]
+multiturn_moves= ["Barrage", "Bide"]
 #debuff moves
 debuff_moves=["Acid","Aurora Beam"]
 debuffspd10_moves=["Acid","Bug Buzz"]
@@ -187,6 +188,10 @@ def register_battle_handlers(bot):
         battle_state[int(user_id)]["active_pokemon"] = []
         battle_state[int(user_id)]["battle_started"] = False
         battle_state[int(user_id)]["battle_initiated"] = True
+        battle_state[int(user_id)]["bide_active"] = False
+        battle_state[int(user_id)]["bide_turns"] = 0
+        battle_state[int(user_id)]["bide_damage"] = 0
+        battle_state[int(user_id)]["bide_target"] = None
         
         text = (
             "╭─「 __**Battle Stadium**__ 」\n"
@@ -1051,7 +1056,7 @@ async def poison_check(move):
         chance = 20
     if move in poison_moves30:
         chance = 30
-    if move in burn_moves40:
+    if move in poison_moves40:
         chance = 40
     if move in always_burn_moves:
         return True
@@ -1215,7 +1220,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     return True
                 if poke in status_effects[roomid][user_id]["freeze"] and not freeze:
                     status_effects[roomid][user_id]["freeze"].remove(poke)
-                confusion = await confusion_checker()
+                confusion = await confusion_check()
                 
                 if confusion:
                     attack_stat = attacker_pokemon["final_atk"]
@@ -1478,40 +1483,68 @@ async def move_handler(user_id, move, poke, fmt, event):
                     await battle_ui(fmt, user_id, event)
                     return True
             if move in multiturn_moves:
-                hitno = await hits(move)
-                Critical = False
-                for i in range(1,hitno+1):
-                    damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
-                    defender_pokemon["current_hp"] -= damage
-                    if is_critical:
-                        Critical= True
-                # ✅ Build text sequences
-                used_text_self = f"{self_pokemon} used {move}!"
-                used_text_opp = f"Opposing {self_pokemon} used {move}!"
-                crit_text = "A critical hit!" if Critical else None
+                if move == "Bide":
+                    # Initialize Bide
+                    battle_state[user_id]["bide_active"] = True
+                    battle_state[user_id]["bide_turns"] = random.choice([2, 3])
+                    battle_state[user_id]["bide_damage"] = 0
+                    battle_state[user_id]["bide_target"] = None
+                    
+                    # ✅ Build text sequences
+                    used_text_self = f"{self_pokemon} used {move}!"
+                    used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                    
+                    # Build attacker's sequence
+                    seq_self = [used_text_self]
+                    seq_self.append(f"{self_pokemon} is storing energy!")
+                    # Build opponent's sequence
+                    seq_opp = [used_text_opp]
+                    seq_opp.append(f"Opposing {self_pokemon} is storing energy!")
+                    
+                    # ✅ Append to movetext (don't replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
 
-                # Build attacker’s sequence
-                seq_self = [used_text_self]
-                if crit_text:
-                    seq_self.append(crit_text)
-                if power > 0 and effect_text != "Effective":
-                    seq_self.append(effect_text)
-                # Build opponent’s sequence
-                seq_opp = [used_text_opp]
-                if crit_text:
-                    seq_opp.append(crit_text)
-                if power > 0 and effect_text != "Effective":
-                    seq_opp.append(effect_text)
-                seq_self.append(f"Hit {hitno} times!")
-                seq_opp.append(f"Hit {hitno} times!")
-                # ✅ Append to movetext (don’t replace)
-                movetext[user_id]["text_sequence"].append(seq_self)
-                movetext[opponent_id]["text_sequence"].append(seq_opp)
+                    movetext[user_id]["hp_update_at"] = 999
+                    movetext[opponent_id]["hp_update_at"] = 999
+                    await battle_ui(fmt, user_id, event)
+                    return True
+                else:
+                    # Handle other multiturn moves (like Barrage)
+                    hitno = await hits(move)
+                    Critical = False
+                    for i in range(1,hitno+1):
+                        damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
+                        defender_pokemon["current_hp"] -= damage
+                        if is_critical:
+                            Critical= True
+                    # ✅ Build text sequences
+                    used_text_self = f"{self_pokemon} used {move}!"
+                    used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                    crit_text = "A critical hit!" if Critical else None
 
-                movetext[user_id]["hp_update_at"] = 1
-                movetext[opponent_id]["hp_update_at"] = 1
-                await battle_ui(fmt, user_id, event)
-                return True
+                    # Build attacker's sequence
+                    seq_self = [used_text_self]
+                    if crit_text:
+                        seq_self.append(crit_text)
+                    if power > 0 and effect_text != "Effective":
+                        seq_self.append(effect_text)
+                    # Build opponent's sequence
+                    seq_opp = [used_text_opp]
+                    if crit_text:
+                        seq_opp.append(crit_text)
+                    if power > 0 and effect_text != "Effective":
+                        seq_opp.append(effect_text)
+                    seq_self.append(f"Hit {hitno} times!")
+                    seq_opp.append(f"Hit {hitno} times!")
+                    # ✅ Append to movetext (don't replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
+
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
+                    await battle_ui(fmt, user_id, event)
+                    return True
             
             # ✅ Damage calculation
             damage, is_critical = await damage_calc_fn(100, power, attack_stat, defense_stat, type_mult, move)
@@ -1605,6 +1638,11 @@ async def move_handler(user_id, move, poke, fmt, event):
             maxhp=defender_pokemon["final_hp"] 
             curhp=defender_pokemon["current_hp"] - damage
             defender_pokemon["current_hp"]= curhp
+            
+            # Track damage for Bide if opponent is using Bide
+            if battle_state[opponent_id]["bide_active"]:
+                battle_state[opponent_id]["bide_damage"] += damage
+                battle_state[opponent_id]["bide_target"] = user_id
             print(f"DEBUG: {self_pokemon} (user {user_id}) attacks {opp_pokemon} (user {opponent_id}) for {damage} damage")
 
             # ✅ Build text sequences
@@ -1631,7 +1669,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                         opptxt = f"{opp_pokemon}'s special defense fell!"
                         seq_self.append(usertxt)
                         seq_opp.append(opptxt)
-                if move in debuffatk10_moves:
+                if move in debbuffatk10_moves:
                     chance = 10
                     debuff=await debuff_checker(chance)
                     if debuff:
@@ -1729,7 +1767,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_opp.append(poison_textopp)
 
             if move in confusion_moves:
-                confusion = await confusion__check(move)
+                confusion = await confusion_check(move)
                 confusion_list = status_effects[roomid][opponent_id]["confusion"]
 
                 if opponent_active in confusion_list:
@@ -2095,7 +2133,7 @@ async def endturneffect_battleui(fmt,user_id,event):
             curhp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
             damage = curhp//8
             newhp = curhp-damage
-            battle_data[p2_id]["pokemon"][p12poke]["current_hp"]=newhp
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]=newhp
             p2_burntextuser=f"{p2_poke} was hurt by its burn!"
             p2_burntextopp=f"Opposing {p2_poke} was hurt by its burn!"
             await p1_textmsg.edit(text=f"{p2_burntextuser}\n\n{p1_text}")
@@ -2120,7 +2158,7 @@ async def endturneffect_battleui(fmt,user_id,event):
             curhp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
             damage = curhp//8
             newhp = curhp-damage
-            battle_data[p2_id]["pokemon"][p12poke]["current_hp"]=newhp
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]=newhp
             p2_poisontextuser=f"{p2_poke} was hurt by its poiosn!"
             p2_poisontextopp=f"Opposing {p2_poke} was hurt by its poison!"
             await p1_textmsg.edit(text=f"{p2_poisontextuser}\n\n{p1_text}")
@@ -2231,6 +2269,94 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                     turn_order = [(p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0]),
                               (p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0])]
             
+        # Process Bide turns before main move resolution
+        for uid in [p1_id, p2_id]:
+            if battle_state[uid]["bide_active"]:
+                battle_state[uid]["bide_turns"] -= 1
+                
+                if battle_state[uid]["bide_turns"] <= 0:
+                    # Bide is ready to release
+                    if battle_state[uid]["bide_damage"] > 0 and battle_state[uid]["bide_target"] is not None:
+                        # Deal double damage to the target
+                        target_id = battle_state[uid]["bide_target"]
+                        final_damage = battle_state[uid]["bide_damage"] * 2
+                        
+                        # Apply damage to target's active Pokemon
+                        target_active = battle_state[target_id]["active_pokemon"][0]
+                        target_pokemon = battle_data[target_id]["pokemon"][target_active]
+                        target_pokemon["current_hp"] -= final_damage
+                        
+                        # Ensure HP doesn't go below 0
+                        if target_pokemon["current_hp"] < 0:
+                            target_pokemon["current_hp"] = 0
+                        
+                        # Build text sequences
+                        user_poke_name = battle_state[uid]["active_pokemon"][0].split("_")[0]
+                        target_poke_name = target_active.split("_")[0]
+                        
+                        used_text_self = f"{user_poke_name} unleashed energy!"
+                        used_text_opp = f"Opposing {user_poke_name} unleashed energy!"
+                        damage_text_self = f"The opposing {target_poke_name} took {final_damage} damage!"
+                        damage_text_opp = f"{target_poke_name} took {final_damage} damage!"
+                        
+                        # Initialize movetext if needed
+                        if uid not in movetext:
+                            movetext[uid] = {}
+                        if target_id not in movetext:
+                            movetext[target_id] = {}
+                        
+                        movetext[uid]["text_sequence"] = [used_text_self, damage_text_self]
+                        movetext[target_id]["text_sequence"] = [used_text_opp, damage_text_opp]
+                        movetext[uid]["hp_update_at"] = 1
+                        movetext[target_id]["hp_update_at"] = 1
+                        
+                        print(f"DEBUG: Bide released! {user_poke_name} dealt {final_damage} damage to {target_poke_name}")
+                    else:
+                        # Bide failed - no damage was taken
+                        user_poke_name = battle_state[uid]["active_pokemon"][0].split("_")[0]
+                        used_text_self = f"{user_poke_name} unleashed energy!"
+                        used_text_opp = f"Opposing {user_poke_name} unleashed energy!"
+                        fail_text = "But it failed!"
+                        
+                        # Initialize movetext if needed
+                        if uid not in movetext:
+                            movetext[uid] = {}
+                        if p2_id if uid == p1_id else p1_id not in movetext:
+                            movetext[p2_id if uid == p1_id else p1_id] = {}
+                        
+                        movetext[uid]["text_sequence"] = [used_text_self, fail_text]
+                        movetext[p2_id if uid == p1_id else p1_id]["text_sequence"] = [used_text_opp, fail_text]
+                        movetext[uid]["hp_update_at"] = 999
+                        movetext[p2_id if uid == p1_id else p1_id]["hp_update_at"] = 999
+                        
+                        print(f"DEBUG: Bide failed! {user_poke_name} had no stored damage")
+                    
+                    # Reset Bide variables
+                    battle_state[uid]["bide_active"] = False
+                    battle_state[uid]["bide_turns"] = 0
+                    battle_state[uid]["bide_damage"] = 0
+                    battle_state[uid]["bide_target"] = None
+                else:
+                    # Still storing energy
+                    user_poke_name = battle_state[uid]["active_pokemon"][0].split("_")[0]
+                    turns_left = battle_state[uid]["bide_turns"]
+                    
+                    used_text_self = f"{user_poke_name} is storing energy!"
+                    used_text_opp = f"Opposing {user_poke_name} is storing energy!"
+                    
+                    # Initialize movetext if needed
+                    if uid not in movetext:
+                        movetext[uid] = {}
+                    if p2_id if uid == p1_id else p1_id not in movetext:
+                        movetext[p2_id if uid == p1_id else p1_id] = {}
+                    
+                    movetext[uid]["text_sequence"] = [used_text_self]
+                    movetext[p2_id if uid == p1_id else p1_id]["text_sequence"] = [used_text_opp]
+                    movetext[uid]["hp_update_at"] = 999
+                    movetext[p2_id if uid == p1_id else p1_id]["hp_update_at"] = 999
+                    
+                    print(f"DEBUG: {user_poke_name} is still storing energy! {turns_left} turns left")
+        
         # --- Main move resolution loop ---
         for uid, mv, pokemon in turn_order:
             print(f"DEBUG: Executing action {mv} for user {uid}")
@@ -2243,13 +2369,18 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                 print(f"DEBUG: {uid} switched Pokemon, turn is over")
                 continue
 
+            # Skip move if Pokemon is using Bide (unless Bide just finished)
+            if battle_state[uid]["bide_active"] and mv != "Bide":
+                print(f"DEBUG: {uid}'s Pokemon is using Bide, skipping move")
+                continue
+
             await move_handler(uid, mv, pokemon, fmt, event)
             # Check if defender fainted
             defender_id = p2_id if uid == p1_id else p1_id
             if await check_fainted_pokemon(uid):
                 faint_result = await handle_fainted_pokemon(uid, event)
                 if faint_result == "lost":
-                    winner_id = defenderid
+                    winner_id = defender_id
                     loser_id = uid
 
                     winner_msg = room[winner_id]["start_msg"]
