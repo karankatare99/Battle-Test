@@ -1154,6 +1154,25 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             self_pokemon = poke.split("_")[0]
             opp_pokemon = opponent_active.split("_")[0]
+            
+            #Bide handler
+            if move == "Bide":
+                if "bide" not in status_indeptheffect[roomid][user_id]:
+                    status_indeptheffect[roomid][user_id]["bide"] = {
+                        "charging": True,
+                        "turns": 0,
+                        "damage_taken": 0
+                    }
+                    movetext[roomid][p1_id]["text_sequence"].append(f"{self_pokemon} is charging!")
+                    return True
+                else:
+                    if status_indeptheffect[roomid][user_id]["bide"]["turns"] < 2:
+                        status_indeptheffect[roomid][user_id]["bide"]["turns"] += 1
+                        movetext[opponent_id]["text_sequence"].extend(["f{self_pokemon} is charging!", "Missed!"])
+                        movetext[user_id]["text_sequence"].extend(["f{self_pokemon} is charging!", "Missed!"])
+                    else:
+                        movetext[opponent_id]["text_sequence"].extend(["f{self_pokemon} Unleased Energy", "Missed!"])
+                        movetext[user_id]["text_sequence"].extend(["f{self_pokemon} Unleased Energy", "Missed!"])
             if move not in all_moves:
                 # Missed attack text
                 used_text_self = f"{self_pokemon} used {move}"
@@ -2172,35 +2191,33 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             defender_id = p2_id if uid == p1_id else p1_id
             defender_poke = battle_state[defender_id]["active_pokemon"][0]
 
-            # --- If attacker is already charging Bide, progress or unleash ---
-            if room_id in status_indeptheffect and uid in status_indeptheffect[room_id] and "bide" in status_indeptheffect[room_id][uid]:
-                bide_state = status_indeptheffect[room_id][uid]["bide"]
-                bide_state["turns"] += 1
-                if bide_state["turns"] < bide_state["duration"]:
-                    await update_battle_text(room_id, f"{pokemon.split('_')[0]} is storing energy!")
-                    continue  # Skip this turn's action while storing
-                else:
-                    damage = bide_state["damage_taken"] * 2
-                    target_poke = battle_state[defender_id]["active_pokemon"][0]
-                    battle_data[defender_id]["pokemon"][target_poke]["current_hp"] -= damage
-                    battle_data[defender_id]["pokemon"][target_poke]["current_hp"] = max(
-                        0, battle_data[defender_id]["pokemon"][target_poke]["current_hp"]
-                    )
-                    await update_battle_text(room_id, f"{pokemon.split('_')[0]} unleashed energy and dealt {damage} damage!")
-                    del status_indeptheffect[room_id][uid]["bide"]
-                    continue
-
             # --- Handle Bide for the attacker ---
             if mv == "Bide":
-                if "bide" not in status_indeptheffect.setdefault(room_id, {}).setdefault(uid, {}):
-                    status_indeptheffect[room_id][uid]["bide"] = {
+                if "bide" not in status_indeptheffect[room_id].get(uid, {}):
+                    status_indeptheffect.setdefault(room_id, {}).setdefault(uid, {})["bide"] = {
                         "charging": True,
                         "turns": 0,
                         "damage_taken": 0,
-                        "duration": 2  # exactly two turns of storing
+                        "duration": random.choice([2, 3])  # random 2-3 turns
                     }
                     await update_battle_text(room_id, f"{pokemon.split('_')[0]} is standing by!")
                     continue  # Skip normal move damage
+                else:
+                    bide_state = status_indeptheffect[room_id][uid]["bide"]
+                    bide_state["turns"] += 1
+                    if bide_state["turns"] < bide_state["duration"]:
+                        await update_battle_text(room_id, f"{pokemon.split('_')[0]} is storing energy!")
+                        continue  # Skip normal move damage
+                    else:
+                        damage = bide_state["damage_taken"] * 2
+                        target_poke = battle_state[defender_id]["active_pokemon"][0]
+                        battle_data[defender_id]["pokemon"][target_poke]["current_hp"] -= damage
+                        battle_data[defender_id]["pokemon"][target_poke]["current_hp"] = max(
+                            0, battle_data[defender_id]["pokemon"][target_poke]["current_hp"]
+                        )
+                        await update_battle_text(room_id, f"{pokemon.split('_')[0]} unleashed energy and dealt {damage} damage!")
+                        del status_indeptheffect[room_id][uid]["bide"]
+                        continue
 
             # --- Normal move execution ---
             damage = await move_handler(uid, mv, pokemon, fmt, event)
