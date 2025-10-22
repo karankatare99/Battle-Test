@@ -2150,6 +2150,7 @@ async def priority_value(move):
         return 1
     else: 
         return 0
+    
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
     p2_id = int(room_userids[room_id]["p2"])
@@ -2167,49 +2168,54 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         p2_ready = (p2_turn == battle_state[p2_id]["turn"])
 
         if p1_ready and p2_ready:
-            # Lock the turn processing to one coroutine only
             if process_turn.get(room_id, False):
-                print(f"DEBUG: Turn already being processed for room {room_id}, skipping duplicate")
                 return
             process_turn[room_id] = True
-            print(f"DEBUG: Turn lock acquired for room {room_id}")
             break
-
         await asyncio.sleep(0.5)
 
     try:
-        print("got out - processing turn")
-        
-        # Define all possible conditions (status ailments)
-        conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
-        if room_id not in status_effects:
-            status_effects[room_id] = {}
-        # Ensure both players have all conditions initialized
-        for pid in [p1_id, p2_id]:
-            status_effects[room_id].setdefault(pid, {})
-            for cond in conditions:
-                status_effects[room_id][pid].setdefault(cond, [])
-        room_stats = stats_modifier.setdefault(room_id, {})
-        p1_stats = room_stats.setdefault(p1_id, {})
-        p2_stats = room_stats.setdefault(p2_id, {})
-        p1_active = battle_state[p1_id]["active_pokemon"][0]
-        p2_active = battle_state[p2_id]["active_pokemon"][0]
-        p1_stats.setdefault(p1_active, {"atk":0,"def":0,"spa":0,"spd":0,"spe":0})
-        p2_stats.setdefault(p2_active, {"atk":0,"def":0,"spa":0,"spd":0,"spe":0})
-        p1_stage = p1_stats[p1_active]["spe"]
-        p2_stage = p2_stats[p2_active]["spe"]
-        # Get moves
         p1_move = selected_move[p1_id]["move"]
         p2_move = selected_move[p2_id]["move"]
-        p1_priority=await priority_value(p1_move)
-        p2_priority=await priority_value(p2_move)
-        # Determine turn order
-        p1_is_switch = (p1_move == "SWITCH")
-        p2_is_switch = (p2_move == "SWITCH")
+        p1_active = battle_state[p1_id]["active_pokemon"][0]
+        p2_active = battle_state[p2_id]["active_pokemon"][0]
+
+        # Determine turn order (speed & priority)
+        turn_order = await calculate_turn_order(p1_id, p1_move, p2_id, p2_move)
 
         if p1_is_switch and p2_is_switch:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
                           (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+            # Handle Bide move
+        if move == "Bide":
+            if "bide" not in status_indeptheffect[room_id][user_id]:
+                status_indeptheffect[room_id][user_id]["bide"] = {
+                    "charging": True,
+                    "turns": 0,
+                    "damage_taken": 0
+                }
+                await update_battle_text(room_id, f"{poke.split('_')[0]} is standing by!")
+                return
+
+            bide_state = status_indeptheffect[room_id][user_id]["bide"]
+            bide_state["turns"] += 1
+
+            if bide_state["turns"] < 2:
+                await update_battle_text(room_id, f"{poke.split('_')[0]} is storing energy!")
+                return
+            else:
+                damage = bide_state["damage_taken"] * 2
+                target_id = room_userids[room_id]["p2"] if room_userids[room_id]["p1"] == user_id else room_userids[room_id]["p1"]
+                target_poke = battle_state[target_id]["active_pokemon"][0]
+
+                battle_data[target_id]["pokemon"][target_poke]["current_hp"] -= damage
+                battle_data[target_id]["pokemon"][target_poke]["current_hp"] = max(
+                    0, battle_data[target_id]["pokemon"][target_poke]["current_hp"]
+                )
+
+                await update_battle_text(room_id, f"{poke.split('_')[0]} unleashed energy and dealt {damage} damage!")
+                del status_indeptheffect[room_id][user_id]["bide"]
+                return
 
         elif p1_is_switch:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
@@ -2269,55 +2275,39 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             if await check_fainted_pokemon(uid):
                 faint_result = await handle_fainted_pokemon(uid, event)
                 if faint_result == "lost":
-                    winner_id = defenderid
+                    winner_id = defender_id
                     loser_id = uid
-
-                    winner_msg = room[winner_id]["start_msg"]
-                    loser_msg = room[loser_id]["start_msg"]
-                    await winner_msg.edit("🎉 You won the battle! 🎉")
-                    await loser_msg.edit("You lost the battle!")
-
-                    for player_id in [p1_id, p2_id]:
-                        battle_state.pop(player_id, None)
-                        room.pop(player_id, None)
-
-                    print(f"DEBUG: Battle ended - Winner: {winner_id}")
+                    await end_battle(winner_id, loser_id)
                     return
+
             # Check if defender fainted
-            defender_id = p2_id if uid == p1_id else p1_id
             if await check_fainted_pokemon(defender_id):
                 faint_result = await handle_fainted_pokemon(defender_id, event)
                 if faint_result == "lost":
                     winner_id = uid
                     loser_id = defender_id
-
-                    winner_msg = room[winner_id]["start_msg"]
-                    loser_msg = room[loser_id]["start_msg"]
-                    await winner_msg.edit("🎉 You won the battle! 🎉")
-                    await loser_msg.edit("You lost the battle!")
-
-                    for player_id in [p1_id, p2_id]:
-                        battle_state.pop(player_id, None)
-                        room.pop(player_id, None)
-
-                    print(f"DEBUG: Battle ended - Winner: {winner_id}")
+                    await end_battle(winner_id, loser_id)
                     return
+
+        # End of turn effects
         await asyncio.sleep(1.5)
         await endturneffect_battleui(fmt, p1_id, event)
+
         # Increment turn counter
         battle_state[p1_id]["turn"] += 1
         battle_state[p2_id]["turn"] += 1
 
-        #call final battle ui 
+        # Update battle UI
         await final_battle_ui(fmt, p1_id, event)
 
-        # Handle fainted Pokémon after the UI update
+        # Handle fainted Pokémon after UI update
         for uid in [p1_id, p2_id]:
             if await check_fainted_pokemon(uid):
                 faint_result = await handle_fainted_pokemon(uid, event)
                 if faint_result == "switch_required":
                     user_msg = room[uid]["start_msg"]
                     await show_forced_switch_menu(uid, user_msg)
+
         selected_move[p1_id] = {}
         selected_move[p2_id] = {}
         print(f"DEBUG: Turn {battle_state[p1_id]['turn'] - 1} resolved for room {room_id}")
