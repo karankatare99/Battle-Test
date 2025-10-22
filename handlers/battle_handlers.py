@@ -1168,10 +1168,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                 else:
                     if status_indeptheffect[roomid][user_id]["bide"]["turns"] < 2:
                         status_indeptheffect[roomid][user_id]["bide"]["turns"] += 1
-                        movetext[roomid][p1_id]["text_sequence"].append(f"{self_pokemon} is charging!")
+                        movetext[opponent_id]["text_sequence"].extend(["f{self_pokemon} is charging!", "Missed!"])
+                        movetext[user_id]["text_sequence"].extend(["f{self_pokemon} is charging!", "Missed!"])
                     else:
-                        movetext[roomid][p1_id]["text_sequence"].append(f"{self_pokemon} Unleased Energy!")
-
+                        movetext[opponent_id]["text_sequence"].extend(["f{self_pokemon} Unleased Energy", "Missed!"])
+                        movetext[user_id]["text_sequence"].extend(["f{self_pokemon} Unleased Energy", "Missed!"])
             if move not in all_moves:
                 # Missed attack text
                 used_text_self = f"{self_pokemon} used {move}"
