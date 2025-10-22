@@ -2131,6 +2131,7 @@ async def priority_value(move):
         return 1
     else: 
         return 0
+    
 async def awaiting_move_action(room_id, fmt, move, poke, event):
     p1_id = int(room_userids[room_id]["p1"])
     p2_id = int(room_userids[room_id]["p2"])
@@ -2191,7 +2192,8 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         if p1_is_switch and p2_is_switch:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
                           (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
-            # Handle Bide move
+            
+        # Handle Bide move
         if move == "Bide":
             if "bide" not in status_indeptheffect[room_id][user_id]:
                 status_indeptheffect[room_id][user_id]["bide"] = {
@@ -2205,7 +2207,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
             bide_state = status_indeptheffect[room_id][user_id]["bide"]
             bide_state["turns"] += 1
 
-            if bide_state["turns"] < 2:
+            if bide_state["turns"] < 2:  # You can randomize 2-3 turns if desired
                 await update_battle_text(room_id, f"{poke.split('_')[0]} is storing energy!")
                 return
             else:
@@ -2221,6 +2223,7 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
                 await update_battle_text(room_id, f"{poke.split('_')[0]} unleashed energy and dealt {damage} damage!")
                 del status_indeptheffect[room_id][user_id]["bide"]
                 return
+
 
         elif p1_is_switch:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
@@ -2276,7 +2279,13 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
 
             await move_handler(uid, mv, pokemon, fmt, event)
             # Check if defender fainted
+            damage = await move_handler(uid, mv, pokemon, fmt, event)
+            target_id = p2_id if uid == p1_id else p1_id
+            
+            if target_id in status_indeptheffect.get(room_id, {}) and "bide" in status_indeptheffect[room_id][target_id]:
+                status_indeptheffect[room_id][target_id]["bide"]["damage_taken"] += damage
             defender_id = p2_id if uid == p1_id else p1_id
+
             if await check_fainted_pokemon(uid):
                 faint_result = await handle_fainted_pokemon(uid, event)
                 if faint_result == "lost":
