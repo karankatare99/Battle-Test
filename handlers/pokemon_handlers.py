@@ -14,16 +14,20 @@ def register_pokemon_handlers(bot):
     async def add_pokemon(event):
         user_id = event.sender_id
         
-        existing = users.find_one({"user_id": user_id})
-        if not existing:
-            await event.reply("User profile not found!")
-            return
-        
-        awaiting_pokemon.add(user_id)
-        await event.respond(
-            "Please paste the meta data of your Pokémon (only next message will be taken!):",
-            buttons=[Button.url("Open Teambuilder", SHOWDOWN_LINK)]
-        )
+        try:
+            existing = users.find_one({"user_id": user_id})
+            if not existing:
+                await event.reply("User profile not found!")
+                return
+            
+            awaiting_pokemon.add(user_id)
+            await event.respond(
+                "Please paste the meta data of your Pokémon (only next message will be taken!):",
+                buttons=[Button.url("Open Teambuilder", SHOWDOWN_LINK)]
+            )
+        except Exception as e:
+            print(f"Error in add_pokemon: {e}")
+            await event.respond("❌ An error occurred. Please try again later.")
 
     @bot.on(events.NewMessage)
     async def handle_pokemon_set(event):
@@ -31,46 +35,51 @@ def register_pokemon_handlers(bot):
         text = event.raw_text
         
         if user_id in awaiting_pokemon and any(k in text for k in ["Ability:", "EVs:", "Nature:", "- "]):
-            pokemon = parse_showdown_set(text)
-            pokemon_key = f"{pokemon.get('name', 'Unknown')}-{pokemon['pokemon_id']}"
-            
-            users.update_one(
-                {"user_id": user_id},
-                {"$push": {"pokemon": pokemon_key}},
-                upsert=True
-            )
-            pokedata.update_one(
-                {"_id": pokemon_key},
-                {"$set": pokemon},
-                upsert=True
-            )
-            
-            awaiting_pokemon.remove(user_id)
-            
-            # Build response message
-            msg = f"✅ Pokémon Saved!\n"
-            msg += f"🆔 ID: {pokemon['pokemon_id']}\n"
-            msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
-            msg += f"🎒 Item: {pokemon['item']}\n"
-            msg += f"📊 Level: {pokemon.get('level', 100)}\n"
-            msg += f"✨ Shiny: {pokemon.get('shiny', 'No')}\n"
-            msg += f"🌟 Ability: {pokemon.get('ability', 'None')}\n"
-            msg += f"🔮 Tera Type: {pokemon.get('tera_type', 'None')}\n"
-            msg += f"🧬 Nature: {pokemon.get('nature', 'Hardy')}\n"
-            msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}\n"
-            
-            # Display calculated stats
-            stats = pokemon.get("stats", {})
-            if stats:
-                msg += f"\n📈 Calculated Stats:\n"
-                msg += f"HP: {stats.get('hp', '?')} | ATK: {stats.get('atk', '?')} | DEF: {stats.get('def', '?')}\n"
-                msg += f"SPA: {stats.get('spa', '?')} | SPD: {stats.get('spd', '?')} | SPE: {stats.get('spe', '?')}\n"
-                evs = pokemon["ev_stats"]
-                ivs = pokemon["iv_stats"]
-                msg += "📊 EVs: " + ", ".join(f"{k.upper()}={evs[f'ev_{k}']}" for k in ['hp','atk','def','spa','spd','spe']) + "\n"
-                msg += "🔢 IVs: " + ", ".join(f"{k.upper()}={ivs[f'iv_{k}']}" for k in ['hp','atk','def','spa','spd','spe'])
-            
-            await event.respond(msg)
+            try:
+                pokemon = parse_showdown_set(text)
+                pokemon_key = f"{pokemon.get('name', 'Unknown')}-{pokemon['pokemon_id']}"
+                
+                users.update_one(
+                    {"user_id": user_id},
+                    {"$push": {"pokemon": pokemon_key}},
+                    upsert=True
+                )
+                pokedata.update_one(
+                    {"_id": pokemon_key},
+                    {"$set": pokemon},
+                    upsert=True
+                )
+                
+                awaiting_pokemon.remove(user_id)
+                
+                # Build response message
+                msg = f"✅ Pokémon Saved!\n"
+                msg += f"🆔 ID: {pokemon['pokemon_id']}\n"
+                msg += f"📛 Name: {pokemon['name']} ({pokemon['gender']})\n"
+                msg += f"🎒 Item: {pokemon['item']}\n"
+                msg += f"📊 Level: {pokemon.get('level', 100)}\n"
+                msg += f"✨ Shiny: {pokemon.get('shiny', 'No')}\n"
+                msg += f"🌟 Ability: {pokemon.get('ability', 'None')}\n"
+                msg += f"🔮 Tera Type: {pokemon.get('tera_type', 'None')}\n"
+                msg += f"🧬 Nature: {pokemon.get('nature', 'Hardy')}\n"
+                msg += f"⚔️ Moves: {', '.join(pokemon.get('moves', []))}\n"
+                
+                # Display calculated stats
+                stats = pokemon.get("stats", {})
+                if stats:
+                    msg += f"\n📈 Calculated Stats:\n"
+                    msg += f"HP: {stats.get('hp', '?')} | ATK: {stats.get('atk', '?')} | DEF: {stats.get('def', '?')}\n"
+                    msg += f"SPA: {stats.get('spa', '?')} | SPD: {stats.get('spd', '?')} | SPE: {stats.get('spe', '?')}\n"
+                    evs = pokemon["ev_stats"]
+                    ivs = pokemon["iv_stats"]
+                    msg += "📊 EVs: " + ", ".join(f"{k.upper()}={evs[f'ev_{k}']}" for k in ['hp','atk','def','spa','spd','spe']) + "\n"
+                    msg += "🔢 IVs: " + ", ".join(f"{k.upper()}={ivs[f'iv_{k}']}" for k in ['hp','atk','def','spa','spd','spe'])
+                
+                await event.respond(msg)
+            except Exception as e:
+                print(f"Error in handle_pokemon_set: {e}")
+                awaiting_pokemon.discard(user_id)  # Remove from awaiting set
+                await event.respond("❌ An error occurred while processing your Pokémon data. Please try again.")
 
     @bot.on(events.NewMessage(pattern="/pokemon"))
     async def pokemon_list_handler(event):
