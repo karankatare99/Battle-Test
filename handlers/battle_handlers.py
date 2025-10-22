@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard", "Bide"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack"]
 #Never miss moves
@@ -2191,6 +2191,37 @@ async def awaiting_move_action(room_id, fmt, move, poke, event):
         if p1_is_switch and p2_is_switch:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
                           (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
+            # Handle Bide move
+        if move == "Bide":
+            if "bide" not in status_indeptheffect[room_id][user_id]:
+                status_indeptheffect[room_id][user_id]["bide"] = {
+                    "charging": True,
+                    "turns": 0,
+                    "damage_taken": 0
+                }
+                await update_battle_text(room_id, f"{poke.split('_')[0]} is standing by!")
+                return
+
+            bide_state = status_indeptheffect[room_id][user_id]["bide"]
+            bide_state["turns"] += 1
+
+            if bide_state["turns"] < 2:
+                await update_battle_text(room_id, f"{poke.split('_')[0]} is storing energy!")
+                return
+            else:
+                damage = bide_state["damage_taken"] * 2
+                target_id = room_userids[room_id]["p2"] if room_userids[room_id]["p1"] == user_id else room_userids[room_id]["p1"]
+                target_poke = battle_state[target_id]["active_pokemon"][0]
+
+                battle_data[target_id]["pokemon"][target_poke]["current_hp"] -= damage
+                battle_data[target_id]["pokemon"][target_poke]["current_hp"] = max(
+                    0, battle_data[target_id]["pokemon"][target_poke]["current_hp"]
+                )
+
+                await update_battle_text(room_id, f"{poke.split('_')[0]} unleashed energy and dealt {damage} damage!")
+                del status_indeptheffect[room_id][user_id]["bide"]
+                return
+
         elif p1_is_switch:
             turn_order = [(p1_id, p1_move, battle_state[p1_id]["active_pokemon"][0]),
                           (p2_id, p2_move, battle_state[p2_id]["active_pokemon"][0])]
