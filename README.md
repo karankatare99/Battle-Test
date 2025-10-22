@@ -34,8 +34,15 @@ Make sure MongoDB is running and accessible at the configured URI.
 
 ### 4. Installation
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Or use the provided script (Linux/Mac)
+chmod +x install_dependencies.sh
+./install_dependencies.sh
 ```
+
+**Note**: The bot will work even if `psutil` fails to install - it will use basic session cleanup instead.
 
 ### 5. Running the Bot
 ```bash
@@ -71,8 +78,25 @@ python bot.py
 
 If you encounter issues:
 
-1. **Database Connection**: Check MongoDB is running
-2. **Missing Files**: Ensure `kanto_data.json` and `moves.json` exist
-3. **Environment Variables**: Verify all required variables are set in `.env`
-4. **Permissions**: Check file permissions for session files
-5. **Network**: Ensure bot can connect to Telegram servers
+1. **SQLite Database Lock Error**: 
+   - The bot now has multiple fallback strategies
+   - If you see "database is locked", the bot will automatically try:
+     - Fresh session file
+     - In-memory session (no file locking)
+   - If the issue persists, check for other bot instances running
+
+2. **Database Connection**: Check MongoDB is running
+3. **Missing Files**: Ensure `kanto_data.json` and `moves.json` exist
+4. **Environment Variables**: Verify all required variables are set in `.env`
+5. **Permissions**: Check file permissions for session files
+6. **Network**: Ensure bot can connect to Telegram servers
+
+### Session File Issues
+If you continue to have session file problems:
+```bash
+# Remove all session files manually
+rm -f bot.session* bot_session_*
+
+# Or on Windows
+del bot.session* bot_session_*
+```
