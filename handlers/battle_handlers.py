@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Dazzling Gleam","Dragon Pulse"]
 #Never miss moves
@@ -40,15 +40,15 @@ paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
 paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz"]
 #flinch moves
-flinch_moves = ["Air Slash","Bite","Bone Club","Double Iron Bash"]
+flinch_moves = ["Air Slash","Bite","Bone Club","Double Iron Bash","Floaty Fall"]
 flinch_moves10=["Bite","Bone Club"]
 flinch_moves51=["Double Iron Bash"]
 flinch_moves20=["Dark Pulse"]
-flinch_moves30=["Air Slash"]
-always_flinch_moves=[]
+flinch_moves30=["Air Slash","Floaty Fall"]
+always_flinch_moves=["Fake Out"]
 #burn moves
-burn_moves=["Sizzly Slide","Ember"]
-burn_moves10=["Ember"]
+burn_moves=["Sizzly Slide","Ember","Fire Blast"]
+burn_moves10=["Ember","Fire Blast","Fire Punch","Flamethrower"]
 burn_moves20=[]
 always_burn_moves=["Sizzly Slide"]
 #poison moves
@@ -90,12 +90,13 @@ selfko_moves=["Self Destruct","Explosion"]
 #priority moves
 priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
+priority03_moves=["Fake Out"]
 #multiturn moves
-multiturn_moves= ["Barrage","Double Iron Bash","Double Kick","Double Slap"]
+multiturn_moves= ["Barrage","Double Iron Bash","Double Kick","Double Slap","Fury Attack","Fury Swipes"]
 
 #debuff moves
 debuff_moves=["Acid","Aurora Beam"]
-debuffspd10_moves=["Acid","Bug Buzz"]
+debuffspd10_moves=["Acid","Bug Buzz","Flash Cannon"]
 debbuffatk10_moves=["Aurora Beam"]
 debuffspe10_moves=["Bubble","Bubble Beam"]
 #refect moves
@@ -1097,7 +1098,7 @@ async def hits(move):
     
     if move == "Double Iron Bash" or move == "Double Kick":
         return 2
-    if move == "Barrage" or move == "Double Slap":
+    if move == "Barrage" or move == "Double Slap" or move == "Fury Attack" or move == "Fury Attack":
         def barrage_hits():
             hit = random.choices(
                 population=[2, 3, 4, 5],
@@ -1151,7 +1152,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 pending_texts[roomid][p2_id]=[]
             # Extract move data
             move_type, category, power, accuracy = await move_data_extract(move)
-
+            if move == "Facade":
+                if poke in status_effects[roomid][user_id]["burn"] or poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["poison"]:
+                    power = power*2
             # Initialize movetext containers
             movetext.setdefault(p1_id, {"text_sequence": [], "hp_update_at": 999})
             movetext.setdefault(p2_id, {"text_sequence": [], "hp_update_at": 999})
@@ -1425,14 +1428,14 @@ async def move_handler(user_id, move, poke, fmt, event):
             if category.lower() == "physical":
                 stage_atk = stats_modifier[roomid][user_id][poke]["atk"]
                 multiplier_atk=await stat_multiplier(stage_atk)
-                attack_stat = attacker_pokemon["final_atk"]*multiplier_atk
+                attack_stat = attacker_pokemon["final_atk"]*multiplier_atk if move != "Foul Play" else defender_pokemon["final_atk"]*multiplier_atk
                 stage_def = stats_modifier[roomid][opponent_id][opponent_active]["def"]
                 multiplier_def=await stat_multiplier(stage_def)
                 defense_stat = defender_pokemon["final_def"]*multiplier_def
-            else:
+            if category.lower() == "special":
                 stage_atk = stats_modifier[roomid][user_id][poke]["spa"]
                 multiplier_atk=await stat_multiplier(stage_atk)
-                attack_stat = attacker_pokemon["final_spa"]*multiplier_atk
+                attack_stat = attacker_pokemon["final_spa"]*multiplier_atk 
                 stage_def = stats_modifier[roomid][opponent_id][opponent_active]["spd"]
                 multiplier_def=await stat_multiplier(stage_def)
                 defense_stat = defender_pokemon["final_spd"]*multiplier_def
@@ -1658,6 +1661,11 @@ async def move_handler(user_id, move, poke, fmt, event):
                         opptxt = f"{opp_pokemon}'s speed fell!"
                         seq_self.append(usertxt)
                         seq_opp.append(opptxt)
+            if move == "Freezy Frost":
+                for stat in stats_modifier[roomid][user_id][poke]:
+                    stats_modifier[roomid][user_id][poke][stat] = 0
+                for stat in stats_modifier[roomid][opponent_id][poke]:
+                    stats_modifier[roomid][opponent_id][poke][stat] = 0
             #paralyze check
             if move in paralyze_moves:
                 paralyze = await paralyze_check(move)
@@ -1755,6 +1763,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_self.append(confusion_textuser)
                     seq_opp.append(confusion_textopp)
             
+                
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
             movetext[opponent_id]["text_sequence"].extend(seq_opp)
@@ -2138,6 +2147,8 @@ async def endturneffect_battleui(fmt,user_id,event):
 async def priority_value(move):
     if move in priority01_moves:
         return 1
+    if move in priority03_moves:
+        return 3
     else: 
         return 0
 async def awaiting_move_action(room_id, fmt, move, poke, event):
