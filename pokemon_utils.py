@@ -2,39 +2,14 @@ import json
 import math
 import random
 import string
-import sys
 from datetime import datetime
 
-# Load Pokemon and move data with error handling
-try:
-    with open("kanto_data.json", "r") as f:
-        kanto_data = json.load(f)
-    print("✅ Loaded Kanto Pokemon data successfully!")
-except FileNotFoundError:
-    print("❌ Error: kanto_data.json file not found!")
-    print("Please ensure kanto_data.json is in the same directory as the bot.")
-    sys.exit(1)
-except json.JSONDecodeError as e:
-    print(f"❌ Error: Invalid JSON in kanto_data.json: {e}")
-    sys.exit(1)
-except Exception as e:
-    print(f"❌ Error loading kanto_data.json: {e}")
-    sys.exit(1)
+# Load Pokemon and move data
+with open("kanto_data.json", "r") as f:
+    kanto_data = json.load(f)
 
-try:
-    with open("moves.json", "r") as f:
-        moves_data = json.load(f)
-    print("✅ Loaded moves data successfully!")
-except FileNotFoundError:
-    print("❌ Error: moves.json file not found!")
-    print("Please ensure moves.json is in the same directory as the bot.")
-    sys.exit(1)
-except json.JSONDecodeError as e:
-    print(f"❌ Error: Invalid JSON in moves.json: {e}")
-    sys.exit(1)
-except Exception as e:
-    print(f"❌ Error loading moves.json: {e}")
-    sys.exit(1)
+with open("moves.json", "r") as f:
+    moves_data = json.load(f)
 
 # Nature effects chart
 nature_chart = {
