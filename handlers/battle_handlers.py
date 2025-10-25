@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Clear Smog","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Clear Smog","Comet Punch","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Dazzling Gleam","Dragon Pulse"]
 #Never miss moves
@@ -92,7 +92,7 @@ priority_moves=["Quick Attack","Aqua Jet","Sucker Punch","Fake Out","Zippy Zap"]
 priority01_moves=["Quick Attack","Aqua Jet","Sucker Punch"]
 priority03_moves=["Fake Out"]
 #multiturn moves
-multiturn_moves= ["Barrage","Double Iron Bash","Double Kick","Double Slap","Fury Attack","Fury Swipes"]
+multiturn_moves= ["Barrage","Double Iron Bash","Double Kick","Double Slap","Fury Attack","Fury Swipes", "Comet Punch"]
 
 #debuff moves
 debuff_moves=["Acid","Aurora Beam"]
@@ -1098,7 +1098,7 @@ async def hits(move):
     
     if move == "Double Iron Bash" or move == "Double Kick":
         return 2
-    if move == "Barrage" or move == "Double Slap" or move == "Fury Attack" or move == "Fury Attack":
+    if move in ("Barrage", "Double Slap", "Fury Attack", "Fury Attack", "Comet Punch"):
         def barrage_hits():
             hit = random.choices(
                 population=[2, 3, 4, 5],
