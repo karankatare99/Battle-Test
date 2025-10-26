@@ -34,6 +34,8 @@ only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hy
 never_miss_moves = ["Swift"]
 #reflect type breaker moves
 rlsavbreak_moves=["Brick Break"]
+# Define all possible conditions (status ailments) 
+conditions = ["paralysis", "burn", "poison", "sleep", "confusion", "freeze", "flinch"]
 #Paralyze moves
 paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz", "Body Slam", "Lick", "Thunder", "Thunder Punch", "Thunder Shock", "Thunderbolt", "Splishy Splash"]
 paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
@@ -61,7 +63,7 @@ always_poison_moves=["Poison Gas","Poison Powder"]
 freeze_moves=["Blizzard","Ice Beam","Ice Punch"]
 freeze_moves10=["Blizzard","Ice Beam","Ice Punch"]
 #confusion moves
-confusion_moves=["Psybeam"]
+confusion_moves=["Psybeam", "Dizzy Punch"]
 confusion_moves10=["Psybeam"]
 confusion_moves20=["Dizzy Punch"]
 always_confusion_moves=[]
@@ -768,7 +770,6 @@ async def type_modifier(move_type, defender_type1, defender_type2=None):
     else:
         return "Effective"
 
-
 async def move_data_extract(move):
     try:
         with open("moves.json", "r") as f:
@@ -788,9 +789,6 @@ async def move_data_extract(move):
         return type_name, category, power, acc
     except (FileNotFoundError, KeyError, json.JSONDecodeError):
         return "normal", "physical", 50, 100
-
-
-
 
 async def accuracy_checker(accuracy,move):
     """Return True if the move hits.
@@ -1047,7 +1045,8 @@ async def burn_check(move):
         return True
     else:
         return False
-async def confusion_check(move):
+    
+async def confusion_check(move=None):
     chance = 0
     if move in confusion_moves10:
         chance = 10
@@ -1067,15 +1066,16 @@ async def poison_check(move):
         chance = 20
     if move in poison_moves30:
         chance = 30
-    if move in burn_moves40:
+    if move in poison_moves40:
         chance = 40
-    if move in always_burn_moves:
+    if move in always_poison_moves:
         return True
     rvalue = random.randint(1, 100)
     if chance >= rvalue:
         return True
     else:
         return False
+    
 async def freeze_check(move):
     chance = 0
     if move in freeze_moves10:
@@ -1189,13 +1189,59 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 999
                 
                 return True
-            if poke in status_effects[roomid][user_id]["confusion"] and status_indeptheffect[roomid][user_id]["confusion"][poke]["turn"]>status_indeptheffect[roomid][user_id]["confusion"][poke]["max_turn"]:
-               status_effects[roomid][user_id]["confusion"].remove(poke) 
-               del status_indeptheffect[roomid][user_id]["confusion"][poke]
-               used_text_self = f"{self_pokemon} snapped out of its confusion!"
-               used_text_opp = f"Opposing {self_pokemon} snapped out of its confusion!"
-               movetext[roomid][p1_id]["text_sequence"].append(used_text_self)
-               movetext[roomid][p2_id]["text_sequence"].append(used_text_opp)
+
+# ...existing code...
+            if poke in status_effects[roomid][user_id]["confusion"]:
+                confusion = await confusion_check(move)
+                if confusion:
+                    attack_stat = attacker_pokemon["final_atk"]
+                    defense_stat = attacker_pokemon["final_def"]
+                    damage, is_critical = await damage_calc_fn(100, 40, attack_stat, defense_stat, type_mult, move, "confusion")
+                    # Store damage for the OPPONENT (who is receiving the damage)
+                    maxhp = attacker_pokemon["final_hp"] 
+                    curhp = attacker_pokemon["current_hp"] - damage
+                    attacker_pokemon["current_hp"] = curhp
+                    # ✅ Build text sequences
+                    used_text_self = f"{self_pokemon} is confused!\nIt hurts itself from confusion"
+                    used_text_opp = f"Opposing {self_pokemon} is confused!\nIt hurts itself from confusion"
+                    seq_self = [used_text_self]
+                    seq_opp = [used_text_opp]
+                    # ✅ Append to movetext (don't replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
+                    return True  # Stop here if confused and hurt self
+                # Deterministic confusion self-hit (1 or 2 turns). No chance per-turn.
+                conf_info = status_indeptheffect[roomid][user_id]["confusion"].get(poke, {})
+                turns_left = conf_info.get("turns_left", None)
+                if turns_left is None:
+                    turns_left = random.choice([1, 2])
+                    conf_info["turns_left"] = turns_left
+                    status_indeptheffect[roomid][user_id]["confusion"][poke] = conf_info
+                if turns_left > 0:
+                    attack_stat = attacker_pokemon["final_atk"]
+                    defense_stat = attacker_pokemon["final_def"]
+                    damage, _ = await damage_calc_fn(100, 40, attack_stat, defense_stat, 1.0, move, "confusion")
+                    attacker_pokemon["current_hp"] = max(0, attacker_pokemon["current_hp"] - int(damage))
+                    used_text_self = f"{self_pokemon} is confused!\nIt hurt itself in its confusion!"
+                    used_text_opp = f"Opposing {self_pokemon} is confused!\nIt hurt itself in its confusion!"
+                    movetext[user_id]["text_sequence"].extend([used_text_self])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp])
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
+                    conf_info["turns_left"] = turns_left - 1
+                    if conf_info["turns_left"] <= 0:
+                        try:
+                            status_effects[roomid][user_id]["confusion"].remove(poke)
+                        except Exception:
+                            pass
+                        status_indeptheffect[roomid][user_id]["confusion"].pop(poke, None)
+                    else:
+                        status_indeptheffect[roomid][user_id]["confusion"][poke] = conf_info
+                    return True
+# ...existing code...
+
             #paralysis check
             if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"] or poke in status_effects[roomid][user_id]["confusion"] :
                 paralysis = await paralysis_checker()
@@ -1236,7 +1282,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     return True
                 if poke in status_effects[roomid][user_id]["freeze"] and not freeze:
                     status_effects[roomid][user_id]["freeze"].remove(poke)
-                confusion = await confusion_checker()
+                confusion = await confusion_check()
                 
                 if confusion:
                     attack_stat = attacker_pokemon["final_atk"]
@@ -1755,6 +1801,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     freeze_list.append(opponent_active)
                     seq_self.append(freeze_textuser)
                     seq_opp.append(freeze_textopp)
+
             if move in flinch_moves:
                 print("flinch moves condition met")
                 flinch = await flinch_check(move)
@@ -1771,6 +1818,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_opp.append(used_text_opp)
                     if opponent_active in flinch_list:
                         print("flinch pokemon not found")
+
             if move in burn_moves:
                 burn = await burn_check(move)
                 burn_list = status_effects[roomid][opponent_id]["burn"]
@@ -1786,6 +1834,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     burn_list.append(opponent_active)
                     seq_self.append(burn_textuser)
                     seq_opp.append(burn_textopp)
+
             if move in poison_moves:
                 poison = await poison_check(move)
                 poison_list = status_effects[roomid][opponent_id]["poison"]
@@ -1802,8 +1851,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                     seq_self.append(poison_textuser)
                     seq_opp.append(poison_textopp)
 
+
             if move in confusion_moves:
-                confusion = await confusion__check(move)
+                confusion = await confusion_check(move)
                 confusion_list = status_effects[roomid][opponent_id]["confusion"]
 
                 if opponent_active in confusion_list:
@@ -1819,7 +1869,23 @@ async def move_handler(user_id, move, poke, fmt, event):
                     status_indeptheffect[roomid][opponent_id]["confusion"][opponent_active]={"turn":0,"max_turn":maxturn}
                     seq_self.append(confusion_textuser)
                     seq_opp.append(confusion_textopp)
-            
+                # Apply confusion deterministically for 1 or 2 turns (no chance logic).
+                confusion_list = status_effects[roomid][opponent_id]["confusion"]
+
+                if opponent_active in confusion_list:
+                    confusion_textuser = f"The Opposing {opp_pokemon} is already confused!"
+                    confusion_textopp = f"{opp_pokemon} is already confused!"
+                    seq_self.append(confusion_textuser)
+                    seq_opp.append(confusion_textopp)
+                else:
+                    confusion_textuser = f"The Opposing {opp_pokemon} is confused!"
+                    confusion_textopp = f"{opp_pokemon} is confused!"
+                    confusion_list.append(opponent_active)
+                    # deterministic confusion duration: either 1 or 2 turns
+                    turns = random.choice([1, 2])
+                    status_indeptheffect[roomid][opponent_id]["confusion"][opponent_active] = {"turns_left": turns}
+                    seq_self.append(confusion_textuser)
+                    seq_opp.append(confusion_textopp)
                 
             # ✅ Append to movetext (don’t replace)
             movetext[user_id]["text_sequence"].extend(seq_self)
