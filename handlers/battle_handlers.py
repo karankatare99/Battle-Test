@@ -49,7 +49,7 @@ flinch_moves20=["Dark Pulse"]
 flinch_moves30=["Air Slash","Floaty Fall","Headbutt","Iron Tail","Rock Slide","Rolling Kick"]
 always_flinch_moves=["Fake Out"]
 #burn moves
-burn_moves=["Sizzly Slide","Ember","Fire Blast","Heat Wave","Scald"]
+burn_moves=["Sizzly Slide","Ember","Fire Blast","Heat Wave","Scald", "Fire Punch", "Flamethrower"]
 burn_moves10=["Ember","Fire Blast","Fire Punch","Flamethrower","Heat Wave"]
 burn_moves20=[]
 burn_moves30=[]
@@ -1038,7 +1038,7 @@ async def flinch_check(move):
     else:
         return False
 
-async def burn_check(move):
+async def burn_check(move=None):
     chance = 0
     if move in burn_moves10:
         chance = 10
@@ -1248,6 +1248,28 @@ async def move_handler(user_id, move, poke, fmt, event):
                     else:
                         status_indeptheffect[roomid][user_id]["confusion"][poke] = conf_info
                     return True
+# ...existing code...
+            if poke in status_effects[roomid][user_id]["burn"]:
+                burn = await burn_check(move)
+                if burn:
+                    attack_stat = attacker_pokemon["final_atk"]
+                    defense_stat = attacker_pokemon["final_def"]
+                    maxhp = defender_pokemon["final_hp"]
+                    damage = maxhp // 8
+                    curhp = defender_pokemon["current_hp"] - damage
+                    defender_pokemon["current_hp"] = curhp
+                    # ✅ Build text sequences
+                    used_text_self = f"{self_pokemon} is scorched by burn"
+                    used_text_opp = f"Opposing {self_pokemon} is scorched by burn"
+                    seq_self = [used_text_self]
+                    seq_opp = [used_text_opp]
+                    # ✅ Append to movetext (don't replace)
+                    movetext[user_id]["text_sequence"].extend(seq_self)
+                    movetext[opponent_id]["text_sequence"].extend(seq_opp)
+                    movetext[user_id]["hp_update_at"] = 1
+                    movetext[opponent_id]["hp_update_at"] = 1
+                    return True
+
 # ...existing code...
 
             #paralysis check
@@ -1861,6 +1883,22 @@ async def move_handler(user_id, move, poke, fmt, event):
                     if opponent_active in flinch_list:
                         print("flinch pokemon not found")
 
+            # if move in burn_moves:
+            #     burn = await burn_check(move)
+            #     burn_list = status_effects[roomid][opponent_id]["burn"]
+
+            #     if opponent_active in burn_list:
+            #         burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
+            #         burn_textopp = f"{opp_pokemon} is already burned!"
+            #         seq_self.append(burn_textuser)
+            #         seq_opp.append(burn_textopp)
+            #     elif burn:
+            #         burn_textuser = f"The Opposing {opp_pokemon} was burned!"
+            #         burn_textopp = f"{opp_pokemon} was burned!"
+            #         burn_list.append(opponent_active)
+            #         seq_self.append(burn_textuser)
+            #         seq_opp.append(burn_textopp)
+
             if move in burn_moves:
                 burn = await burn_check(move)
                 burn_list = status_effects[roomid][opponent_id]["burn"]
@@ -1876,6 +1914,29 @@ async def move_handler(user_id, move, poke, fmt, event):
                     burn_list.append(opponent_active)
                     seq_self.append(burn_textuser)
                     seq_opp.append(burn_textopp)
+                burn = await burn_check(move)
+                burn_list = status_effects[roomid][opponent_id]["burn"]
+
+                # Fire-type immunity: do not apply burn if defender has type 'fire'
+                defender_type1 = defender_pokemon.get("type1", "").lower()
+                defender_type2 = (defender_pokemon.get("type2") or "").lower()
+                if "fire" in (defender_type1, defender_type2):
+                    no_effect_user = f"{opp_pokemon} is immune to burn!"
+                    no_effect_opp = f"Opposing {opp_pokemon} is immune to burn!"
+                    seq_self.append(no_effect_user)
+                    seq_opp.append(no_effect_opp)
+                else:
+                    if opponent_active in burn_list:
+                        burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
+                        burn_textopp = f"{opp_pokemon} is already burned!"
+                        seq_self.append(burn_textuser)
+                        seq_opp.append(burn_textopp)
+                    elif burn:
+                        burn_textuser = f"The Opposing {opp_pokemon} was burned!"
+                        burn_textopp = f"{opp_pokemon} was burned!"
+                        burn_list.append(opponent_active)
+                        seq_self.append(burn_textuser)
+                        seq_opp.append(burn_textopp)
 
             if move in poison_moves:
                 poison = await poison_check(move)
