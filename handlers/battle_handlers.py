@@ -1861,33 +1861,25 @@ async def move_handler(user_id, move, poke, fmt, event):
                     if opponent_active in flinch_list:
                         print("flinch pokemon not found")
 
+# ...existing code...
             if move in burn_moves:
-                burn = await burn_check(move)
+                # Ensure we only roll once and enforce fire-type immunity before applying
                 burn_list = status_effects[roomid][opponent_id]["burn"]
-
-                if opponent_active in burn_list:
-                    burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
-                    burn_textopp = f"{opp_pokemon} is already burned!"
-                    seq_self.append(burn_textuser)
-                    seq_opp.append(burn_textopp)
-                elif burn:
-                    burn_textuser = f"The Opposing {opp_pokemon} was burned!"
-                    burn_textopp = f"{opp_pokemon} was burned!"
-                    burn_list.append(opponent_active)
-                    seq_self.append(burn_textuser)
-                    seq_opp.append(burn_textopp)
-                burn = await burn_check(move)
-                burn_list = status_effects[roomid][opponent_id]["burn"]
-
-                # Fire-type immunity: do not apply burn if defender has type 'fire'
                 defender_type1 = defender_pokemon.get("type1", "").lower()
                 defender_type2 = (defender_pokemon.get("type2") or "").lower()
+
+                # seq_self / seq_opp should already exist; ensure they are initialized
+                seq_self = seq_self if 'seq_self' in locals() else [used_text_self]
+                seq_opp = seq_opp if 'seq_opp' in locals() else [used_text_opp]
+
+                # Fire-type immunity: do not attempt to burn fire Pokémon
                 if "fire" in (defender_type1, defender_type2):
                     no_effect_user = f"{opp_pokemon} is immune to burn!"
                     no_effect_opp = f"Opposing {opp_pokemon} is immune to burn!"
                     seq_self.append(no_effect_user)
                     seq_opp.append(no_effect_opp)
                 else:
+                    burn = await burn_check(move)
                     if opponent_active in burn_list:
                         burn_textuser = f"The Opposing {opp_pokemon} is already burned!"
                         burn_textopp = f"{opp_pokemon} is already burned!"
@@ -1899,6 +1891,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                         burn_list.append(opponent_active)
                         seq_self.append(burn_textuser)
                         seq_opp.append(burn_textopp)
+# ...existing code...
 
             if move in poison_moves:
                 poison = await poison_check(move)
@@ -2232,105 +2225,91 @@ async def handle_fainted_pokemon(user_id, event):
     return "switch_required"
 
 
+# ...existing code...
 async def endturneffect_battleui(fmt,user_id,event):
-    if fmt == "singles":
-        
-        roomid = room[user_id]["roomid"]
-        p1_id = int(room_userids[roomid]["p1"])
-        p2_id = int(room_userids[roomid]["p2"])
-        
-        p1_textmsg = room[p1_id]["start_msg"]
-        p2_textmsg = room[p2_id]["start_msg"]
-        
-        p1_poke = battle_state[p1_id]["active_pokemon"][0]
-        p2_poke = battle_state[p2_id]["active_pokemon"][0]
-        
-        p1_poke_moves = battle_data[p1_id]["pokemon"][p1_poke]["moves"]
-        p1_poke_buttons = await button_generator(p1_poke_moves, p1_id, p1_poke)
-        
-        p2_poke_moves = battle_data[p2_id]["pokemon"][p2_poke]["moves"]
-        p2_poke_buttons = await button_generator(p2_poke_moves, p2_id, p2_poke)
-        
-        print(f"DEBUG: Battle data ready for {user_id}")
-        
-        p1_poke_hpbar = await hp_bar(
-            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"], 
-            battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
-        )
-        p2_poke_hpbar = await hp_bar(
-            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"], 
-            battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
-        )
-        
-        p1hppercent = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] / battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100
-        p2hppercent = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] / battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100
-        
-        p1_text = (
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
-        )
-        
-        p2_text = (
-            f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
-            f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
-            f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
-        )
-        #burn
-        if p1_poke not in status_effects[roomid][p1_id]["burn"] :
-            return
-        if p2_poke not in status_effects[roomid][p2_id]["burn"]:
-            return
-        p1_burntextuser=""
-        p1_burntextopp=""
-        p2_burntextuser=""
-        p2_burntextopp=""
-        if p1_poke in status_effects[roomid][p1_id]["burn"]:
+    if fmt != "singles":
+        return
+
+    roomid = room[user_id]["roomid"]
+    p1_id = int(room_userids[roomid]["p1"])
+    p2_id = int(room_userids[roomid]["p2"])
+
+    p1_textmsg = room[p1_id]["start_msg"]
+    p2_textmsg = room[p2_id]["start_msg"]
+
+    p1_poke = battle_state[p1_id]["active_pokemon"][0]
+    p2_poke = battle_state[p2_id]["active_pokemon"][0]
+
+    p1_poke_hpbar = await hp_bar(
+        battle_data[p1_id]["pokemon"][p1_poke]["current_hp"],
+        battle_data[p1_id]["pokemon"][p1_poke]['final_hp']
+    )
+    p2_poke_hpbar = await hp_bar(
+        battle_data[p2_id]["pokemon"][p2_poke]["current_hp"],
+        battle_data[p2_id]["pokemon"][p2_poke]['final_hp']
+    )
+
+    p1hppercent = (battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] /
+                   battle_data[p1_id]["pokemon"][p1_poke]['final_hp'] * 100)
+    p2hppercent = (battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] /
+                   battle_data[p2_id]["pokemon"][p2_poke]['final_hp'] * 100)
+
+    p1_text = (
+        f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+        f"{p2_poke_hpbar} {p2hppercent:.0f}% \n"
+        f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+        f"{p1_poke_hpbar} {battle_data[p1_id]['pokemon'][p1_poke]['current_hp']}/{battle_data[p1_id]['pokemon'][p1_poke]['final_hp']}"
+    )
+
+    p2_text = (
+        f"__**「{p1_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+        f"{p1_poke_hpbar} {p1hppercent:.0f}% \n"
+        f"__**「{p2_poke.split('_')[0].capitalize()}(Lv.100)」**__\n"
+        f"{p2_poke_hpbar} {battle_data[p2_id]['pokemon'][p2_poke]['current_hp']}/{battle_data[p2_id]['pokemon'][p2_poke]['final_hp']}"
+    )
+
+    # Process burn for each player independently
+    try:
+        # P1 burn
+        if p1_poke in status_effects.get(roomid, {}).get(p1_id, {}).get("burn", []):
             curhp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
-            damage = curhp//8
-            newhp = curhp-damage
-            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]=newhp
-            p1_burntextuser=f"{p1_poke} was hurt by its burn!"
-            p1_burntextopp=f"Opposing {p1_poke} was hurt by its burn!"
-            await p1_textmsg.edit(text=f"{p1_burntextuser}\n\n{p1_text}")
-            await p2_textmsg.edit(text=f"{p1_burntextopp}\n\n{p2_text}")
-        await asyncio.sleep(1.5)
-        if p2_poke in status_effects[roomid][p2_id]["burn"]:
+            damage = max(1, battle_data[p1_id]["pokemon"][p1_poke]["final_hp"] // 8)
+            newhp = max(0, curhp - damage)
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] = newhp
+            await p1_textmsg.edit(text=f"{p1_poke} was hurt by its burn!\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"Opposing {p1_poke} was hurt by its burn!\n\n{p2_text}")
+            await asyncio.sleep(1.5)
+
+        # P2 burn
+        if p2_poke in status_effects.get(roomid, {}).get(p2_id, {}).get("burn", []):
             curhp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
-            damage = curhp//8
-            newhp = curhp-damage
-            battle_data[p2_id]["pokemon"][p12poke]["current_hp"]=newhp
-            p2_burntextuser=f"{p2_poke} was hurt by its burn!"
-            p2_burntextopp=f"Opposing {p2_poke} was hurt by its burn!"
-            await p1_textmsg.edit(text=f"{p2_burntextuser}\n\n{p1_text}")
-            await p2_textmsg.edit(text=f"{p2_burntextopp}\n\n{p2_text}")
-        if not p1_poke in status_effects[roomid][p1_id]["poison"] or p2_poke in status_effects[roomid][p2_id]["poison"]:
-            return
-        p1_posiontextuser=""
-        p1_poisontextopp=""
-        p2_poisontextuser=""
-        p2_poisontextopp=""
-        if p1_poke in status_effects[roomid][p1_id]["poison"]:
+            damage = max(1, battle_data[p2_id]["pokemon"][p2_poke]["final_hp"] // 8)
+            newhp = max(0, curhp - damage)
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] = newhp
+            await p1_textmsg.edit(text=f"{p2_poke} was hurt by its burn!\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"Opposing {p2_poke} was hurt by its burn!\n\n{p2_text}")
+            await asyncio.sleep(1.5)
+
+        # Process poison similarly (optional) — ensure independent handling and correct variable names
+        if p1_poke in status_effects.get(roomid, {}).get(p1_id, {}).get("poison", []):
             curhp = battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]
-            damage = curhp//8
-            newhp = curhp-damage
-            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"]=newhp
-            p1_poisontextuser=f"{p1_poke} was hurt by its poison!"
-            p1_poisontextopp=f"Opposing {p1_poke} was hurt by its poison!"
-            await p1_textmsg.edit(text=f"{p1_poisontextuser}\n\n{p1_text}")
-            await p2_textmsg.edit(text=f"{p1_poisontextopp}\n\n{p2_text}")
-        await asyncio.sleep(1.5)
-        if p2_poke in status_effects[roomid][p2_id]["poison"]:
+            damage = max(1, battle_data[p1_id]["pokemon"][p1_poke]["final_hp"] // 8)
+            battle_data[p1_id]["pokemon"][p1_poke]["current_hp"] = max(0, curhp - damage)
+            await p1_textmsg.edit(text=f"{p1_poke} was hurt by its poison!\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"Opposing {p1_poke} was hurt by its poison!\n\n{p2_text}")
+            await asyncio.sleep(1.5)
+
+        if p2_poke in status_effects.get(roomid, {}).get(p2_id, {}).get("poison", []):
             curhp = battle_data[p2_id]["pokemon"][p2_poke]["current_hp"]
-            damage = curhp//8
-            newhp = curhp-damage
-            battle_data[p2_id]["pokemon"][p12poke]["current_hp"]=newhp
-            p2_poisontextuser=f"{p2_poke} was hurt by its poiosn!"
-            p2_poisontextopp=f"Opposing {p2_poke} was hurt by its poison!"
-            await p1_textmsg.edit(text=f"{p2_poisontextuser}\n\n{p1_text}")
-            await p2_textmsg.edit(text=f"{p2_poisontextopp}\n\n{p2_text}")
+            damage = max(1, battle_data[p2_id]["pokemon"][p2_poke]["final_hp"] // 8)
+            battle_data[p2_id]["pokemon"][p2_poke]["current_hp"] = max(0, curhp - damage)
+            await p1_textmsg.edit(text=f"{p2_poke} was hurt by its poison!\n\n{p1_text}")
+            await p2_textmsg.edit(text=f"Opposing {p2_poke} was hurt by its poison!\n\n{p2_text}")
+            await asyncio.sleep(1.5)
+
+    except Exception as e:
+        print(f"ERROR in endturneffect_battleui: {e}")
+# ...existing code...
 
 async def priority_value(move):
     if move in priority01_moves:
