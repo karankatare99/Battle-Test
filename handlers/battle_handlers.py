@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Clear Smog","Comet Punch","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes","Glare","Glitzy Glow","Growl","Guillotine","Gust","Harden","Haze","Headbutt","Heat Wave","High Jump Kick","Horn Attack","Horn Drill","Hydro Pump","Hyper Fang","Ice Beam","Ice Punch","Ice Shard","Iron Tail","Leech Life","Leer","Lick","Meditate","Mega Drain","Mega Punch","Mega Kick","Megahorn","Moonblast","Nasty Plot","Night Shade","Pay Day","Peck","Pin Missile","Play Rough","Poison Jab","Poison Powder","Poison Sting","Pound","Power Whip","Psybeam","Psychic","Psywave","Quick Attack","Quiver Dance"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Clear Smog","Comet Punch","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes","Glare","Glitzy Glow","Growl","Guillotine","Gust","Harden","Haze","Headbutt","Heat Wave","High Jump Kick","Horn Attack","Horn Drill","Hydro Pump","Hyper Fang","Ice Beam","Ice Punch","Ice Shard","Iron Tail","Leech Life","Leer","Lick","Meditate","Mega Drain","Mega Punch","Mega Kick","Megahorn","Moonblast","Nasty Plot","Night Shade","Pay Day","Peck","Pin Missile","Play Rough","Poison Jab","Poison Powder","Poison Sting","Pound","Power Whip","Psybeam","Psychic","Psywave","Quick Attack","Quiver Dance","Razor Leaf","Recover","Rock Slide","Rock Throw","Rolling Kick","Roost","Scald","Scratch","Screech","Seismic Toss","Self Destruct","Shadow Ball","Sharpen","Shell Smash","Sizzly Slide"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Dazzling Gleam","Dragon Pulse","Power Whip"]
 #Never miss moves
@@ -42,16 +42,17 @@ paralyze_moves30 = ["Body Slam", "Lick", "Thunder", "Splishy Splash"]
 paralyze_moves10 = ["Thunder Punch", "Thunder Shock", "Thunderbolt"]
 always_paralyze_moves = ["Thunder Wave", "Glare", "Stun Spore", "Buzzy Buzz"]
 #flinch moves
-flinch_moves = ["Air Slash","Bite","Bone Club","Double Iron Bash","Floaty Fall","Headbutt","Hyper Fang","Iron Tail"]
+flinch_moves = ["Air Slash","Bite","Bone Club","Double Iron Bash","Floaty Fall","Headbutt","Hyper Fang","Iron Tail","Rock Slide","Rolling Kick"]
 flinch_moves10=["Bite","Bone Club","Hyper Fang"]
 flinch_moves51=["Double Iron Bash"]
 flinch_moves20=["Dark Pulse"]
-flinch_moves30=["Air Slash","Floaty Fall","Headbutt","Iron Tail"]
+flinch_moves30=["Air Slash","Floaty Fall","Headbutt","Iron Tail","Rock Slide","Rolling Kick"]
 always_flinch_moves=["Fake Out"]
 #burn moves
-burn_moves=["Sizzly Slide","Ember","Fire Blast","Heat Wave"]
+burn_moves=["Sizzly Slide","Ember","Fire Blast","Heat Wave","Scald"]
 burn_moves10=["Ember","Fire Blast","Fire Punch","Flamethrower","Heat Wave"]
 burn_moves20=[]
+burn_moves30=[]
 always_burn_moves=["Sizzly Slide"]
 #poison moves
 poison_moves=["Poison Gas","Poison Jab","Poison Power","Poison Sting"]
@@ -101,6 +102,8 @@ multiturn_moves= ["Barrage","Double Iron Bash","Double Kick","Double Slap","Fury
 debuff_moves=["Acid","Aurora Beam","Gust","Bug Buzz","Flash Cannon","Bubble","Bubble Beam","Leet","Moonblast","Play Rough","Psychic"]
 debuffspd10_moves=["Acid","Bug Buzz","Flash Cannon","Psychic"]
 debuffdef10_moves=["Leer"]
+debuffspd20_moves=["Shadow Ball"]
+debuffdef2s_moves=["Screech"]
 debuffspa30_moves=["Moonblast"]
 debbuffatk10_moves=["Aurora Beam","Growl","Play Rough"]
 debuffspe10_moves=["Bubble","Bubble Beam"]
@@ -866,13 +869,16 @@ async def damage_calc_fn(level, power, attack, defense, type_multiplier,move,eff
         return 20,False
     if move == "Dragon Rage":
         return 40,False
-    if move == "Night Shade":
+    if move in ("Night Shade","Seismic Toss"):
         return 100,False
     if move == "Psywave":
         factor = random.randint(50,151)
         value = 100*factor/100
         return value,False
-    is_critical = (random.randint(1, 24) == 1)
+    max_factor = 24
+    if move in ("Razor Leaf"):
+        max_factor = 8
+    is_critical = (random.randint(1, max_factor) == 1)
     critical_mult = 1.5 if is_critical else 1.0
 
     # Simplified Pokémon damage formula
@@ -1038,6 +1044,8 @@ async def burn_check(move):
         chance = 10
     if move in burn_moves20:
         chance = 20
+    if move in burn_moves30:
+        chance = 30
     if move in always_burn_moves:
         return True
     rvalue = random.randint(1, 100)
@@ -1458,6 +1466,24 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 1                
                 await battle_ui(fmt, user_id, event)
                 return True
+            if move in ("Recover","Roost"):
+                curhp=attacker_pokemon["current_hp"] + attacker_pokemon["current_hp"]/2
+                attacker_pokemon["current_hp"]= curhp
+                used_text_self = f"{self_pokemon} used {move}!"
+                user_recover= f"{self_pokemon} had its Hp restored!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!"
+                opp_recover= f"Opposing {self_pokemon} had its Hp restored!"
+                # Build attacker’s sequence
+                seq_self = [used_text_self]
+                # Build opponent’s sequence
+                seq_opp = [used_text_opp]
+                # ✅ Append to movetext (don’t replace)
+                movetext[user_id]["text_sequence"].extend(seq_self,user_recover)
+                movetext[opponent_id]["text_sequence"].extend(seq_opp,opp_recover)
+                movetext[user_id]["hp_update_at"] = 1
+                movetext[opponent_id]["hp_update_at"] = 1                
+                await battle_ui(fmt, user_id, event)
+                return True
             if move in miscellaneous_buff_moves:
                 if move == "Shell Smash":
                     stats_modifier[roomid][user_id][poke]["atk"]+=2
@@ -1720,6 +1746,15 @@ async def move_handler(user_id, move, poke, fmt, event):
                         opptxt = f"{opp_pokemon}'s special defense fell!"
                         seq_self.append(usertxt)
                         seq_opp.append(opptxt)
+                if move in debuffspd20_moves:
+                    chance = 20
+                    debuff=await debuff_checker(chance)
+                    if debuff:
+                        stats_modifier[roomid][opponent_id][opponent_active]["spd"]-=1
+                        usertxt = f"The Opposing {opp_pokemon}'s special defense fell!"
+                        opptxt = f"{opp_pokemon}'s special defense fell!"
+                        seq_self.append(usertxt)
+                        seq_opp.append(opptxt)
                 if move in debuffspa30_moves:
                     chance = 30
                     debuff=await debuff_checker(chance)
@@ -1738,6 +1773,13 @@ async def move_handler(user_id, move, poke, fmt, event):
                         opptxt = f"{opp_pokemon}'s defense fell!"
                         seq_self.append(usertxt)
                         seq_opp.append(opptxt)
+                if move in debuffdef2s_moves:
+                    
+                    stats_modifier[roomid][opponent_id][opponent_active]["def"]-=2
+                    usertxt = f"The Opposing {opp_pokemon}'s defense harshly fell!"
+                    opptxt = f"{opp_pokemon}'s defense harshly fell!"
+                    seq_self.append(usertxt)
+                    seq_opp.append(opptxt)
                 if move in debuffatk10_moves:
                     chance = 10
                     debuff=await debuff_checker(chance)
