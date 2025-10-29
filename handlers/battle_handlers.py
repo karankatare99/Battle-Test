@@ -1185,10 +1185,16 @@ async def move_handler(user_id, move, poke, fmt, event):
                 # Initialize both players’ status lists
                 status_effects[roomid][user_id] = {cond: [] for cond in conditions}
                 status_effects[roomid][opponent_id] = {cond: [] for cond in conditions}
+                
             if roomid not in status_indeptheffect:
                 status_indeptheffect[roomid] = {}  
                 conditions=["confusion"]
                 # Initialize both players’ status lists
+                status_indeptheffect[roomid][user_id] = {cond: {} for cond in conditions}
+                status_indeptheffect[roomid][opponent_id] = {cond: {} for cond in conditions}
+                # track per-pokemon independent status info (confusion, sleep, etc.)
+                conditions = ["confusion", "sleep"]
+                # Initialize both players’ per-pokemon dicts
                 status_indeptheffect[roomid][user_id] = {cond: {} for cond in conditions}
                 status_indeptheffect[roomid][opponent_id] = {cond: {} for cond in conditions}
             if roomid not in pending_texts:
@@ -1297,14 +1303,26 @@ async def move_handler(user_id, move, poke, fmt, event):
 
             # sleep
             if poke in status_effects[roomid][user_id]["sleep"]:
-                wakeup = await sleep_wakeup_check()
-                if wakeup:
-                    status_effects[roomid][user_id]["sleep"].remove(poke)
-                    used_text_self = f"{self_pokemon} woke up!"
-                    used_text_opp = f"Opposing {self_pokemon} woke up!"
-                    movetext[user_id]["text_sequence"].extend([used_text_self])
-                    movetext[opponent_id]["text_sequence"].extend([used_text_opp])
-                else:
+                # ensure per-pokemon sleep info exists
+                status_indeptheffect.setdefault(roomid, {}).setdefault(user_id, {}).setdefault("sleep", {})
+                sleep_info = status_indeptheffect[roomid][user_id]["sleep"].get(poke)
+
+                if not sleep_info:
+                    # newly asleep → first turn asleep (skip this turn)
+                    status_indeptheffect[roomid][user_id]["sleep"][poke] = {"turns_passed": 0}
+                    sleep_info = status_indeptheffect[roomid][user_id]["sleep"][poke]
+
+                turns = sleep_info.get("turns_passed", 0)
+
+                # Behavior requested:
+                # - turns_passed == 0 -> skip (first asleep turn)
+                # - turns_passed == 1 -> 33% chance wake
+                # - turns_passed == 2 -> 50% chance wake
+                # - turns_passed >= 3 -> wake guaranteed
+                woke = False
+                if turns == 0:
+                    # skip and increment
+                    sleep_info["turns_passed"] = 1
                     used_text_self = f"{self_pokemon} is fast asleep!"
                     used_text_opp = f"Opposing {self_pokemon} is fast asleep!"
                     movetext[user_id]["text_sequence"].extend([used_text_self])
@@ -1312,6 +1330,47 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[user_id]["hp_update_at"] = 999
                     movetext[opponent_id]["hp_update_at"] = 999
                     return True
+                elif turns == 1:
+                    # 33% chance to wake
+                    if random.randint(1, 100) <= 33:
+                        woke = True
+                    else:
+                        sleep_info["turns_passed"] = 2
+                        used_text_self = f"{self_pokemon} is fast asleep!"
+                        used_text_opp = f"Opposing {self_pokemon} is fast asleep!"
+                        movetext[user_id]["text_sequence"].extend([used_text_self])
+                        movetext[opponent_id]["text_sequence"].extend([used_text_opp])
+                        movetext[user_id]["hp_update_at"] = 999
+                        movetext[opponent_id]["hp_update_at"] = 999
+                        return True
+                elif turns == 2:
+                    # 50% chance to wake
+                    if random.randint(1, 100) <= 50:
+                        woke = True
+                    else:
+                        sleep_info["turns_passed"] = 3
+                        used_text_self = f"{self_pokemon} is fast asleep!"
+                        used_text_opp = f"Opposing {self_pokemon} is fast asleep!"
+                        movetext[user_id]["text_sequence"].extend([used_text_self])
+                        movetext[opponent_id]["text_sequence"].extend([used_text_opp])
+                        movetext[user_id]["hp_update_at"] = 999
+                        movetext[opponent_id]["hp_update_at"] = 999
+                        return True
+                else:
+                    # turns_passed >= 3 -> guaranteed wake
+                    woke = True
+
+                if woke:
+                    # remove sleep status and per-pokemon info
+                    try:
+                        status_effects[roomid][user_id]["sleep"].remove(poke)
+                    except Exception:
+                        pass
+                    status_indeptheffect[roomid][user_id].get("sleep", {}).pop(poke, None)
+                    used_text_self = f"{self_pokemon} woke up!"
+                    used_text_opp = f"Opposing {self_pokemon} woke up!"
+                    movetext[user_id]["text_sequence"].extend([used_text_self])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp])
 
                 #flinch check
                 if poke in status_effects[roomid][user_id]["flinch"]:
@@ -1341,7 +1400,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                 if confusion:
                     attack_stat = attacker_pokemon["final_atk"]
                     defense_stat = attacker_pokemon["final_def"]
-                    damage, is_critical = await damage_calc_fn(100, 40, attack_stat, defense_stat, type_mult, move, "confusion")
+                    damage, is_critical = await damage_calc_fn(100, 40, attack_stat, defense_stat, 1.0, move, "confusion")
                     # Store damage for the OPPONENT (who is receiving the damage)
                     maxhp=attacker_pokemon["final_hp"] 
                     curhp=attacker_pokemon["current_hp"] - damage
@@ -2005,7 +2064,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 elif sleep:
                     sleep_textuser = f"The Opposing {opp_pokemon} fell asleep!"
                     sleep_textopp = f"{opp_pokemon} fell asleep!"
+                    # add status and initialize per-pokemon sleep tracking with 0 turns passed
                     sleep_list.append(opponent_active)
+                    status_indeptheffect.setdefault(roomid, {}).setdefault(opponent_id, {}).setdefault("sleep", {})[opponent_active] = {"turns_passed": 0}
                     seq_self.append(sleep_textuser)
                     seq_opp.append(sleep_textopp)
 
