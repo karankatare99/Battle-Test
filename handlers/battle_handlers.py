@@ -69,10 +69,10 @@ confusion_moves10=["Psybeam"]
 confusion_moves20=["Dizzy Punch"]
 always_confusion_moves=["Supersonic"]
 #sleep moves
-sleep_moves=["Spore","Sleep Powder","Hypnosis","Rest","Yawn"]
-sleep_moves10=["Hypnosis"]
-sleep_moves75=["Sleep Powder","Spore"] 
-always_sleep_moves=["Rest","Yawn"]
+sleep_moves=[]
+sleep_moves10=[]
+sleep_moves75=[] 
+always_sleep_moves=[]
 
 status_indeptheffect={}
 #draindamage moves
