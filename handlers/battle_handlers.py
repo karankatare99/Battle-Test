@@ -68,6 +68,12 @@ confusion_moves=["Psybeam", "Dizzy Punch","Supersonic"]
 confusion_moves10=["Psybeam"]
 confusion_moves20=["Dizzy Punch"]
 always_confusion_moves=["Supersonic"]
+#sleep moves
+sleep_moves=["Spore","Sleep Powder","Hypnosis","Rest","Yawn"]
+sleep_moves10=["Hypnosis"]
+sleep_moves75=["Sleep Powder","Spore"] 
+always_sleep_moves=["Rest","Yawn"]
+
 status_indeptheffect={}
 #draindamage moves
 draindamage_moves=["Absorb","Mega Drain","Leech Life","Bouncy Bubble"]
@@ -1070,6 +1076,25 @@ async def confusion_check(move=None):
         return True
     else:
         return False
+    
+async def sleep_check(move):
+    chance = 0
+    if move in sleep_moves10:
+        chance = 10
+    if move in sleep_moves75:
+        chance = 75
+    if move in always_sleep_moves:
+        return True
+    rvalue = random.randint(1, 100)
+    if chance >= rvalue:
+        return True
+    else:
+        return False
+    
+async def sleep_wakeup_check():
+    # 33% chance to wake up each turn
+    chance = random.randint(1, 100)
+    return chance <= 33
 
 async def poison_check(move):
     chance = 0
@@ -1200,8 +1225,9 @@ async def move_handler(user_id, move, poke, fmt, event):
                 movetext[opponent_id]["hp_update_at"] = 999
                 
                 return True
+            
 
-# ...existing code...
+            # confusion
             if poke in status_effects[roomid][user_id]["confusion"]:
                 confusion = await confusion_check(move)
                 if confusion:
@@ -1223,7 +1249,6 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[user_id]["hp_update_at"] = 1
                     movetext[opponent_id]["hp_update_at"] = 1
                     return True  # Stop here if confused and hurt self
-                # Deterministic confusion self-hit (1 or 2 turns). No chance per-turn.
                 conf_info = status_indeptheffect[roomid][user_id]["confusion"].get(poke, {})
                 turns_left = conf_info.get("turns_left", None)
                 if turns_left is None:
@@ -1251,7 +1276,6 @@ async def move_handler(user_id, move, poke, fmt, event):
                     else:
                         status_indeptheffect[roomid][user_id]["confusion"][poke] = conf_info
                     return True
-# ...existing code...
 
             #paralysis check
             if poke in status_effects[roomid][user_id]["paralysis"] or poke in status_effects[roomid][user_id]["flinch"] or poke in status_effects[roomid][user_id]["freeze"] or poke in status_effects[roomid][user_id]["confusion"] :
@@ -1270,6 +1294,25 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[opponent_id]["hp_update_at"] = 999
             
                     return True
+
+            # sleep
+            if poke in status_effects[roomid][user_id]["sleep"]:
+                wakeup = await sleep_wakeup_check()
+                if wakeup:
+                    status_effects[roomid][user_id]["sleep"].remove(poke)
+                    used_text_self = f"{self_pokemon} woke up!"
+                    used_text_opp = f"Opposing {self_pokemon} woke up!"
+                    movetext[user_id]["text_sequence"].extend([used_text_self])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp])
+                else:
+                    used_text_self = f"{self_pokemon} is fast asleep!"
+                    used_text_opp = f"Opposing {self_pokemon} is fast asleep!"
+                    movetext[user_id]["text_sequence"].extend([used_text_self])
+                    movetext[opponent_id]["text_sequence"].extend([used_text_opp])
+                    movetext[user_id]["hp_update_at"] = 999
+                    movetext[opponent_id]["hp_update_at"] = 999
+                    return True
+
                 #flinch check
                 if poke in status_effects[roomid][user_id]["flinch"]:
                     print(poke, "got flinched")
@@ -1884,6 +1927,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     paralyze_list.append(opponent_active)
                     seq_self.append(paralyze_textuser)
                     seq_opp.append(paralyze_textopp)
+
             #freeze check
             if move in freeze_moves:
                 freeze = await freeze_check(move)
@@ -1918,7 +1962,6 @@ async def move_handler(user_id, move, poke, fmt, event):
                     if opponent_active in flinch_list:
                         print("flinch pokemon not found")
 
-# ...existing code...
             if move in burn_moves:
                 # Ensure we only roll once and enforce fire-type immunity before applying
                 burn_list = status_effects[roomid][opponent_id]["burn"]
@@ -1948,7 +1991,23 @@ async def move_handler(user_id, move, poke, fmt, event):
                         burn_list.append(opponent_active)
                         seq_self.append(burn_textuser)
                         seq_opp.append(burn_textopp)
-# ...existing code...
+
+            
+            if move in sleep_moves:
+                sleep = await sleep_check(move)
+                sleep_list = status_effects[roomid][opponent_id]["sleep"]
+            
+                if opponent_active in sleep_list:
+                    sleep_textuser = f"The Opposing {opp_pokemon} is already asleep!"
+                    sleep_textopp = f"{opp_pokemon} is already asleep!"
+                    seq_self.append(sleep_textuser)
+                    seq_opp.append(sleep_textopp)
+                elif sleep:
+                    sleep_textuser = f"The Opposing {opp_pokemon} fell asleep!"
+                    sleep_textopp = f"{opp_pokemon} fell asleep!"
+                    sleep_list.append(opponent_active)
+                    seq_self.append(sleep_textuser)
+                    seq_opp.append(sleep_textopp)
 
             if move in poison_moves:
                 poison = await poison_check(move)
