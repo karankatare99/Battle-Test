@@ -27,7 +27,7 @@ stats_modifier={}
 battlefield_effects={}
 
 #all moves
-all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Clear Smog","Comet Punch","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes","Glare","Glitzy Glow","Growl","Guillotine","Gust","Harden","Haze","Headbutt","Heat Wave","High Jump Kick","Horn Attack","Horn Drill","Hydro Pump","Hyper Fang","Ice Beam","Ice Punch","Ice Shard","Iron Tail","Leech Life","Leer","Lick","Meditate","Mega Drain","Mega Punch","Mega Kick","Megahorn","Moonblast","Nasty Plot","Night Shade","Pay Day","Peck","Pin Missile","Play Rough","Poison Jab","Poison Powder","Poison Sting","Pound","Power Whip","Psybeam","Psychic","Psywave","Quick Attack","Quiver Dance","Razor Leaf","Recover","Rock Slide","Rock Throw","Rolling Kick","Roost","Scald","Scratch","Screech","Seismic Toss","Self Destruct","Shadow Ball","Sharpen","Shell Smash","Sizzly Slide","Super Fang","Superpower","Supersonic","Surf","Swift","Sword Dance","Tackle","Tail Whip","Take Down","Thunder","Thunder Punch","Thunder Shock","Thunder Wave","Thunderbolt","Twineedle","Vine Whip","Vise Grip","Water Gun","Waterfall","Will-o-Wisp","Wing Attack","Withdraw","X Scissor","Zippy Zap"]
+all_moves = ["Absorb", "Acid", "Acid Armor", "Agility", "Air Slash", "Amnesia", "Aqua Jet", "Aurora Beam","Mega Drain","Baddy Bad","Barrage","Barrier","Bite","Bone Club","Bouncy Bubble","Bug Buzz","Bulk Up","Brick Break","Bubble","Bubble Beam","Body Slam","Buzzy Buzz","Blizzard","Calm Mind","Cut","Clear Smog","Comet Punch","Dark Pulse","Dazzling Gleam","Defense Curl","Dizzy Punch","Double Iron Bash","Double Kick","Double Slap","Double Edge","Dragon Pulse","Dragon Rage","Drill Peck","Drill Run","Earthquake","Egg Bomb","Ember","Explosion","Facade","Fake Out","Fire Blast","Fire Punch","Fissure","Flamethrower","Flare Blitz","Flash Cannon","Floaty Fall","Foul Play","Freezy Frost","Fury Attack","Fury Swipes","Glare","Glitzy Glow","Growl","Guillotine","Gust","Harden","Haze","Headbutt","Heat Wave","High Jump Kick","Horn Attack","Horn Drill","Hydro Pump","Hyper Fang","Ice Beam","Ice Punch","Ice Shard","Iron Tail","Leech Life","Leer","Lick","Meditate","Mega Drain","Mega Punch","Mega Kick","Megahorn","Moonblast","Nasty Plot","Night Shade","Pay Day","Peck","Pin Missile","Play Rough","Poison Jab","Poison Powder","Poison Sting","Pound","Power Whip","Psybeam","Psychic","Psywave","Quick Attack","Quiver Dance","Razor Leaf","Recover","Rock Slide","Rock Throw","Rolling Kick","Roost","Scald","Scratch","Screech","Seismic Toss","Self Destruct","Shadow Ball","Sharpen","Shell Smash","Sizzly Slide","Sleep Powder","Super Fang","Superpower","Supersonic","Surf","Swift","Sword Dance","Tackle","Tail Whip","Take Down","Thunder","Thunder Punch","Thunder Shock","Thunder Wave","Thunderbolt","Twineedle","Vine Whip","Vise Grip","Water Gun","Waterfall","Will-o-Wisp","Wing Attack","Withdraw","X Scissor","Zippy Zap"]
 #Only damage dealing moves
 only_damage_moves = ["Cut", "Drill Peck", "Egg Bomb", "Gust", "Horn Attack", "Hydro Pump", "Mega Kick", "Mega Punch", "Pay Day", "Peck", "Pound", "Rock Throw", "Scratch", "Slam", "Sonic Boom", "Strength", "Swift", "Tackle", "Vine Whip", "Water Gun", "Wing Attack","Dazzling Gleam","Dragon Pulse","Power Whip","X Scissor"]
 #Never miss moves
@@ -1415,6 +1415,7 @@ async def move_handler(user_id, move, poke, fmt, event):
                     movetext[opponent_id]["text_sequence"].extend(seq_opp)
                     movetext[user_id]["hp_update_at"] = 1
                     movetext[opponent_id]["hp_update_at"] = 1
+                    
             #check for stat modifier moves
             if move in atk1_buff_moves:
                 stats_modifier[roomid][user_id][poke]["atk"]+=1
@@ -1631,6 +1632,22 @@ async def move_handler(user_id, move, poke, fmt, event):
 
                 movetext[user_id]["hp_update_at"] = 999
                 movetext[opponent_id]["hp_update_at"] = 999
+                return True
+            if move in ("Sleep Powder"):
+                
+                status_effects[roomid][opponent_id]["sleep"].append("opponent_active")
+                used_text_self = f"{self_pokemon} used {move}!/n{self_pokemon} is fast asleep!"
+                used_text_opp = f"Opposing {self_pokemon} used {move}!/nOpposing {self_pokemon} is fast asleep!"    
+                # Build attacker’s sequence
+                seq_self = [used_text_self]
+                # Build opponent’s sequence
+                seq_opp = [used_text_opp]
+                # ✅ Append to movetext (don’t replace)
+                movetext[user_id]["text_sequence"].extend(seq_self)
+                movetext[opponent_id]["text_sequence"].extend(seq_opp)
+                movetext[user_id]["hp_update_at"] = 1
+                movetext[opponent_id]["hp_update_at"] = 1                
+                await battle_ui(fmt, user_id, event)
                 return True
 
             # ✅ Attack/Defense stats
